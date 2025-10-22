@@ -4,14 +4,19 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.freshcookapp.ui.screen.home.Home
 import com.example.freshcookapp.ui.screen.splash.Splash
 
 @Composable
 fun MyAppNavigation(){
     val navController = rememberNavController()
-    NavHost(navController = navController, startDestination = Routes.splash, builder = {
+    NavHost(navController = navController, startDestination = Routes.home, builder = {
         composable(Routes.splash) {
             Splash()
+        }
+
+        composable(Routes.home) {
+            Home()
         }
     })
 }

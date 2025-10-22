@@ -9,6 +9,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.example.freshcookapp.ui.nav.MyAppNavigation
 import com.example.freshcookapp.ui.theme.FreshCookAppTheme
 
@@ -18,13 +19,14 @@ fun FreshCookApp() {
         Scaffold(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding() // 👉 chừa vùng status bar (nơi có camera/pin)
-                .navigationBarsPadding(), // 👉 chừa vùng thanh điều hướng (dưới)
+                .statusBarsPadding()
+                .navigationBarsPadding(),
         ) { innerPadding ->
             Surface(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding),
+                    .padding(innerPadding)
+                    .padding(horizontal = 20.dp),
                 color = MaterialTheme.colorScheme.background
             ) {
                 MyAppNavigation()
