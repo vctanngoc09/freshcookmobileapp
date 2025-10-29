@@ -20,7 +20,9 @@ import com.example.freshcookapp.ui.component.MyBottomBar
 
 import com.example.freshcookapp.ui.component.MyTopBar
 import com.example.freshcookapp.ui.nav.MyAppNavgation
+import com.example.freshcookapp.ui.theme.Blue
 import com.example.freshcookapp.ui.theme.FreshCookAppTheme
+import com.example.freshcookapp.ui.theme.Red
 import com.example.freshcookapp.ui.theme.White
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,21 +33,22 @@ fun FreshCookApp() {
     navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     Scaffold(
+        containerColor = White,
         topBar = {
-            MyTopBar()
+//            MyTopBar()
         },
         bottomBar = {
-            MyBottomBar(navController, currentDestination)
+//            MyBottomBar(navController, currentDestination)
         }
     ) { innerPadding ->
         Surface(
             modifier = Modifier
                 .padding(innerPadding)
-                .fillMaxSize(),
+                .fillMaxSize()
+                .padding(horizontal = 20.dp),
             color = White
         ) {
             MyAppNavgation(navController = navController)
         }
-
     }
 }
