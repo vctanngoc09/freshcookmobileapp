@@ -31,6 +31,15 @@ sealed class Destination(val label: String) {
 
     @Serializable
     data object Profile: Destination("Tài khoản")
+
+    @Serializable
+    data object Welcome
+
+    @Serializable
+    data object Register
+
+    @Serializable
+    data object Login
 }
 sealed class BottomNavigation(
     val label: String,
