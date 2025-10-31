@@ -17,7 +17,7 @@ import com.example.freshcookapp.ui.screen.splash.Splash
 fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifier){
     NavHost(
         navController = navController,
-        startDestination = Destination.Welcome,
+        startDestination = Destination.Home,
         modifier = modifier
     ) {
         composable<Destination.Home> { Home() }

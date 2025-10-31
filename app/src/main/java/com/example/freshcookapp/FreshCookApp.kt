@@ -38,7 +38,7 @@ fun FreshCookApp() {
 //            MyTopBar()
         },
         bottomBar = {
-//            MyBottomBar(navController, currentDestination)
+            MyBottomBar(navController, currentDestination)
         }
     ) { innerPadding ->
         Surface(
