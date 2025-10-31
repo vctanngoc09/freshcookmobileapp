@@ -40,6 +40,24 @@ sealed class Destination(val label: String) {
 
     @Serializable
     data object Login
+
+    @Serializable
+    data object Notification: Destination("Thông báo")
+
+    @Serializable
+    data object EditProfile: Destination("Chỉnh sửa trang cá nhân")
+
+    @Serializable
+    data object MyDishes: Destination("Món của tôi")
+
+    @Serializable
+    data object RecentlyViewed: Destination("Món ăn đã xem")
+
+    @Serializable
+    data object Settings: Destination("Quay lại")
+
+    @Serializable
+    data object Follow: Destination("Follower/Following")
 }
 sealed class BottomNavigation(
     val label: String,

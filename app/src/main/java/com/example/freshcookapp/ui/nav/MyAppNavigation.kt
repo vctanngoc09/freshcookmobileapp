@@ -12,6 +12,13 @@ import com.example.freshcookapp.ui.screen.auth.Register
 import com.example.freshcookapp.ui.screen.auth.Welcome
 import com.example.freshcookapp.ui.screen.home.Home
 import com.example.freshcookapp.ui.screen.splash.Splash
+import com.example.freshcookapp.ui.screen.account.ProfileScreen
+import com.example.freshcookapp.ui.screen.account.NotificationScreen
+import com.example.freshcookapp.ui.screen.account.EditProfileScreen
+import com.example.freshcookapp.ui.screen.account.MyDishesScreen
+import com.example.freshcookapp.ui.screen.account.RecentlyViewedScreen
+import com.example.freshcookapp.ui.screen.account.SettingsScreen
+import com.example.freshcookapp.ui.screen.account.FollowScreen
 
 @Composable
 fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifier){
@@ -24,9 +31,66 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
         composable<Destination.New> { Home() }
         composable<Destination.Favorites> { Home() }
         composable<Destination.Research> { Home() }
-        composable<Destination.Profile> { Home() }
+        composable<Destination.Profile> {
+            ProfileScreen(
+                onNotificationClick = { navController.navigate(Destination.Notification) },
+                onMyDishesClick = { navController.navigate(Destination.MyDishes) },
+                onRecentlyViewedClick = { navController.navigate(Destination.RecentlyViewed) },
+                onEditProfileClick = { navController.navigate(Destination.EditProfile) },
+                onChangePasswordClick = { /* TODO: Navigate to change password */ },
+                onLogoutClick = { navController.navigate(Destination.Welcome) },
+                onMenuClick = { navController.navigate(Destination.Settings) },
+                onFollowerClick = { navController.navigate(Destination.Follow) },
+                onFollowingClick = { navController.navigate(Destination.Follow) }
+            )
+        }
 
+        // Account related screens
+        composable<Destination.Follow> {
+            FollowScreen(
+                onBackClick = { navController.navigateUp() }
+            )
+        }
 
+        composable<Destination.Settings> {
+            SettingsScreen(
+                onBackClick = { navController.navigateUp() },
+                onEditProfileClick = { navController.navigate(Destination.EditProfile) },
+                onRecentlyViewedClick = { navController.navigate(Destination.RecentlyViewed) },
+                onMyDishesClick = { navController.navigate(Destination.MyDishes) },
+                onLogoutClick = {
+                    navController.navigate(Destination.Welcome) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable<Destination.Notification> {
+            NotificationScreen(
+                onBackClick = { navController.navigateUp() }
+            )
+        }
+
+        composable<Destination.EditProfile> {
+            EditProfileScreen(
+                onBackClick = { navController.navigateUp() }
+            )
+        }
+
+        composable<Destination.MyDishes> {
+            MyDishesScreen(
+                onBackClick = { navController.navigateUp() }
+            )
+        }
+
+        composable<Destination.RecentlyViewed> {
+            RecentlyViewedScreen(
+                onBackClick = { navController.navigateUp() }
+            )
+        }
+
+        // Auth screens
         composable<Destination.Welcome> { Welcome(onRegister = {navController.navigate(Destination.Register)},onLogin = {navController.navigate(Destination.Login)}) }
 
         composable<Destination.Register> { Register(onRegisterClick = {navController.navigate(Destination.Register)}, onBackClick = {navController.navigateUp()}, onLoginClick = {navController.navigate(Destination.Login)}) }
