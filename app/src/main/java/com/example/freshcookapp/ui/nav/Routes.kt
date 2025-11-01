@@ -58,6 +58,11 @@ sealed class Destination(val label: String) {
 
     @Serializable
     data object Follow: Destination("Follower/Following")
+
+    @Serializable
+    data class RecipeDetail(
+        val recipeId: String?
+    ) : Destination("Chi tiết")
 }
 sealed class BottomNavigation(
     val label: String,
