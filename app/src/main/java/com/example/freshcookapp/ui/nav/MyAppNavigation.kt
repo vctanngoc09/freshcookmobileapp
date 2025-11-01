@@ -7,6 +7,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.example.freshcookapp.ui.screen.auth.Login
 import com.example.freshcookapp.ui.screen.auth.Register
 import com.example.freshcookapp.ui.screen.auth.Welcome
@@ -19,6 +20,8 @@ import com.example.freshcookapp.ui.screen.account.MyDishesScreen
 import com.example.freshcookapp.ui.screen.account.RecentlyViewedScreen
 import com.example.freshcookapp.ui.screen.account.SettingsScreen
 import com.example.freshcookapp.ui.screen.account.FollowScreen
+import com.example.freshcookapp.ui.screen.detail.RecipeDetail
+import com.example.freshcookapp.ui.screen.favorites.Favorite
 
 @Composable
 fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifier){
@@ -29,7 +32,16 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
     ) {
         composable<Destination.Home> { Home() }
         composable<Destination.New> { Home() }
-        composable<Destination.Favorites> { Home() }
+        composable<Destination.Favorites> { Favorite(navController = navController) }
+
+        composable<Destination.RecipeDetail> { backStackEntry ->
+            val args = backStackEntry.toRoute<Destination.RecipeDetail>()
+            RecipeDetail(
+                recipeId = args.recipeId,
+                navController = navController
+            )
+        }
+
         composable<Destination.Research> { Home() }
         composable<Destination.Profile> {
             ProfileScreen(
