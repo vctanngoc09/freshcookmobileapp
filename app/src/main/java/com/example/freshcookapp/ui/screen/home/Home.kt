@@ -1,5 +1,6 @@
 package com.example.freshcookapp.ui.screen.home
 
+// --- TẤT CẢ CÁC IMPORT BỊ THIẾU ---
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,19 +20,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,68 +38,34 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.example.freshcookapp.R
 import com.example.freshcookapp.domain.model.Recipe
 import com.example.freshcookapp.ui.component.RecipeCard
 import com.example.freshcookapp.ui.component.SearchBar
-import com.example.freshcookapp.ui.theme.Cinnabar300
-import com.example.freshcookapp.ui.theme.Cinnabar400
 import com.example.freshcookapp.ui.theme.Cinnabar500
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.grid.items
 import com.example.freshcookapp.domain.model.Category
 import com.example.freshcookapp.ui.component.NewDishItem
 import com.example.freshcookapp.ui.component.RecommendedRecipeCard
 import com.example.freshcookapp.ui.component.SectionHeader
 import com.example.freshcookapp.ui.component.TrendingCategoryItem
+// --- IMPORT MỚI CHO DEMODATA ---
+import com.example.freshcookapp.domain.model.DemoData
+// -----------------------------------
+
 
 @Composable
 fun Home() {
     // 🔹 Dữ liệu demo
-    val trendingRecipes = listOf(
-        Recipe(R.drawable.img_food1, "Honey pancakes with...", "30 min", "Dễ", false),
-        Recipe(R.drawable.img_food2, "Spaghetti carbonara", "25 min", "Trung bình", true),
-        Recipe(R.drawable.img_food1, "Cơm chiên hải sản", "20 min", "Dễ", false),
-    )
-
-    val recommendedRecipes = listOf(
-        Recipe(R.drawable.img_food1, "Sandwich with chicken and onion", "30p trước", "Dễ", false),
-        Recipe(R.drawable.img_food2, "Grilled salmon with herbs", "1h trước", "Trung bình", false),
-        Recipe(R.drawable.img_food1, "Pasta with creamy sauce", "2h trước", "Khó", false)
-    )
-
-// Một vài món demo để gắn vào thể loại
-    val meatRecipes = listOf(
-        Recipe(R.drawable.img_food1, "Thịt kho tàu", "30 min", "Dễ", false),
-        Recipe(R.drawable.img_food2, "Thịt xào hành", "20 min", "Dễ", true)
-    )
-
-    val cakeRecipes = listOf(
-        Recipe(R.drawable.img_food1, "Bánh flan caramel", "40 min", "Trung bình", false),
-        Recipe(R.drawable.img_food2, "Bánh bông lan", "45 min", "Trung bình", false)
-    )
-
-    val soupRecipes = listOf(
-        Recipe(R.drawable.img_food1, "Canh bí đỏ tôm khô", "25 min", "Dễ", false),
-        Recipe(R.drawable.img_food2, "Canh gà nấm", "30 min", "Trung bình", false)
-    )
-
-// Danh sách Category cho phần “Từ khóa thịnh hành”
-    val trendingCategories = listOf(
-        Category(1, "thit", "Thịt", R.drawable.kw_thit, meatRecipes),
-        Category(2, "banh", "Bánh", R.drawable.kw_banh, cakeRecipes),
-        Category(3, "thucdon", "Thực đơn mỗi ngày", R.drawable.kw_thit, listOf()),
-        Category(4, "thitkho", "Thịt kho", R.drawable.kw_banh, meatRecipes),
-        Category(5, "namduiga", "Nấm đùi gà", R.drawable.kw_thit, soupRecipes),
-        Category(6, "goi", "Gỏi", R.drawable.kw_banh, listOf())
-    )
-
+    // --- LẤY DỮ LIỆU TỪ DEMODATA ---
+    val trendingRecipes = DemoData.trendingRecipes
+    val recommendedRecipes = DemoData.recommendedRecipes
+    val trendingCategories = DemoData.trendingCategories
+    val newDishes = DemoData.newDishes
 
     var searchText by remember { mutableStateOf("") }
 
-    // 🔹 Dùng LazyColumn thay cho Column(verticalScroll())
+    // 🔹 Dùng LazyColumn
     LazyColumn(
         modifier = Modifier
             .fillMaxSize(),
@@ -229,6 +190,7 @@ fun Home() {
                         level = recipe.level,
                         isFavorite = recipe.isFavorite,
                         onFavoriteClick = { /* TODO */ }
+                        // Sẽ thêm clickable ở bước sau
                     )
                 }
             }
@@ -248,6 +210,7 @@ fun Home() {
                 time = recipe.time,
                 difficulty = recipe.level,
                 onRemoveClick = { /* TODO */ }
+                // Sẽ thêm clickable ở bước sau
             )
         }
 
@@ -257,14 +220,6 @@ fun Home() {
             Spacer(modifier = Modifier.height(20.dp))
             SectionHeader(title = "Món mới lên sóng gần đây")
             Spacer(modifier = Modifier.height(8.dp))
-
-            val newDishes = listOf(
-                Triple(R.drawable.img_food1, "Thịt gà xào măng", "Trần Thị Tuyết T."),
-                Triple(R.drawable.img_food2, "Lẩu cháo chim bồ câu", "Bòn Bon"),
-                Triple(R.drawable.img_food1, "Bánh xếp", "Huyen le Tran"),
-                Triple(R.drawable.img_food2, "Bánh flan caramel", "Ngọc Mai"),
-                Triple(R.drawable.img_food1, "Cơm chiên hải sản", "Hoàng Anh")
-            )
 
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
