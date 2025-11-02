@@ -22,6 +22,13 @@ import com.example.freshcookapp.ui.screen.account.SettingsScreen
 import com.example.freshcookapp.ui.screen.account.FollowScreen
 import com.example.freshcookapp.ui.screen.detail.RecipeDetail
 import com.example.freshcookapp.ui.screen.favorites.Favorite
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
+import com.example.freshcookapp.R
+import com.example.freshcookapp.domain.model.DemoData
+import com.example.freshcookapp.domain.model.User
+import com.example.freshcookapp.ui.screen.account.UserProfile
+import com.example.freshcookapp.ui.screen.account.UserProfileRoute
 
 @Composable
 fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifier){
@@ -38,6 +45,21 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
             val args = backStackEntry.toRoute<Destination.RecipeDetail>()
             RecipeDetail(
                 recipeId = args.recipeId,
+                navController = navController
+            )
+        }
+
+        composable(
+            route = "user_profile/{userId}",
+            arguments = listOf(navArgument("userId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val userId = backStackEntry.arguments?.getString("userId")
+            if (userId == null) {
+                navController.popBackStack()
+                return@composable
+            }
+            UserProfileRoute(
+                userId = userId,
                 navController = navController
             )
         }
