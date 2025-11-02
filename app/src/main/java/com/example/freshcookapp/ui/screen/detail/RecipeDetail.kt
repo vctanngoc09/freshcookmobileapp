@@ -46,7 +46,7 @@ fun RecipeDetail(
         recipe = recipeToShow,
         onBackClick = { navController.navigateUp() },
         onAuthorClick = { authorId ->
-            // TODO: navController.navigate(Destination.Profile(authorId))
+            navController.navigate("user_profile/$authorId")
         }
     )
 }
@@ -422,4 +422,3 @@ private fun RelatedRecipeItem(recipe: RecipePreview) {
         }
     }
 }
-
