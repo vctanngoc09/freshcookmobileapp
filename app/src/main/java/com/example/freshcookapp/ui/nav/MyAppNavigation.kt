@@ -29,6 +29,8 @@ import com.example.freshcookapp.domain.model.DemoData
 import com.example.freshcookapp.domain.model.User
 import com.example.freshcookapp.ui.screen.account.UserProfile
 import com.example.freshcookapp.ui.screen.account.UserProfileRoute
+import com.example.freshcookapp.ui.screen.newcook.NewCook
+import com.example.freshcookapp.ui.screen.search.Search
 
 @Composable
 fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifier){
@@ -38,7 +40,7 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
         modifier = modifier
     ) {
         composable<Destination.Home> { Home() }
-        composable<Destination.New> { Home() }
+        composable<Destination.New> { NewCook(onBackClick = {navController.navigateUp()} ) }
         composable<Destination.Favorites> { Favorite(navController = navController) }
 
         composable<Destination.RecipeDetail> { backStackEntry ->
@@ -64,7 +66,8 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
             )
         }
 
-        composable<Destination.Research> { Home() }
+        composable<Destination.Search> {
+            Search(onBackClick = {navController.navigateUp()} )}
         composable<Destination.Profile> {
             ProfileScreen(
                 onNotificationClick = { navController.navigate(Destination.Notification) },

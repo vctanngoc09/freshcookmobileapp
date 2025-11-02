@@ -27,9 +27,6 @@ sealed class Destination(val label: String) {
     data object Favorites: Destination("Yêu thích")
 
     @Serializable
-    data object Research: Destination("Tìm kiếm")
-
-    @Serializable
     data object Profile: Destination("Tài khoản")
 
     @Serializable
@@ -58,6 +55,9 @@ sealed class Destination(val label: String) {
 
     @Serializable
     data object Follow: Destination("Follower/Following")
+
+    @Serializable
+    data object Search: Destination("Tìm kiếm")
 
     @Serializable
     data class RecipeDetail(
@@ -90,11 +90,11 @@ sealed class BottomNavigation(
         Destination.Favorites
     )
 
-    data object Research : BottomNavigation("Tìm kiếm",
+    data object Search : BottomNavigation("Tìm kiếm",
         Icons.Filled.Search,
         Icons.Outlined.Search,
         0,
-        Destination.Research
+        Destination.Search
     )
 
     data object Profile : BottomNavigation("Tài khoản",

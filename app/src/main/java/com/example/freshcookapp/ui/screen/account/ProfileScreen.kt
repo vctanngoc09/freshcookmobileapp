@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.freshcookapp.R
+import com.example.freshcookapp.ui.component.ScreenContainer
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.example.freshcookapp.ui.theme.WorkSans
 
@@ -41,212 +42,214 @@ fun ProfileScreen(
     onFollowingClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color.White)
-    ) {
-        // Custom Top Bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+    ScreenContainer {
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .background(Color.White)
         ) {
-            IconButton(onClick = onMenuClick) {
-                Icon(
-                    imageVector = Icons.Default.Menu,
-                    contentDescription = "Menu",
-                    tint = Cinnabar500
+            // Custom Top Bar
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onMenuClick) {
+                    Icon(
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = "Menu",
+                        tint = Cinnabar500
+                    )
+                }
+
+                Text(
+                    text = "Tài khoản",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = WorkSans,
+                    color = Cinnabar500
                 )
+
+                IconButton(onClick = onNotificationClick) {
+                    Icon(
+                        imageVector = Icons.Default.Notifications,
+                        contentDescription = "Notifications",
+                        tint = Cinnabar500
+                    )
+                }
             }
 
-            Text(
-                text = "Tài khoản",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = WorkSans,
-                color = Cinnabar500
-            )
+            // Scrollable Content
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 16.dp)
+            ) {
+                // Profile Header
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp, bottom = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Profile Image
+                        Box(
+                            modifier = Modifier
+                                .size(140.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF4CAF50))
+                                .clickable { onEditProfileClick() }
+                        ) {
+                            // Placeholder - replace with actual image
+                            Image(
+                                painter = painterResource(id = R.drawable.avatar1),
+                                contentDescription = "Profile",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
 
-            IconButton(onClick = onNotificationClick) {
-                Icon(
-                    imageVector = Icons.Default.Notifications,
-                    contentDescription = "Notifications",
-                    tint = Cinnabar500
-                )
-            }
-        }
+                        Spacer(modifier = Modifier.height(16.dp))
 
-        // Scrollable Content
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 16.dp)
-        ) {
-            // Profile Header
-            item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp, bottom = 16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Profile Image
+                        Text(
+                            text = "Vo Cao Tan Ngoc",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = WorkSans,
+                            color = Color.Black
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Text(
+                            text = "HCM, Viet Nam",
+                            fontSize = 14.sp,
+                            fontFamily = WorkSans,
+                            color = Color.Gray
+                        )
+                    }
+                }
+
+                // Stats Bar with Red Background
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(Cinnabar500)
+                            .padding(vertical = 20.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        StatItem(count = "24", label = "Follower", onClick = onFollowerClick)
+
+                        Divider(
+                            modifier = Modifier
+                                .width(2.dp)
+                                .height(50.dp),
+                            color = Color.White
+                        )
+
+                        StatItem(count = "18", label = "Món", onClick = {})
+
+                        Divider(
+                            modifier = Modifier
+                                .width(2.dp)
+                                .height(50.dp),
+                            color = Color.White
+                        )
+
+                        StatItem(count = "121", label = "Thích", onClick = onFollowingClick)
+                    }
+                }
+
+                // Action Buttons
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Xem gần đây button (Outlined)
+                        OutlinedButton(
+                            onClick = onRecentlyViewedClick,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Cinnabar500
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(2.dp, Cinnabar500),
+                            shape = RoundedCornerShape(28.dp)
+                        ) {
+                            Text(
+                                text = "Xem gần đây",
+                                fontSize = 15.sp,
+                                fontFamily = WorkSans,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+
+                        // Món món tui button (Filled)
+                        Button(
+                            onClick = onMyDishesClick,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Cinnabar500
+                            ),
+                            shape = RoundedCornerShape(28.dp)
+                        ) {
+                            Text(
+                                text = "Món món tui",
+                                fontSize = 15.sp,
+                                fontFamily = WorkSans,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+
+                // "Xem tất cả" link
+                item {
                     Box(
                         modifier = Modifier
-                            .size(140.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF4CAF50))
-                            .clickable { onEditProfileClick() }
-                    ) {
-                        // Placeholder - replace with actual image
-                        Image(
-                            painter = painterResource(id = R.drawable.avatar1),
-                            contentDescription = "Profile",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = "Vo Cao Tan Ngoc",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = WorkSans,
-                        color = Color.Black
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Text(
-                        text = "HCM, Viet Nam",
-                        fontSize = 14.sp,
-                        fontFamily = WorkSans,
-                        color = Color.Gray
-                    )
-                }
-            }
-
-            // Stats Bar with Red Background
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(Cinnabar500)
-                        .padding(vertical = 20.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    StatItem(count = "24", label = "Follower", onClick = onFollowerClick)
-
-                    Divider(
-                        modifier = Modifier
-                            .width(2.dp)
-                            .height(50.dp),
-                        color = Color.White
-                    )
-
-                    StatItem(count = "18", label = "Món", onClick = {})
-
-                    Divider(
-                        modifier = Modifier
-                            .width(2.dp)
-                            .height(50.dp),
-                        color = Color.White
-                    )
-
-                    StatItem(count = "121", label = "Thích", onClick = onFollowingClick)
-                }
-            }
-
-            // Action Buttons
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Xem gần đây button (Outlined)
-                    OutlinedButton(
-                        onClick = onRecentlyViewedClick,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = Cinnabar500
-                        ),
-                        border = androidx.compose.foundation.BorderStroke(2.dp, Cinnabar500),
-                        shape = RoundedCornerShape(28.dp)
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 4.dp),
+                        contentAlignment = Alignment.CenterEnd
                     ) {
                         Text(
-                            text = "Xem gần đây",
-                            fontSize = 15.sp,
+                            text = "Xem tất cả",
+                            fontSize = 14.sp,
                             fontFamily = WorkSans,
-                            fontWeight = FontWeight.SemiBold
+                            color = Cinnabar500,
+                            fontWeight = FontWeight.Medium,
+                            style = androidx.compose.ui.text.TextStyle(
+                                textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
+                            ),
+                            modifier = Modifier.clickable { onMyDishesClick() }
                         )
                     }
+                }
 
-                    // Món món tui button (Filled)
-                    Button(
-                        onClick = onMyDishesClick,
+                // Recipe Grid
+                item {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
                         modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Cinnabar500
-                        ),
-                        shape = RoundedCornerShape(28.dp)
+                            .fillMaxWidth()
+                            .height(700.dp)
+                            .padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Text(
-                            text = "Món món tui",
-                            fontSize = 15.sp,
-                            fontFamily = WorkSans,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-            }
-
-            // "Xem tất cả" link
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 4.dp),
-                    contentAlignment = Alignment.CenterEnd
-                ) {
-                    Text(
-                        text = "Xem tất cả",
-                        fontSize = 14.sp,
-                        fontFamily = WorkSans,
-                        color = Cinnabar500,
-                        fontWeight = FontWeight.Medium,
-                        style = androidx.compose.ui.text.TextStyle(
-                            textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
-                        ),
-                        modifier = Modifier.clickable { onMyDishesClick() }
-                    )
-                }
-            }
-
-            // Recipe Grid
-            item {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(700.dp)
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(4) { index ->
-                        RecipeCard()
+                        items(4) { index ->
+                            RecipeCard()
+                        }
                     }
                 }
             }

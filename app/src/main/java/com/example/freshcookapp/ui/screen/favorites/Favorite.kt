@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.freshcookapp.R
+import com.example.freshcookapp.ui.component.ScreenContainer
 import com.example.freshcookapp.ui.theme.FreshCookAppTheme
 // --- KẾT THÚC IMPORT ---
 
@@ -57,30 +58,32 @@ private fun Favorite(
     onSearchQueryChanged: (String) -> Unit,
     onRecipeClick: (Recipe) -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Yêu thích", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFFF9431D))
-        Spacer(modifier = Modifier.height(16.dp))
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = onSearchQueryChanged,
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Tìm kiếm món yêu thích") },
-            leadingIcon = { Icon(Icons.Default.Search, "Search") },
-            shape = RoundedCornerShape(50),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color.LightGray,
-                unfocusedBorderColor = Color.LightGray
+    ScreenContainer {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Text("Yêu thích", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFFF9431D))
+            Spacer(modifier = Modifier.height(16.dp))
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onSearchQueryChanged,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Tìm kiếm món yêu thích") },
+                leadingIcon = { Icon(Icons.Default.Search, "Search") },
+                shape = RoundedCornerShape(50),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color.LightGray,
+                    unfocusedBorderColor = Color.LightGray
+                )
             )
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        if (recipes.isEmpty()) {
-            FavoriteEmptyState()
-        } else {
-            FavoriteList(
-                recipes = recipes,
-                onRecipeClick = onRecipeClick
-            )
+            if (recipes.isEmpty()) {
+                FavoriteEmptyState()
+            } else {
+                FavoriteList(
+                    recipes = recipes,
+                    onRecipeClick = onRecipeClick
+                )
+            }
         }
     }
 }
