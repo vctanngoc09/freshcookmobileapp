@@ -43,7 +43,7 @@ fun MyBottomBar(
         BottomNavigation.Home,
         BottomNavigation.New,
         BottomNavigation.Favorites,
-        BottomNavigation.Research,
+        BottomNavigation.Search,
         BottomNavigation.Profile
     )
 

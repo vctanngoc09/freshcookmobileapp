@@ -51,191 +51,195 @@ import com.example.freshcookapp.ui.component.SectionHeader
 import com.example.freshcookapp.ui.component.TrendingCategoryItem
 // --- IMPORT MỚI CHO DEMODATA ---
 import com.example.freshcookapp.domain.model.DemoData
+import com.example.freshcookapp.ui.component.ScreenContainer
+
 // -----------------------------------
 
 
 @Composable
 fun Home() {
-    // 🔹 Dữ liệu demo
-    // --- LẤY DỮ LIỆU TỪ DEMODATA ---
-    val trendingRecipes = DemoData.trendingRecipes
-    val recommendedRecipes = DemoData.recommendedRecipes
-    val trendingCategories = DemoData.trendingCategories
-    val newDishes = DemoData.newDishes
+    ScreenContainer {
+        // 🔹 Dữ liệu demo
+        // --- LẤY DỮ LIỆU TỪ DEMODATA ---
+        val trendingRecipes = DemoData.trendingRecipes
+        val recommendedRecipes = DemoData.recommendedRecipes
+        val trendingCategories = DemoData.trendingCategories
+        val newDishes = DemoData.newDishes
 
-    var searchText by remember { mutableStateOf("") }
+        var searchText by remember { mutableStateOf("") }
 
-    // 🔹 Dùng LazyColumn
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 60.dp)
-    ) {
+        // 🔹 Dùng LazyColumn
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 60.dp)
+        ) {
 
-        // --- Header ---
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Image(
-                        painter = painterResource(R.drawable.avatar1),
-                        contentDescription = "Avatar",
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .border(1.5.dp, Cinnabar500, CircleShape)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Hi, Vo Cao Tan Ngoc",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Cinnabar500,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                IconButton(
-                    onClick = { /* Notification click */ },
-                    modifier = Modifier.size(26.dp)
+            // --- Header ---
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_notifications),
-                        contentDescription = "Notifications",
-                        tint = Cinnabar500,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
-            }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Image(
+                            painter = painterResource(R.drawable.avatar1),
+                            contentDescription = "Avatar",
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .border(1.5.dp, Cinnabar500, CircleShape)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Hi, Vo Cao Tan Ngoc",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Cinnabar500,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Hôm nay bạn muốn\nnấu món gì?",
-                style = MaterialTheme.typography.titleMedium,
-                color = Cinnabar500,
-                fontWeight = FontWeight.SemiBold
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            SearchBar(
-                value = searchText,
-                onValueChange = { searchText = it },
-                placeholder = "Tìm món ăn...",
-                onFilterClick = { /* bottom sheet lọc món */ },
-                modifier = Modifier
-                    .fillMaxWidth()
-            )
-
-        }
-
-        item {
-            // 🔹 Section: Từ khóa thịnh hành
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Từ khóa thịnh hành",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = "Cập nhật 04:28",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 330.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                userScrollEnabled = false
-            ) {
-                items(trendingCategories) { category ->
-                    TrendingCategoryItem(category = category) {
-                        // TODO: navigate to category detail
+                    IconButton(
+                        onClick = { /* Notification click */ },
+                        modifier = Modifier.size(26.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_notifications),
+                            contentDescription = "Notifications",
+                            tint = Cinnabar500,
+                            modifier = Modifier.size(22.dp),
+                        )
                     }
                 }
-            }
-            Spacer(modifier = Modifier.height(20.dp))
-        }
 
-        // --- Xu hướng ---
-        item {
-            SectionHeader(title = "Xu hướng")
-            Spacer(modifier = Modifier.height(8.dp))
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(trendingRecipes) { recipe ->
-                    RecipeCard(
-                        imageRes = recipe.imageRes,
-                        title = recipe.title,
-                        time = recipe.time,
-                        level = recipe.level,
-                        isFavorite = recipe.isFavorite,
-                        onFavoriteClick = { /* TODO */ }
-                        // Sẽ thêm clickable ở bước sau
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Hôm nay bạn muốn\nnấu món gì?",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Cinnabar500,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                SearchBar(
+                    value = searchText,
+                    onValueChange = { searchText = it },
+                    placeholder = "Tìm món ăn...",
+                    onFilterClick = { /* bottom sheet lọc món */ },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                )
+
+            }
+
+            item {
+                // 🔹 Section: Từ khóa thịnh hành
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Từ khóa thịnh hành",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "Cập nhật 04:28",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
                     )
                 }
-            }
-            Spacer(modifier = Modifier.height(20.dp))
-        }
 
-        // --- Gợi ý cho bạn ---
-        item {
-            SectionHeader(title = "Gợi ý cho bạn")
-            Spacer(modifier = Modifier.height(8.dp))
-        }
+                Spacer(modifier = Modifier.height(12.dp))
 
-        items(recommendedRecipes) { recipe ->
-            RecommendedRecipeCard(
-                imageRes = recipe.imageRes,
-                title = recipe.title,
-                time = recipe.time,
-                difficulty = recipe.level,
-                onRemoveClick = { /* TODO */ }
-                // Sẽ thêm clickable ở bước sau
-            )
-        }
-
-
-        // --- Món mới lên sóng gần đây ---
-        item {
-            Spacer(modifier = Modifier.height(20.dp))
-            SectionHeader(title = "Món mới lên sóng gần đây")
-            Spacer(modifier = Modifier.height(8.dp))
-
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(newDishes) { (image, title, author) ->
-                    NewDishItem(
-                        imageRes = image,
-                        title = title,
-                        author = author,
-                        onClick = { /* TODO: mở chi tiết món */ }
-                    )
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 330.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    userScrollEnabled = false
+                ) {
+                    items(trendingCategories) { category ->
+                        TrendingCategoryItem(category = category) {
+                            // TODO: navigate to category detail
+                        }
+                    }
                 }
+                Spacer(modifier = Modifier.height(20.dp))
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
-        }
+            // --- Xu hướng ---
+            item {
+                SectionHeader(title = "Xu hướng")
+                Spacer(modifier = Modifier.height(8.dp))
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(trendingRecipes) { recipe ->
+                        RecipeCard(
+                            imageRes = recipe.imageRes,
+                            title = recipe.title,
+                            time = recipe.time,
+                            level = recipe.level,
+                            isFavorite = recipe.isFavorite,
+                            onFavoriteClick = { /* TODO */ }
+                            // Sẽ thêm clickable ở bước sau
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+            }
 
+            // --- Gợi ý cho bạn ---
+            item {
+                SectionHeader(title = "Gợi ý cho bạn")
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            items(recommendedRecipes) { recipe ->
+                RecommendedRecipeCard(
+                    imageRes = recipe.imageRes,
+                    title = recipe.title,
+                    time = recipe.time,
+                    difficulty = recipe.level,
+                    onRemoveClick = { /* TODO */ }
+                    // Sẽ thêm clickable ở bước sau
+                )
+            }
+
+
+            // --- Món mới lên sóng gần đây ---
+            item {
+                Spacer(modifier = Modifier.height(20.dp))
+                SectionHeader(title = "Món mới lên sóng gần đây")
+                Spacer(modifier = Modifier.height(8.dp))
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(newDishes) { (image, title, author) ->
+                        NewDishItem(
+                            imageRes = image,
+                            title = title,
+                            author = author,
+                            onClick = { /* TODO: mở chi tiết món */ }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+            }
+
+        }
     }
 }

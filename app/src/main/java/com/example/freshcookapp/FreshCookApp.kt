@@ -44,8 +44,7 @@ fun FreshCookApp() {
         Surface(
             modifier = Modifier
                 .padding(innerPadding)
-                .fillMaxSize()
-                .padding(horizontal = 20.dp),
+                .fillMaxSize(),
             color = White
         ) {
             MyAppNavgation(navController = navController)
