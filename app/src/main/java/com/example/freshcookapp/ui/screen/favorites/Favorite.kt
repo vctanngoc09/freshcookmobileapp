@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.freshcookapp.R
 import com.example.freshcookapp.ui.component.ScreenContainer
+import com.example.freshcookapp.ui.component.SearchBar
+import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.example.freshcookapp.ui.theme.FreshCookAppTheme
 // --- KẾT THÚC IMPORT ---
 
@@ -59,20 +61,38 @@ private fun Favorite(
     onRecipeClick: (Recipe) -> Unit
 ) {
     ScreenContainer {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Text("Yêu thích", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFFF9431D))
+        Column(modifier = Modifier
+            .fillMaxSize()
+            .padding(vertical = 12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                IconButton(
+                    onClick = {},
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_back),
+                        contentDescription = "Back",
+                        tint = Cinnabar500,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+
+                Text(
+                    text = "Yêu thích",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Cinnabar500
+                )
+            }
             Spacer(modifier = Modifier.height(16.dp))
-            OutlinedTextField(
+            SearchBar(
                 value = searchQuery,
                 onValueChange = onSearchQueryChanged,
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Tìm kiếm món yêu thích") },
-                leadingIcon = { Icon(Icons.Default.Search, "Search") },
-                shape = RoundedCornerShape(50),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.LightGray,
-                    unfocusedBorderColor = Color.LightGray
-                )
+                placeholder = "Tìm kiếm",
+                onFilterClick = {}
             )
             Spacer(modifier = Modifier.height(16.dp))
 

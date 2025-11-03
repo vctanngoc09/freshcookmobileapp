@@ -6,13 +6,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.freshcookapp.ui.theme.Cinnabar500
 
 @Composable
 fun CustomTextField(
@@ -37,5 +40,12 @@ fun CustomTextField(
         singleLine = true,
         visualTransformation = visualTransformation,
         trailingIcon = trailingIcon,
+        colors = TextFieldDefaults.colors(
+            focusedIndicatorColor = Cinnabar500,
+            focusedContainerColor = Color.Transparent,
+            unfocusedContainerColor = Color.Transparent,
+            disabledContainerColor = Color.Transparent,
+            errorContainerColor = Color.Transparent,
+        )
     )
 }

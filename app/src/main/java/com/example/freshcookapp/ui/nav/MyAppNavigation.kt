@@ -29,6 +29,7 @@ import com.example.freshcookapp.domain.model.DemoData
 import com.example.freshcookapp.domain.model.User
 import com.example.freshcookapp.ui.screen.account.UserProfile
 import com.example.freshcookapp.ui.screen.account.UserProfileRoute
+import com.example.freshcookapp.ui.screen.filter.Filter
 import com.example.freshcookapp.ui.screen.newcook.NewCook
 import com.example.freshcookapp.ui.screen.search.Search
 
@@ -39,7 +40,7 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
         startDestination = Destination.Home,
         modifier = modifier
     ) {
-        composable<Destination.Home> { Home() }
+        composable<Destination.Home> { Home(onFilterClick = {navController.navigate(Destination.Filter)}) }
         composable<Destination.New> { NewCook(onBackClick = {navController.navigateUp()} ) }
         composable<Destination.Favorites> { Favorite(navController = navController) }
 
@@ -67,7 +68,12 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
         }
 
         composable<Destination.Search> {
-            Search(onBackClick = {navController.navigateUp()} )}
+            Search(onBackClick = {navController.navigateUp()} , onFilterClick = {navController.navigate(
+                Destination.Filter)})}
+
+        composable<Destination.Filter> {
+            Filter(onBackClick = {navController.navigateUp()}, onApply = {navController.navigate(
+                Destination.Home)} )}
         composable<Destination.Profile> {
             ProfileScreen(
                 onNotificationClick = { navController.navigate(Destination.Notification) },

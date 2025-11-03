@@ -1,6 +1,12 @@
 package com.example.freshcookapp.ui.screen.newcook
 
+import android.graphics.Bitmap
+import android.net.Uri
+import android.provider.MediaStore
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.background
@@ -19,10 +25,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil.compose.rememberAsyncImagePainter
 import com.example.freshcookapp.R
+import com.example.freshcookapp.domain.model.Ingredient
+import com.example.freshcookapp.domain.model.Instruction
 import com.example.freshcookapp.ui.component.ScreenContainer
 import com.example.freshcookapp.ui.component.SearchBar
 import com.example.freshcookapp.ui.component.UnderlineTextField
@@ -32,14 +43,24 @@ import com.example.freshcookapp.ui.theme.Cinnabar400
 import com.example.freshcookapp.ui.theme.Cinnabar50
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.example.freshcookapp.ui.theme.White
+import java.io.ByteArrayOutputStream
 
 @Composable
 fun NewCook(onBackClick: () -> Unit){
     var recipeName by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var cookTime by remember { mutableStateOf("") }
-    var ingredients by remember { mutableStateOf(mutableListOf("250g bột", "100ml nước")) }
-    var steps by remember { mutableStateOf(mutableListOf("Trộn bột và nước đến khi đặc lại", "Đậy kín hỗn hợp lại và để 1 tiếng")) }
+    var people by remember { mutableStateOf("") }
+    val ingredients = remember { mutableStateListOf(
+        Ingredient(), Ingredient()
+    ) }
+    val instructions = remember {
+        mutableStateListOf(
+            Instruction(stepNumber = 1),
+            Instruction(stepNumber = 2)
+        )
+    }
+
 
     Column(
         modifier = Modifier
@@ -59,7 +80,7 @@ fun NewCook(onBackClick: () -> Unit){
                 Icon(
                     painter = painterResource(R.drawable.ic_back),
                     contentDescription = "Back",
-                    tint = Color.Black,
+                    tint = Cinnabar500,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -118,28 +139,7 @@ fun NewCook(onBackClick: () -> Unit){
         ) {
             /** ẢNH MÓN ĂN */
             item {
-                Box(
-                    modifier = Modifier
-                        .fillParentMaxWidth() // chiếm hết chiều ngang của vùng cha thực tế (bỏ qua padding)
-                        .fillMaxWidth()
-                        .height(160.dp)
-                        .background(Cinnabar100),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_camera),
-                            contentDescription = "Camera",
-                            tint = Color.Gray,
-                            modifier = Modifier.size(36.dp)
-                        )
-                        Text(
-                            "Đăng tải hình đại diện món ăn",
-                            color = Color.Gray,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
+                RecipeImagePicker()
             }
 
 
@@ -191,91 +191,337 @@ fun NewCook(onBackClick: () -> Unit){
                             modifier = Modifier.width(160.dp)
                         )
                     }
+                    Spacer(Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Số lượng người ăn:",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        UnderlineTextField(
+                            value = people,
+                            onValueChange = { people = it },
+                            placeholder = "2 người",
+                            modifier = Modifier.width(160.dp)
+                        )
+                    }
                 }
             }
 
 
             /** NGUYÊN LIỆU */
             item {
-                Spacer(Modifier.height(20.dp))
-                Text(
-                    "Nguyên Liệu",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                ScreenContainer {
+                    Spacer(Modifier.height(20.dp))
+                    Text(
+                        "Nguyên Liệu",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(10.dp))
+                }
             }
-            itemsIndexed(ingredients) { index, item ->
-                OutlinedTextField(
-                    value = item,
-                    onValueChange = { new -> ingredients[index] = new },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    trailingIcon = {
-                        IconButton(onClick = { ingredients.removeAt(index) }) {
-                            Icon(Icons.Default.Close, contentDescription = "Xóa")
+            itemsIndexed(ingredients) { index, ingredient ->
+                ScreenContainer {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Cinnabar50)
+                            .padding(12.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                "Nguyên liệu ${index + 1}",
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(onClick = { ingredients.removeAt(index) }) {
+                                Icon(Icons.Default.Close, contentDescription = "Xóa nguyên liệu")
+                            }
                         }
-                    },
-                    shape = RoundedCornerShape(8.dp)
-                )
+
+                        UnderlineTextField(
+                            value = ingredient.name,
+                            onValueChange = { new -> ingredients[index] = ingredient.copy(name = new) },
+                            placeholder = "Tên nguyên liệu (VD: Bột mì)"
+                        )
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            UnderlineTextField(
+                                value = ingredient.quantity,
+                                onValueChange = { new -> ingredients[index] = ingredient.copy(quantity = new) },
+                                placeholder = "Số lượng",
+                                modifier = Modifier.weight(1f)
+                            )
+                            UnderlineTextField(
+                                value = ingredient.unit,
+                                onValueChange = { new -> ingredients[index] = ingredient.copy(unit = new) },
+                                placeholder = "Đơn vị (VD: gram, ml)",
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        UnderlineTextField(
+                            value = ingredient.notes,
+                            onValueChange = { new -> ingredients[index] = ingredient.copy(notes = new) },
+                            placeholder = "Ghi chú thêm (nếu có)"
+                        )
+                    }
+
+                    Spacer(Modifier.height(20.dp))
+                }
             }
             item {
-                TextButton(
-                    onClick = { ingredients.add("") }
+                ScreenContainer(
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                    Text("Thêm nguyên liệu")
+                    TextButton(
+                        onClick = { ingredients.add(Ingredient()) },
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = null,
+                            tint = Cinnabar400
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text("Thêm nguyên liệu", color = Cinnabar400)
+                    }
                 }
             }
 
             /** CÁCH LÀM */
             item {
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    "Cách Làm",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(Modifier.height(8.dp))
-            }
-            itemsIndexed(steps) { index, step ->
-                Column(modifier = Modifier.padding(vertical = 6.dp)) {
-                    Text("${index + 1}.", fontWeight = FontWeight.Bold)
-                    OutlinedTextField(
-                        value = step,
-                        onValueChange = { new -> steps[index] = new },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp)
+                ScreenContainer {
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        "Cách Làm",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
                     )
-                    Spacer(Modifier.height(6.dp))
-                    Box(
+                    Spacer(Modifier.height(8.dp))
+                }
+            }
+
+            itemsIndexed(instructions) { index, instruction ->
+                ScreenContainer {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(100.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFFF6F6F6))
-                            .clickable { /* chọn ảnh minh họa bước */ },
-                        contentAlignment = Alignment.Center
+                            .background(Cinnabar50)
+                            .padding(12.dp)
                     ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_camera),
-                            contentDescription = null,
-                            tint = Color.Gray,
-                            modifier = Modifier.size(28.dp)
+                        // --- Header: Số bước + nút xóa ---
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "Bước ${index + 1}",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold)
+                            )
+                            IconButton(onClick = { instructions.removeAt(index) }) {
+                                Icon(Icons.Default.Close, contentDescription = "Xóa bước")
+                            }
+                        }
+
+                        // --- Mô tả bước ---
+                        UnderlineTextField(
+                            value = instruction.description,
+                            onValueChange = { new ->
+                                instructions[index] = instruction.copy(description = new)
+                            },
+                            placeholder = "Mô tả bước nấu"
                         )
+
+                        // --- Ảnh minh họa ---
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(120.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFFF2F2F2))
+                                .clickable {
+                                    // TODO: mở image picker, upload hình rồi gán imageUrl
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (instruction.imageUrl.isNotEmpty()) {
+                                // Nếu có ảnh
+                                Image(
+                                    painter = rememberAsyncImagePainter(instruction.imageUrl),
+                                    contentDescription = "Ảnh bước ${index + 1}",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_camera),
+                                        contentDescription = null,
+                                        tint = Color.Gray,
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                    Text(
+                                        "Thêm ảnh minh họa",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color.Gray
+                                    )
+                                }
+                            }
+                        }
                     }
+
+                    Spacer(Modifier.height(20.dp))
                 }
             }
+
             item {
-                TextButton(
-                    onClick = { steps.add("") },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                    Text("Thêm bước")
+                ScreenContainer {
+                    TextButton(
+                        onClick = {
+                            val nextStep = instructions.size + 1
+                            instructions.add(Instruction(stepNumber = nextStep))
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = null,
+                            tint = Cinnabar400
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text("Thêm bước", color = Cinnabar400)
+                    }
+                    Spacer(Modifier.height(40.dp))
                 }
-                Spacer(Modifier.height(40.dp))
             }
         }
     }
 }
+
+@Composable
+fun RecipeImagePicker() {
+    val context = LocalContext.current
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
+    var showDialog by remember { mutableStateOf(false) } // ✅ trạng thái bật/tắt dialog
+
+    // --- Bộ chọn ảnh từ thư viện ---
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+        onResult = { uri -> imageUri = uri }
+    )
+
+    // --- Bộ chụp ảnh bằng camera ---
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicturePreview(),
+        onResult = { bitmap ->
+            if (bitmap != null) {
+                val bytes = ByteArrayOutputStream()
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, bytes)
+                val path = MediaStore.Images.Media.insertImage(
+                    context.contentResolver,
+                    bitmap,
+                    "captured_image",
+                    null
+                )
+                imageUri = Uri.parse(path)
+            }
+        }
+    )
+
+    // --- UI chính ---
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(160.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Cinnabar100)
+            .clickable {
+                showDialog = true // ✅ chỉ bật cờ lên thôi
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        if (imageUri == null) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_camera),
+                    contentDescription = "Camera",
+                    tint = Color.Gray,
+                    modifier = Modifier.size(36.dp)
+                )
+                Text(
+                    "Đăng tải hình đại diện món ăn",
+                    color = Color.Gray,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        } else {
+            Image(
+                painter = rememberAsyncImagePainter(imageUri),
+                contentDescription = "Recipe image",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+    }
+
+    // --- Dialog chọn nguồn ảnh ---
+    if (showDialog) {
+        showImageSourceDialog(
+            onPickGallery = {
+                galleryLauncher.launch("image/*")
+                showDialog = false
+            },
+            onTakePhoto = {
+                cameraLauncher.launch(null)
+                showDialog = false
+            }
+        )
+    }
+}
+
+
+@Composable
+fun showImageSourceDialog(
+    onPickGallery: () -> Unit,
+    onTakePhoto: () -> Unit
+) {
+    val openDialog = remember { mutableStateOf(true) }
+
+    if (openDialog.value) {
+        AlertDialog(
+            onDismissRequest = { openDialog.value = false },
+            title = { Text("Chọn ảnh món ăn") },
+            text = { Text("Bạn muốn chụp ảnh mới hay chọn từ thư viện?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    openDialog.value = false
+                    onTakePhoto()
+                }) {
+                    Text("Chụp ảnh")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    openDialog.value = false
+                    onPickGallery()
+                }) {
+                    Text("Chọn ảnh")
+                }
+            }
+        )
+    }
+}
+

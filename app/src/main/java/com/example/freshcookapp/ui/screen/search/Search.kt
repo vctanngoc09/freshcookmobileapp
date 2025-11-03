@@ -47,7 +47,7 @@ import com.example.freshcookapp.ui.theme.Cinnabar400
 import com.example.freshcookapp.ui.theme.Cinnabar500
 
 @Composable
-fun Search(onBackClick: () -> Unit) {
+fun Search(onBackClick: () -> Unit, onFilterClick: () -> Unit) {
     ScreenContainer {
         var searchText by remember { mutableStateOf("") }
 
@@ -83,7 +83,7 @@ fun Search(onBackClick: () -> Unit) {
                     value = searchText,
                     onValueChange = { searchText = it },
                     placeholder = "Tìm kiếm",
-                    onFilterClick = { /* TODO: mở filter */ },
+                    onFilterClick = onFilterClick,
                     modifier = Modifier
                         .weight(1f)
                         .padding(start = 4.dp)
