@@ -57,7 +57,7 @@ import com.example.freshcookapp.ui.component.ScreenContainer
 
 
 @Composable
-fun Home() {
+fun Home(onFilterClick: () -> Unit) {
     ScreenContainer {
         // 🔹 Dữ liệu demo
         // --- LẤY DỮ LIỆU TỪ DEMODATA ---
@@ -130,7 +130,7 @@ fun Home() {
                     value = searchText,
                     onValueChange = { searchText = it },
                     placeholder = "Tìm món ăn...",
-                    onFilterClick = { /* bottom sheet lọc món */ },
+                    onFilterClick = onFilterClick,
                     modifier = Modifier
                         .fillMaxWidth()
                 )

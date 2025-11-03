@@ -60,6 +60,9 @@ sealed class Destination(val label: String) {
     data object Search: Destination("Tìm kiếm")
 
     @Serializable
+    data object Filter
+
+    @Serializable
     data class RecipeDetail(
         val recipeId: String?
     ) : Destination("Chi tiết")
