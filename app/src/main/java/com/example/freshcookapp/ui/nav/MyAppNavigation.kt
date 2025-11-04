@@ -34,10 +34,10 @@ import com.example.freshcookapp.ui.screen.newcook.NewCook
 import com.example.freshcookapp.ui.screen.search.Search
 
 @Composable
-fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifier){
+fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifier, startDestination: Destination, onGoogleSignInClick: () -> Unit){
     NavHost(
         navController = navController,
-        startDestination = Destination.Splash,
+        startDestination = startDestination,
         modifier = modifier
     ) {
         composable<Destination.Splash> { Splash(onGetStartedClicked = {navController.navigate(
@@ -136,12 +136,31 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
         }
 
         // Auth screens
-        composable<Destination.Welcome> { Welcome(onRegister = {navController.navigate(Destination.Register)},onLogin = {navController.navigate(Destination.Login)}) }
+        composable<Destination.Welcome> {
+            Welcome(
+                onRegister = { navController.navigate(Destination.Register) },
+                onLogin = { navController.navigate(Destination.Login) },
+                onGoogleSignInClick = onGoogleSignInClick // <-- THÊM DÒNG NÀY
+            )
+        }
 
-        composable<Destination.Register> { Register(onRegisterClick = {navController.navigate(Destination.Register)}, onBackClick = {navController.navigateUp()}, onLoginClick = {navController.navigate(Destination.Login)}) }
+        composable<Destination.Register> {
+            Register(
+                onRegisterClick = { navController.navigate(Destination.Home) }, // Sửa: Đăng ký xong vào Home
+                onBackClick = { navController.navigateUp() },
+                onLoginClick = { navController.navigate(Destination.Login) },
+                onGoogleSignInClick = onGoogleSignInClick // <-- THÊM DÒNG NÀY
+            )
+        }
 
-        composable<Destination.Login> { Login(onBackClick = {navController.navigateUp()}, onLoginClick = {navController.navigate(
-            Destination.Home)}, onRegisterClick = {navController.navigate(Destination.Register)}, onForgotPassClick = {navController.navigate(
-            Destination.Home)}) }
+        composable<Destination.Login> {
+            Login(
+                onBackClick = { navController.navigateUp() },
+                onLoginClick = { navController.navigate(Destination.Home) },
+                onRegisterClick = { navController.navigate(Destination.Register) },
+                onForgotPassClick = { /* TODO: Navigate to Forgot Password */ },
+                onGoogleSignInClick = onGoogleSignInClick // <-- THÊM DÒNG NÀY
+            )
+        }
     }
 }

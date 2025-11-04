@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -39,7 +40,6 @@ android {
         compose = true
     }
 }
-
 dependencies {
 
     implementation(libs.androidx.core.ktx)
@@ -60,7 +60,16 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.navigation.compose)
     implementation("androidx.compose.material:material-icons-extended")
-
     implementation(platform("io.coil-kt:coil-bom:2.7.0"))
     implementation("io.coil-kt:coil-compose")
+    // Firebase Bill of Materials (BoM) - quản lý phiên bản
+    implementation(platform("com.google.firebase:firebase-bom:33.1.1"))
+    // Firebase Analytics (để xem người dùng)
+    implementation("com.google.firebase:firebase-analytics")
+    // Firebase Authentication (để đăng nhập)
+    implementation("com.google.firebase:firebase-auth")
+    // Google Sign-In (hỗ trợ đăng nhập)
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+    implementation("androidx.navigation:navigation-compose:2.7.7")
+
 }
