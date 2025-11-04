@@ -47,7 +47,8 @@ import com.example.freshcookapp.ui.theme.Cinnabar500
 fun Register(
     onRegisterClick: () -> Unit,
     onBackClick: () -> Unit,
-    onLoginClick: () -> Unit
+    onLoginClick: () -> Unit,
+    onGoogleSignInClick: () -> Unit
 ) {
     var fullName by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
@@ -208,15 +209,15 @@ fun Register(
 
                 Row(horizontalArrangement = Arrangement.Center) {
                     IconButton(onClick = {}) {
-                        Icon(painterResource(R.drawable.logo), contentDescription = "FB")
+                        Image(painterResource(R.drawable.ic_facebook_logo), contentDescription = "Facebook")
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    IconButton(onClick = onGoogleSignInClick) {
+                        Image(painterResource(R.drawable.ic_google_logo), contentDescription = "Google")
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     IconButton(onClick = {}) {
-                        Icon(painterResource(R.drawable.logo), contentDescription = "Google")
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    IconButton(onClick = {}) {
-                        Icon(painterResource(R.drawable.logo), contentDescription = "Apple")
+                        Image(painterResource(R.drawable.ic_apple_logo), contentDescription = "Apple")
                     }
                 }
 

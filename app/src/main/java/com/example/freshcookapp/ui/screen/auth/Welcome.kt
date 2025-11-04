@@ -37,7 +37,7 @@ import com.example.freshcookapp.ui.theme.White
 import com.example.freshcookapp.ui.theme.WorkSans
 
 @Composable
-fun Welcome(onRegister: () -> Unit, onLogin: () -> Unit) {
+fun Welcome(onRegister: () -> Unit, onLogin: () -> Unit, onGoogleSignInClick: () -> Unit) {
     ScreenContainer {
         Column(
             modifier = Modifier
@@ -101,15 +101,15 @@ fun Welcome(onRegister: () -> Unit, onLogin: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = {}) {
-                        Icon(painterResource(R.drawable.logo), contentDescription = null)
+                        Image(painterResource(R.drawable.ic_facebook_logo), contentDescription = "Facebook")
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    IconButton(onClick = onGoogleSignInClick) {
+                        Image(painterResource(R.drawable.ic_google_logo), contentDescription = "Google")
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     IconButton(onClick = {}) {
-                        Icon(painterResource(R.drawable.logo), contentDescription = null)
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    IconButton(onClick = {}) {
-                        Icon(painterResource(R.drawable.logo), contentDescription = null)
+                        Image(painterResource(R.drawable.ic_apple_logo), contentDescription = "Apple")
                     }
                 }
             }

@@ -1,1 +1,4 @@
 /build
+# --- Firebase ---
+# Bỏ qua tệp cấu hình dịch vụ của Google
+google-services.json
