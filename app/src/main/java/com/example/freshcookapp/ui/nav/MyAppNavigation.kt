@@ -37,9 +37,11 @@ import com.example.freshcookapp.ui.screen.search.Search
 fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifier){
     NavHost(
         navController = navController,
-        startDestination = Destination.Home,
+        startDestination = Destination.Splash,
         modifier = modifier
     ) {
+        composable<Destination.Splash> { Splash(onGetStartedClicked = {navController.navigate(
+            Destination.Welcome)}) }
         composable<Destination.Home> { Home(onFilterClick = {navController.navigate(Destination.Filter)}) }
         composable<Destination.New> { NewCook(onBackClick = {navController.navigateUp()} ) }
         composable<Destination.Favorites> { Favorite(navController = navController) }
@@ -68,7 +70,7 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
         }
 
         composable<Destination.Search> {
-            Search(onBackClick = {navController.navigateUp()} , onFilterClick = {navController.navigate(
+            Search(onBackClick = {navController.popBackStack()} , onFilterClick = {navController.navigate(
                 Destination.Filter)})}
 
         composable<Destination.Filter> {

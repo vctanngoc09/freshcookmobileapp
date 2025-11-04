@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.example.freshcookapp.R
 import com.example.freshcookapp.ui.component.CustomTextField
 import com.example.freshcookapp.ui.component.PrimaryButton
+import com.example.freshcookapp.ui.component.ScreenContainer
 import com.example.freshcookapp.ui.theme.Black
 import com.example.freshcookapp.ui.theme.Cinnabar500
 
@@ -47,146 +48,148 @@ fun Login(
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Top
-    ) {
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Back button
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Start
+    ScreenContainer {
+        Column(
+            modifier = Modifier
+                .fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Top
         ) {
-            IconButton(onClick = onBackClick) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_back),
-                    contentDescription = "Back",
-                    tint = Black
-                )
-            }
-        }
 
-        Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-        // Title
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = "Rất vui được gặp lại bạn!",
-            style = MaterialTheme.typography.titleLarge.copy(color = Cinnabar500),
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Left
-        )
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = "Hãy cùng quay trở lại nhé!",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Black,
-            textAlign = TextAlign.Left
-        )
-
-        Spacer(modifier = Modifier.height(28.dp))
-
-        // Email
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = "Email",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Black,
-            textAlign = TextAlign.Left
-        )
-        CustomTextField(
-            value = email,
-            onValueChange = { email = it },
-            placeholder = "example@gmail.com"
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Password
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = "Mật khẩu",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Black,
-            textAlign = TextAlign.Left
-        )
-        CustomTextField(
-            value = password,
-            onValueChange = { password = it },
-            placeholder = "••••••",
-            visualTransformation =
-                if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            trailingIcon = {
-                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+            // Back button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Start
+            ) {
+                IconButton(onClick = onBackClick) {
                     Icon(
-                        imageVector = if (passwordVisible)
-                            Icons.Filled.VisibilityOff
-                        else
-                            Icons.Filled.Visibility,
-                        contentDescription = "Toggle password"
+                        painter = painterResource(R.drawable.ic_back),
+                        contentDescription = "Back",
+                        tint = Black
                     )
                 }
             }
-        )
 
-        Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
-        ) {
+            // Title
             Text(
-                text = "Quên mật khẩu?",
-                color = Cinnabar500,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.clickable(onClick = onForgotPassClick)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Login Button
-        PrimaryButton(
-            text = "Đăng nhập",
-            onClick = onLoginClick
-        )
-
-        Spacer(modifier = Modifier.height(18.dp))
-
-        Text(text = "Hoặc")
-
-        Spacer(modifier = Modifier.height(18.dp))
-
-        // Social Login
-        Row(horizontalArrangement = Arrangement.Center) {
-            IconButton(onClick = {}) {
-                Icon(painterResource(R.drawable.logo), contentDescription = "FB")
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            IconButton(onClick = {}) {
-                Icon(painterResource(R.drawable.logo), contentDescription = "Google")
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            IconButton(onClick = {}) {
-                Icon(painterResource(R.drawable.logo), contentDescription = "Apple")
-            }
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Row {
-            Text(text = "Chưa có tài khoản?")
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = "Đăng ký",
-                color = Cinnabar500,
+                modifier = Modifier.fillMaxWidth(),
+                text = "Rất vui được gặp lại bạn!",
+                style = MaterialTheme.typography.titleLarge.copy(color = Cinnabar500),
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.clickable(onClick = onRegisterClick)
+                textAlign = TextAlign.Left
             )
+            Text(
+                modifier = Modifier.fillMaxWidth(),
+                text = "Hãy cùng quay trở lại nhé!",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Black,
+                textAlign = TextAlign.Left
+            )
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            // Email
+            Text(
+                modifier = Modifier.fillMaxWidth(),
+                text = "Email",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Black,
+                textAlign = TextAlign.Left
+            )
+            CustomTextField(
+                value = email,
+                onValueChange = { email = it },
+                placeholder = "example@gmail.com"
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Password
+            Text(
+                modifier = Modifier.fillMaxWidth(),
+                text = "Mật khẩu",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Black,
+                textAlign = TextAlign.Left
+            )
+            CustomTextField(
+                value = password,
+                onValueChange = { password = it },
+                placeholder = "••••••",
+                visualTransformation =
+                    if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(
+                            imageVector = if (passwordVisible)
+                                Icons.Filled.VisibilityOff
+                            else
+                                Icons.Filled.Visibility,
+                            contentDescription = "Toggle password"
+                        )
+                    }
+                }
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                Text(
+                    text = "Quên mật khẩu?",
+                    color = Cinnabar500,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.clickable(onClick = onForgotPassClick)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Login Button
+            PrimaryButton(
+                text = "Đăng nhập",
+                onClick = onLoginClick
+            )
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            Text(text = "Hoặc")
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            // Social Login
+            Row(horizontalArrangement = Arrangement.Center) {
+                IconButton(onClick = {}) {
+                    Icon(painterResource(R.drawable.logo), contentDescription = "FB")
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                IconButton(onClick = {}) {
+                    Icon(painterResource(R.drawable.logo), contentDescription = "Google")
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                IconButton(onClick = {}) {
+                    Icon(painterResource(R.drawable.logo), contentDescription = "Apple")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Row {
+                Text(text = "Chưa có tài khoản?")
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "Đăng ký",
+                    color = Cinnabar500,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clickable(onClick = onRegisterClick)
+                )
+            }
         }
     }
 }

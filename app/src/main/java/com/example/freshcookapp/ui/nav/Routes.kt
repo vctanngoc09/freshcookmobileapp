@@ -18,9 +18,20 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import kotlinx.serialization.Serializable
 
 @Serializable
-sealed class Destination(val label: String) {
+sealed class Destination(val route: String) {
     @Serializable
-    data object Home: Destination("Trang chủ")
+    data object Splash : Destination("splash")
+
+    @Serializable
+    data object Welcome : Destination("welcome")
+
+    @Serializable
+    data object Login : Destination("login")
+
+    @Serializable
+    data object Register : Destination("register")
+    @Serializable
+    data object Home : Destination("home")
     @Serializable
     data object New: Destination("Thêm món")
     @Serializable
@@ -28,15 +39,6 @@ sealed class Destination(val label: String) {
 
     @Serializable
     data object Profile: Destination("Tài khoản")
-
-    @Serializable
-    data object Welcome
-
-    @Serializable
-    data object Register
-
-    @Serializable
-    data object Login
 
     @Serializable
     data object Notification: Destination("Thông báo")
