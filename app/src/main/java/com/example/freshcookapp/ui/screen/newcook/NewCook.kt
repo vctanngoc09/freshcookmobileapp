@@ -71,20 +71,8 @@ fun NewCook(onBackClick: () -> Unit){
             modifier = Modifier.fillMaxWidth()
                 .padding(horizontal = 20.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.End,
         ) {
-            IconButton(
-                onClick = onBackClick,
-                modifier = Modifier.size(28.dp)
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_back),
-                    contentDescription = "Back",
-                    tint = Cinnabar500,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-
             Row(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ){

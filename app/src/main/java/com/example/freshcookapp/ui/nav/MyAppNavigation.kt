@@ -40,11 +40,27 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
         startDestination = startDestination,
         modifier = modifier
     ) {
-        composable<Destination.Splash> { Splash(onGetStartedClicked = {navController.navigate(
-            Destination.Welcome)}) }
+        composable<Destination.Splash> { Splash(onGetStartedClicked = {navController.navigate(Destination.Welcome) {
+            popUpTo(Destination.Splash) { inclusive = true } // ✅ xóa Splash khỏi back stack
+        }}) }
         composable<Destination.Home> { Home(onFilterClick = {navController.navigate(Destination.Filter)}) }
         composable<Destination.New> { NewCook(onBackClick = {navController.navigateUp()} ) }
-        composable<Destination.Favorites> { Favorite(navController = navController) }
+        composable<Destination.Favorites> {
+            Favorite(
+                recipes = DemoData.favoriteRecipes,
+                searchQuery = "",
+                onSearchQueryChanged = {},
+                onRecipeClick = { recipe ->
+                    navController.navigate(Destination.RecipeDetail(recipeId = recipe.id))
+                },
+                onBackClick = {
+                    navController.navigate(Destination.Home)
+                },
+                onFilterClick = {navController.navigate(
+                    Destination.Filter)}
+            )
+        }
+
 
         composable<Destination.RecipeDetail> { backStackEntry ->
             val args = backStackEntry.toRoute<Destination.RecipeDetail>()

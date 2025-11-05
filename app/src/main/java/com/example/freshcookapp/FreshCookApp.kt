@@ -94,10 +94,13 @@ fun FreshCookApp(auth: FirebaseAuth, googleSignInClient: GoogleSignInClient) {
         Destination.RecentlyViewed::class.qualifiedName,
         Destination.MyDishes::class.qualifiedName,
         Destination.RecipeDetail::class.qualifiedName,
+        "user_profile/{userId}"
     )
 
-    // ✅ So sánh chính xác route của Navigation Typed
-    val hideBottomBar = currentDestination?.route in noBottomBarDestinations
+    // ✅ So khớp thông minh cho cả route động
+    val hideBottomBar = noBottomBarDestinations.any { pattern ->
+        pattern != null && currentDestination?.route?.startsWith(pattern.substringBefore("/{")) == true
+    }
 
     Scaffold(
         containerColor = White,
