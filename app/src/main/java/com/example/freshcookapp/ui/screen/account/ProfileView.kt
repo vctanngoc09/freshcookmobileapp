@@ -82,7 +82,6 @@ fun UserProfileRoute(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserProfile(
     user: User,
@@ -95,52 +94,56 @@ fun UserProfile(
     onMoreClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Trạng thái cho nút Follow
     var isFollowing by remember { mutableStateOf(false) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = user.username, // Hiển thị @username trên top bar
-                        fontFamily = WorkSans,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onMoreClick) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = "More Options"
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White,
-                    titleContentColor = Color.Black,
-                    navigationIconContentColor = Color.Black,
-                    actionIconContentColor = Color.Black
-                )
-            )
-        },
+    Column(
         modifier = modifier
-    ) { paddingValues ->
+            .fillMaxSize()
+            .background(Color.White)
+    ) {
+        // ==== Header (thay cho TopAppBar) ====
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Nút back
+            IconButton(onClick = onBackClick) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.Black
+                )
+            }
+
+            // Tên username ở giữa
+            Text(
+                text = user.username,
+                fontFamily = WorkSans,
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+                color = Color.Black
+            )
+
+            // Nút more
+            IconButton(onClick = onMoreClick) {
+                Icon(
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = "More Options",
+                    tint = Color.Black
+                )
+            }
+        }
+
+        // ==== Phần nội dung chính ====
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .background(Color.White)
+                .padding(horizontal = 12.dp)
         ) {
-            // Phần Header (Ảnh, Tên, Stats)
+            // Phần Header (ảnh đại diện, thống kê)
             ProfileHeader(
                 user = user,
                 recipeCount = recipeCount,
@@ -148,14 +151,14 @@ fun UserProfile(
                 followingCount = followingCount
             )
 
-            // Phần Nút (Follow, Share)
+            // Nút Follow / Share
             ProfileActions(
                 isFollowing = isFollowing,
-                onFollowClick = { isFollowing = !isFollowing }, // Bấm để đổi trạng thái
-                onShareClick = { /* TODO: Xử lý sự kiện share */ }
+                onFollowClick = { isFollowing = !isFollowing },
+                onShareClick = { /* TODO: Xử lý share */ }
             )
 
-            // Phần Tab (Công thức, Đã thích)
+            // Tabs: Công thức / Đã thích
             ProfileContentTabs(
                 userRecipes = userRecipes,
                 likedRecipes = likedRecipes

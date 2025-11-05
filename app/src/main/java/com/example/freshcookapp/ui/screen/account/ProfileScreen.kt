@@ -137,7 +137,6 @@ fun ProfileScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 20.dp)
                             .clip(RoundedCornerShape(20.dp))
                             .background(Cinnabar500)
                             .padding(vertical = 20.dp),
@@ -170,7 +169,7 @@ fun ProfileScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 24.dp),
+                            .padding(vertical = 24.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         // Xem gần đây button (Outlined)
@@ -219,7 +218,7 @@ fun ProfileScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 4.dp),
+                            .padding(vertical = 4.dp),
                         contentAlignment = Alignment.CenterEnd
                     ) {
                         Text(
@@ -242,10 +241,9 @@ fun ProfileScreen(
                         columns = GridCells.Fixed(2),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(700.dp)
-                            .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                            .height(700.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(4) { index ->
                             RecipeCard()
