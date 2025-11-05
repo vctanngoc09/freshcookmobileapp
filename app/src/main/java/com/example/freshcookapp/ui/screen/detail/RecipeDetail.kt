@@ -1,6 +1,5 @@
 package com.example.freshcookapp.ui.screen.detail
 
-// --- IMPORT CÁC THƯ VIỆN CẦN THIẾT ---
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,14 +25,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.example.freshcookapp.R
-import com.example.freshcookapp.domain.model.* // Import tất cả model
+import com.example.freshcookapp.domain.model.*
 import com.example.freshcookapp.ui.nav.Destination
 import com.example.freshcookapp.ui.theme.FreshCookAppTheme
 
-/**
- * HÀM "CỔNG VÀO" (ENTRY POINT)
- * (Giữ nguyên, không sửa)
- */
 @Composable
 fun RecipeDetail(
     recipeId: String?,
@@ -41,7 +36,6 @@ fun RecipeDetail(
 ) {
     val recipeToShow = DemoData.findRecipeById(recipeId) ?: DemoData.allRecipes.first()
 
-    // Gọi giao diện
     RecipeDetailView(
         recipe = recipeToShow,
         onBackClick = { navController.navigateUp() },
@@ -51,59 +45,42 @@ fun RecipeDetail(
     )
 }
 
-/**
- * HÀM GIAO DIỆN (UI)
- * Dùng 'Box' để xếp chồng TopBar lên trên LazyColumn
- */
 @Composable
 private fun RecipeDetailView(
     recipe: Recipe,
     onBackClick: () -> Unit,
     onAuthorClick: (String) -> Unit
 ) {
-    // Dùng Box làm gốc
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White) // Nền trắng cho toàn màn hình
+            .background(Color.White)
     ) {
-        // 1. NỘI DUNG CUỘN (Nằm dưới cùng)
         RecipeDetailContent(
             recipe = recipe,
             modifier = Modifier.fillMaxSize(),
             onAuthorClick = onAuthorClick
         )
 
-        // 2. THANH TOP BAR (Nổi ở trên)
-        // Thêm 1 lớp gradient mờ ở trên cùng để TopBar dễ đọc hơn
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(120.dp) // Chiều cao của lớp mờ
+                .height(120.dp)
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(Color.Black.copy(alpha = 0.5f), Color.Transparent)
                     )
                 )
         )
-        // Đặt TopBar vào
         RecipeDetailTopBar(
             onBackClick = onBackClick,
             onFavoriteClick = { /* TODO */ },
             onNotifyClick = { /* TODO */ },
             onMoreClick = { /* TODO */ }
         )
-
-        // 3. KHÔNG CÓ BOTTOM BAR TÙY CHỈNH
-        // Thanh Bottom Navigation chính (Trang chủ, Thêm...)
-        // sẽ tự động hiển thị (do file MyAppNavigation quản lý).
     }
 }
 
-/**
- * Thanh TopBar (Nổi)
- * SỬA: Dùng icon màu trắng và nền mờ
- */
 @Composable
 private fun RecipeDetailTopBar(
     onBackClick: () -> Unit,
@@ -114,16 +91,14 @@ private fun RecipeDetailTopBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .statusBarsPadding() // Quan trọng: né thanh status bar (pin, giờ)
+            .statusBarsPadding()
             .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Nền mờ cho icon
         val iconBackgroundColor = Color.Black.copy(alpha = 0.3f)
-        val iconColor = Color.White // Icon màu trắng
+        val iconColor = Color.White
 
-        // Nút quay lại
         IconButton(
             onClick = onBackClick,
             modifier = Modifier.background(iconBackgroundColor, CircleShape)
@@ -131,7 +106,6 @@ private fun RecipeDetailTopBar(
             Icon(Icons.Default.ArrowBack, contentDescription = "Quay lại", tint = iconColor)
         }
 
-        // Cụm 3 nút bên phải
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             IconButton(
                 onClick = onFavoriteClick,
@@ -155,9 +129,6 @@ private fun RecipeDetailTopBar(
     }
 }
 
-/**
- * Nội dung cuộn
- */
 @Composable
 private fun RecipeDetailContent(
     recipe: Recipe,
@@ -167,22 +138,26 @@ private fun RecipeDetailContent(
     LazyColumn(
         modifier = modifier
     ) {
-        // 1. KHỐI OVERLAY (Ảnh + Thông tin)
         item {
             RecipeHeader(recipe = recipe)
         }
 
-        // 2. NGUYÊN LIỆU (Giờ là item riêng, nền trắng)
+        item {
+            RecipeInfoSection(recipe = recipe)
+        }
+
         item {
             RecipeIngredients(ingredients = recipe.ingredients)
         }
 
-        // 3. CÁCH LÀM
         item {
             RecipeInstructions(steps = recipe.instructions)
         }
 
-        // 4. BÌNH LUẬN & TÁC GIẢ
+        item {
+            RecipeActionsSection()
+        }
+
         item {
             CommentsSection(
                 author = recipe.author,
@@ -190,109 +165,124 @@ private fun RecipeDetailContent(
             )
         }
 
-        // 5. MÓN ĂN TƯƠNG TỰ
         item {
             RelatedRecipes(recipes = recipe.relatedRecipes)
         }
 
-        // Thêm khoảng trống ở dưới cùng (RẤT QUAN TRỌNG)
         item {
-            // Thêm 80.dp để nội dung cuộn không bị che bởi
-            // thanh Bottom Navigation chính (Trang chủ, Thêm...)
             Spacer(modifier = Modifier.height(80.dp))
         }
     }
 }
 
-/**
- * SỬA: Header (Ảnh + Thông tin Overlay)
- * Đây là thiết kế GỐC của bạn
- */
 @Composable
 private fun RecipeHeader(recipe: Recipe) {
-    Box(
+    Image(
+        painter = painterResource(id = recipe.imageRes),
+        contentDescription = "Ảnh món ăn",
         modifier = Modifier
             .fillMaxWidth()
-            .height(400.dp) // Đặt chiều cao cố định cho ảnh
+            .height(350.dp),
+        contentScale = ContentScale.Crop
+    )
+}
+
+@Composable
+private fun RecipeInfoSection(recipe: Recipe) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Ảnh nền
-        Image(
-            painter = painterResource(id = recipe.imageRes),
-            contentDescription = "Ảnh món ăn",
-            modifier = Modifier.fillMaxSize(), // Ảnh tràn đầy
-            contentScale = ContentScale.Crop
-        )
-        // Lớp phủ màu đen mờ (Gradient) ở dưới
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f)),
-                        startY = 500f // Gradient bắt đầu từ đâu
-                    )
-                )
+        Text(
+            recipe.title,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black
         )
 
-        // Cột chứa thông tin (nằm ở góc dưới)
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomStart)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            // Tên món ăn
-            Text(recipe.title, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-
-            // Tác giả
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Image(
-                    painter = painterResource(id = R.drawable.avatar1), // Tạm
-                    contentDescription = recipe.author.name,
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(Color.Gray),
-                    contentScale = ContentScale.Crop
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_camera),
+                    contentDescription = "Cooksnap",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp) // Đã sửa kích thước Icon
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(recipe.author.name, color = Color.White, fontSize = 14.sp)
+                Text(
+                    "Gửi cooksnap đầu tiên!",
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
+        }
 
-            // Hashtags
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                recipe.hashtags.forEach { tag ->
-                    Text(
-                        text = tag,
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        modifier = Modifier
-                            .background(
-                                Color.White.copy(alpha = 0.2f),
-                                RoundedCornerShape(8.dp)
-                            )
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            recipe.hashtags.forEach { tag ->
+                Text(
+                    text = tag,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 12.sp,
+                    modifier = Modifier
+                        .background(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                            RoundedCornerShape(8.dp)
+                        )
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
             }
+        }
 
-            // Thời gian nấu
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Schedule, contentDescription = "Thời gian nấu", tint = Color.White)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(recipe.time, fontSize = 14.sp, color = Color.White)
-            }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Default.Schedule,
+                contentDescription = "Thời gian nấu",
+                tint = Color.Gray
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                recipe.time,
+                fontSize = 14.sp,
+                color = Color.Black
+            )
         }
     }
 }
 
-// (Các hàm RecipeIngredients, RecipeInstructions, CommentsSection, RelatedRecipes
-//  giữ nguyên như code "thân thiện" vì chúng nằm BÊN DƯỚI ảnh overlay)
+@Composable
+private fun RecipeActionsSection() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        OutlinedButton(
+            onClick = { /* TODO: Xử lý Yêu thích */ },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Icon(Icons.Default.FavoriteBorder, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Thêm món ưu thích")
+        }
+
+        Text("Lưu Công thức: 123456", fontSize = 12.sp, color = Color.Gray)
+        Text("Lần sóng vào 01 tháng 9, 2025", fontSize = 12.sp, color = Color.Gray)
+    }
+}
 
 @Composable
 private fun RecipeIngredients(ingredients: List<String>) {
-    // Thêm padding Top để nó tách khỏi ảnh
     Column(modifier = Modifier.padding(horizontal = 16.dp).padding(top = 24.dp)) {
         Text("Nguyên Liệu", fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(16.dp))
@@ -344,7 +334,6 @@ private fun CommentsSection(
     onAuthorClick: (String) -> Unit
 ) {
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp)) {
-        // Card Tác giả (Giống Panel 1 figma)
         Surface(
             modifier = Modifier.clickable { onAuthorClick(author.id) },
             shape = RoundedCornerShape(12.dp),
@@ -376,8 +365,16 @@ private fun CommentsSection(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Phần Bình luận (Giống Panel 3 figma)
         Text("Bình Luận", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = "",
+            onValueChange = {},
+            label = { Text("Thêm bình luận") },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp)
+        )
         Spacer(modifier = Modifier.height(16.dp))
         Text("Chưa có bình luận nào.", color = Color.Gray, fontSize = 14.sp)
     }
