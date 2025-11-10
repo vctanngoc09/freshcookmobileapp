@@ -4,6 +4,8 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     id("com.google.gms.google-services")
+    // ✅ Bằng alias này:
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -74,5 +76,13 @@ dependencies {
     // Google Sign-In (hỗ trợ đăng nhập)
     implementation("com.google.android.gms:play-services-auth:21.2.0")
     implementation("androidx.navigation:navigation-compose:2.7.7")
+
+    // Room
+    implementation("androidx.room:room-runtime:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+
+    // Annotation processor (KSP)
+    ksp("androidx.room:room-compiler:2.6.1")
+
 
 }
