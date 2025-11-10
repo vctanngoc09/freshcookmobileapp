@@ -28,7 +28,7 @@ import com.google.firebase.auth.FirebaseAuth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FreshCookAppUI(auth: FirebaseAuth, googleSignInClient: GoogleSignInClient) {
+fun FreshCookApp(auth: FirebaseAuth, googleSignInClient: GoogleSignInClient) {
     val navController: NavHostController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination

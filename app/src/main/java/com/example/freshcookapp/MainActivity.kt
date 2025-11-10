@@ -53,7 +53,7 @@ class MainActivity : ComponentActivity() {
             .build()
         googleSignInClient = GoogleSignIn.getClient(this, gso)
         setContent {
-            FreshCookAppUI(auth = auth, googleSignInClient = googleSignInClient)
+            FreshCookApp(auth = auth, googleSignInClient = googleSignInClient)
         }
     }
 }
