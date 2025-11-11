@@ -1,5 +1,7 @@
 package com.example.freshcookapp.ui.screen.auth
 
+import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -8,7 +10,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
@@ -24,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -36,12 +38,12 @@ import com.example.freshcookapp.ui.component.PrimaryButton
 import com.example.freshcookapp.ui.component.ScreenContainer
 import com.example.freshcookapp.ui.theme.Black
 import com.example.freshcookapp.ui.theme.Cinnabar500
-import androidx.compose.foundation.Image
+import com.google.firebase.auth.FirebaseAuth
 
 @Composable
 fun Login(
     onBackClick: () -> Unit,
-    onLoginClick: () -> Unit,
+    onLoginSuccess: () -> Unit,
     onRegisterClick: () -> Unit,
     onForgotPassClick: () -> Unit,
     onGoogleSignInClick: () -> Unit
@@ -49,6 +51,8 @@ fun Login(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val auth = remember { FirebaseAuth.getInstance() }
 
     ScreenContainer {
         Column(
@@ -60,7 +64,6 @@ fun Login(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Back button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Start
@@ -76,7 +79,6 @@ fun Login(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Title
             Text(
                 modifier = Modifier.fillMaxWidth(),
                 text = "Rất vui được gặp lại bạn!",
@@ -94,7 +96,6 @@ fun Login(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // Email
             Text(
                 modifier = Modifier.fillMaxWidth(),
                 text = "Email",
@@ -110,7 +111,6 @@ fun Login(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Password
             Text(
                 modifier = Modifier.fillMaxWidth(),
                 text = "Mật khẩu",
@@ -123,7 +123,7 @@ fun Login(
                 onValueChange = { password = it },
                 placeholder = "••••••",
                 visualTransformation =
-                    if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {
                     IconButton(onClick = { passwordVisible = !passwordVisible }) {
                         Icon(
@@ -153,10 +153,18 @@ fun Login(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Login Button
             PrimaryButton(
                 text = "Đăng nhập",
-                onClick = onLoginClick
+                onClick = {
+                    signInWithEmailAndPassword(email, password, auth) { success, message ->
+                        if (success) {
+                            Toast.makeText(context, "Đăng nhập thành công!", Toast.LENGTH_SHORT).show()
+                            onLoginSuccess()
+                        } else {
+                            Toast.makeText(context, "Đăng nhập thất bại: ${message ?: "Lỗi không xác định"}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
             )
 
             Spacer(modifier = Modifier.height(18.dp))
@@ -165,18 +173,12 @@ fun Login(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Social Login
-            Row(horizontalArrangement = Arrangement.Center) {
-                IconButton(onClick = {}) {
-                    Image(painterResource(R.drawable.ic_facebook_logo), contentDescription = "Facebook")
-                }
-                Spacer(modifier = Modifier.width(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
                 IconButton(onClick = onGoogleSignInClick) {
                     Image(painterResource(R.drawable.ic_google_logo), contentDescription = "Google")
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                IconButton(onClick = {}) {
-                    Image(painterResource(R.drawable.ic_apple_logo), contentDescription = "Apple")
                 }
             }
 

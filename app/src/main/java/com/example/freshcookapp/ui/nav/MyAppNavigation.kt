@@ -2,12 +2,11 @@ package com.example.freshcookapp.ui.nav
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.example.freshcookapp.ui.screen.auth.ForgotPassword
 import com.example.freshcookapp.ui.screen.auth.Login
 import com.example.freshcookapp.ui.screen.auth.Register
 import com.example.freshcookapp.ui.screen.auth.Welcome
@@ -24,10 +23,7 @@ import com.example.freshcookapp.ui.screen.detail.RecipeDetail
 import com.example.freshcookapp.ui.screen.favorites.Favorite
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
-import com.example.freshcookapp.R
 import com.example.freshcookapp.domain.model.DemoData
-import com.example.freshcookapp.domain.model.User
-import com.example.freshcookapp.ui.screen.account.UserProfile
 import com.example.freshcookapp.ui.screen.account.UserProfileRoute
 import com.example.freshcookapp.ui.screen.filter.Filter
 import com.example.freshcookapp.ui.screen.newcook.NewCook
@@ -87,7 +83,7 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
 
         composable<Destination.Search> {
             Search(onBackClick = {navController.popBackStack()} , onFilterClick = {navController.navigate(
-                Destination.Filter)})}
+                Destination.Filter)})} 
 
         composable<Destination.Filter> {
             Filter(onBackClick = {navController.navigateUp()}, onApply = {navController.navigate(
@@ -154,28 +150,35 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
         // Auth screens
         composable<Destination.Welcome> {
             Welcome(
-                onRegister = { navController.navigate(Destination.Register) },
-                onLogin = { navController.navigate(Destination.Login) },
-                onGoogleSignInClick = onGoogleSignInClick // <-- THÊM DÒNG NÀY
+                onRegisterClick = { navController.navigate(Destination.Register) },
+                onLoginClick = { navController.navigate(Destination.Login) },
+                onGoogleSignInClick = onGoogleSignInClick
             )
         }
 
         composable<Destination.Register> {
             Register(
-                onRegisterClick = { navController.navigate(Destination.Home) }, // Sửa: Đăng ký xong vào Home
+                onRegisterSuccess = { navController.navigate(Destination.Login) }, 
                 onBackClick = { navController.navigateUp() },
                 onLoginClick = { navController.navigate(Destination.Login) },
-                onGoogleSignInClick = onGoogleSignInClick // <-- THÊM DÒNG NÀY
+                onGoogleSignInClick = onGoogleSignInClick
             )
         }
 
         composable<Destination.Login> {
             Login(
                 onBackClick = { navController.navigateUp() },
-                onLoginClick = { navController.navigate(Destination.Home) },
+                onLoginSuccess = { navController.navigate(Destination.Home) },
                 onRegisterClick = { navController.navigate(Destination.Register) },
-                onForgotPassClick = { /* TODO: Navigate to Forgot Password */ },
-                onGoogleSignInClick = onGoogleSignInClick // <-- THÊM DÒNG NÀY
+                onForgotPassClick = { navController.navigate(Destination.ForgotPassword) },
+                onGoogleSignInClick = onGoogleSignInClick
+            )
+        }
+
+        composable<Destination.ForgotPassword> {
+            ForgotPassword(
+                onBackClick = { navController.navigateUp() },
+                onSendClick = { navController.navigate(Destination.Login) }
             )
         }
     }

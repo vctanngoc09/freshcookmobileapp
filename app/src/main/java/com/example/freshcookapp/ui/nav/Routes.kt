@@ -30,6 +30,10 @@ sealed class Destination(val route: String) {
 
     @Serializable
     data object Register : Destination("register")
+
+    @Serializable
+    data object ForgotPassword : Destination("forgot_password")
+
     @Serializable
     data object Home : Destination("home")
     @Serializable

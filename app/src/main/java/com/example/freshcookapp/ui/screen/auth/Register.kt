@@ -1,5 +1,6 @@
 package com.example.freshcookapp.ui.screen.auth
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -29,7 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -42,10 +43,11 @@ import com.example.freshcookapp.ui.component.PrimaryButton
 import com.example.freshcookapp.ui.component.ScreenContainer
 import com.example.freshcookapp.ui.theme.Black
 import com.example.freshcookapp.ui.theme.Cinnabar500
+import com.google.firebase.auth.FirebaseAuth
 
 @Composable
 fun Register(
-    onRegisterClick: () -> Unit,
+    onRegisterSuccess: () -> Unit,
     onBackClick: () -> Unit,
     onLoginClick: () -> Unit,
     onGoogleSignInClick: () -> Unit
@@ -57,12 +59,14 @@ fun Register(
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPassword by remember { mutableStateOf("") }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val auth = remember { FirebaseAuth.getInstance() }
 
     ScreenContainer {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .imePadding()               // 👈 tự nâng giao diện lên khi bàn phím hiện
+                .imePadding()
                 .navigationBarsPadding(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
@@ -70,12 +74,10 @@ fun Register(
             item {
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Back button + Title
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                 ) {
-                    // Icon lệch trái
                     IconButton(
                         onClick = onBackClick,
                         modifier = Modifier.align(Alignment.CenterStart)
@@ -87,7 +89,6 @@ fun Register(
                         )
                     }
 
-                    // Text nằm giữa
                     Text(
                         text = "Create Account",
                         style = MaterialTheme.typography.titleLarge,
@@ -100,7 +101,6 @@ fun Register(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Full name
                 Text(
                     text = "Họ và tên",
                     modifier = Modifier.fillMaxWidth(),
@@ -114,7 +114,6 @@ fun Register(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Phone
                 Text(
                     text = "Số điện thoại",
                     modifier = Modifier.fillMaxWidth(),
@@ -128,7 +127,6 @@ fun Register(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Email
                 Text(
                     text = "Email",
                     modifier = Modifier.fillMaxWidth(),
@@ -142,7 +140,6 @@ fun Register(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Password
                 Text(
                     text = "Mật khẩu",
                     modifier = Modifier.fillMaxWidth(),
@@ -169,7 +166,6 @@ fun Register(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Confirm Password
                 Text(
                     text = "Nhập lại mật khẩu",
                     modifier = Modifier.fillMaxWidth(),
@@ -198,7 +194,20 @@ fun Register(
 
                 PrimaryButton(
                     text = "Tạo tài khoản",
-                    onClick = onRegisterClick
+                    onClick = {
+                        if (password == confirmPassword) {
+                            createUserWithEmailAndPassword(email, password, auth) { success, message ->
+                                if (success) {
+                                    Toast.makeText(context, "Đăng ký thành công!", Toast.LENGTH_SHORT).show()
+                                    onRegisterSuccess()
+                                } else {
+                                    Toast.makeText(context, "Đăng ký thất bại: ${message ?: "Lỗi không xác định"}", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        } else {
+                            Toast.makeText(context, "Mật khẩu không khớp!", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(18.dp))
@@ -207,17 +216,12 @@ fun Register(
 
                 Spacer(modifier = Modifier.height(18.dp))
 
-                Row(horizontalArrangement = Arrangement.Center) {
-                    IconButton(onClick = {}) {
-                        Image(painterResource(R.drawable.ic_facebook_logo), contentDescription = "Facebook")
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
                     IconButton(onClick = onGoogleSignInClick) {
                         Image(painterResource(R.drawable.ic_google_logo), contentDescription = "Google")
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    IconButton(onClick = {}) {
-                        Image(painterResource(R.drawable.ic_apple_logo), contentDescription = "Apple")
                     }
                 }
 
