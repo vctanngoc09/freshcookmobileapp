@@ -36,10 +36,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.freshcookapp.ui.theme.Cinnabar50
 import com.example.freshcookapp.ui.theme.Cinnabar500
+import coil.compose.AsyncImage
 
 @Composable
 fun RecipeCard(
-    imageRes: Int,
+    imageUrl: String?,   // đổi imageRes → imageUrl
     title: String,
     time: String,
     level: String,
@@ -60,8 +61,8 @@ fun RecipeCard(
                     .height(115.dp)
                     .fillMaxWidth()
             ) {
-                Image(
-                    painter = painterResource(imageRes),
+                AsyncImage(
+                    model = imageUrl ?: "",
                     contentDescription = title,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier

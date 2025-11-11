@@ -129,14 +129,14 @@ private fun FavoriteItemCard(
                     .fillMaxWidth()
                     .height(180.dp)
             ) {
-                Image(
-                    painter = painterResource(id = recipe.imageRes),
-                    contentDescription = recipe.title,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
-                    contentScale = ContentScale.Crop
-                )
+//                Image(
+//                    painter = painterResource(id = recipe.imageRes),
+//                    contentDescription = recipe.title,
+//                    modifier = Modifier
+//                        .fillMaxSize()
+//                        .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
+//                    contentScale = ContentScale.Crop
+//                )
                 Icon(
                     imageVector = Icons.Default.Favorite,
                     contentDescription = "Favorite",

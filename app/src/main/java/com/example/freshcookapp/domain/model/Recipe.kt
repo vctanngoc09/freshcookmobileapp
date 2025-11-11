@@ -3,12 +3,11 @@ package com.example.freshcookapp.domain.model
 data class Recipe(
     val id: String,
     val title: String,
-    val imageRes: Int,
+    val imageRes: Int? = null,
+    val imageUrl: String? = null,
     val time: String,
     val level: String,
     val isFavorite: Boolean = false,
-
-    // Dữ liệu cho trang Detail
     val author: Author,
     val hashtags: List<String> = listOf(),
     val ingredients: List<String> = listOf(),

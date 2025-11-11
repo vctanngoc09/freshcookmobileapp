@@ -177,14 +177,14 @@ private fun RecipeDetailContent(
 
 @Composable
 private fun RecipeHeader(recipe: Recipe) {
-    Image(
-        painter = painterResource(id = recipe.imageRes),
-        contentDescription = "Ảnh món ăn",
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(350.dp),
-        contentScale = ContentScale.Crop
-    )
+//    Image(
+//        painter = painterResource(id = recipe.imageRes),
+//        contentDescription = "Ảnh món ăn",
+//        modifier = Modifier
+//            .fillMaxWidth()
+//            .height(350.dp),
+//        contentScale = ContentScale.Crop
+//    )
 }
 
 @Composable
