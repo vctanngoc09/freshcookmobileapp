@@ -12,12 +12,6 @@ class FreshCookAppRoom : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        database = Room.databaseBuilder(
-            applicationContext,
-            AppDatabase::class.java,
-            "freshcook.db"
-        )
-            //.allowMainThreadQueries() // Nếu debug muốn cho chạy không cần coroutine
-            .build()
+        database = AppDatabase.create(this)
     }
 }

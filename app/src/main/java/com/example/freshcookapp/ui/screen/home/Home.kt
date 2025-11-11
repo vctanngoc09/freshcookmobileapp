@@ -28,6 +28,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,10 +37,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.freshcookapp.FreshCookAppRoom
 import com.example.freshcookapp.R
+import com.example.freshcookapp.data.repository.RecipeRepository
 import com.example.freshcookapp.domain.model.Recipe
 import com.example.freshcookapp.ui.component.RecipeCard
 import com.example.freshcookapp.ui.component.SearchBar
@@ -67,6 +71,13 @@ fun Home(onFilterClick: () -> Unit) {
         val newDishes = DemoData.newDishes
 
         var searchText by remember { mutableStateOf("") }
+
+        val context = LocalContext.current
+        val app = context.applicationContext as FreshCookAppRoom
+        val repo = remember { RecipeRepository(app.database) }
+        val viewModel = remember { HomeViewModel(repo) }
+
+        val recipes by viewModel.recipes.collectAsState()
 
         // 🔹 Dùng LazyColumn
         LazyColumn(
@@ -185,15 +196,14 @@ fun Home(onFilterClick: () -> Unit) {
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(trendingRecipes) { recipe ->
+                    items(recipes) { recipe ->
                         RecipeCard(
-                            imageRes = recipe.imageRes,
+                            imageUrl = recipe.imageUrl,
                             title = recipe.title,
                             time = recipe.time,
                             level = recipe.level,
                             isFavorite = recipe.isFavorite,
-                            onFavoriteClick = { /* TODO */ }
-                            // Sẽ thêm clickable ở bước sau
+                            onFavoriteClick = {}
                         )
                     }
                 }
@@ -208,7 +218,7 @@ fun Home(onFilterClick: () -> Unit) {
 
             items(recommendedRecipes) { recipe ->
                 RecommendedRecipeCard(
-                    imageRes = recipe.imageRes,
+                    imageUrl = recipe.imageUrl,
                     title = recipe.title,
                     time = recipe.time,
                     difficulty = recipe.level,

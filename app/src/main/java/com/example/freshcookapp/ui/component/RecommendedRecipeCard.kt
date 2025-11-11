@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -33,10 +34,10 @@ import androidx.compose.ui.unit.dp
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.example.freshcookapp.R
 import com.example.freshcookapp.ui.theme.Cinnabar50
-
+import coil.compose.AsyncImage
 @Composable
 fun RecommendedRecipeCard(
-    imageRes: Int,
+    imageUrl: String?,
     title: String,
     time: String,
     difficulty: String,
@@ -52,8 +53,8 @@ fun RecommendedRecipeCard(
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Ảnh món ăn
-        Image(
-            painter = painterResource(id = imageRes),
+        AsyncImage(
+            model = imageUrl ?: "",
             contentDescription = title,
             modifier = Modifier
                 .size(68.dp)
