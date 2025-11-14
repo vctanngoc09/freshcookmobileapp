@@ -3,8 +3,9 @@ package com.example.freshcookapp.ui.screen.auth
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.firestore.FirebaseFirestore
-
+import android.net.Uri
 fun firebaseAuthWithGoogle(
     idToken: String,
     auth: FirebaseAuth,
@@ -16,13 +17,11 @@ fun firebaseAuthWithGoogle(
             if (task.isSuccessful) {
                 val user = auth.currentUser
                 if (user != null) {
-                    // Lấy thông tin từ user Google
                     val fullName = user.displayName ?: ""
-                    // Tạo username từ email
                     val username = user.email?.split("@")?.firstOrNull() ?: (user.email ?: "")
 
-                    // Sửa lệnh gọi saveUserToFirestore để truyền thêm thông tin
-                    saveUserToFirestore(user, fullName, username) { success -> // <-- Sửa ở đây
+                    // Lưu vào Firestore
+                    saveUserToFirestore(user, fullName, username) { success ->
                         onResult(success, if (success) user.displayName else "Failed to save user data.")
                     }
                 } else {
@@ -52,8 +51,8 @@ fun sendPasswordResetEmail(
 fun createUserWithEmailAndPassword(
     email: String,
     password: String,
-    fullName: String, // <-- Thêm fullName
-    username: String, // <-- Thêm username
+    fullName: String,
+    username: String,
     auth: FirebaseAuth,
     onResult: (Boolean, String?) -> Unit
 ) {
@@ -62,9 +61,14 @@ fun createUserWithEmailAndPassword(
             if (task.isSuccessful) {
                 val user = auth.currentUser
                 if (user != null) {
-                    // Truyền 2 giá trị mới vào hàm save
-                    saveUserToFirestore(user, fullName, username) { success -> // <-- Sửa ở đây
-                        onResult(success, if (success) user.displayName else "Failed to save user data.")
+                    val profileUpdates = UserProfileChangeRequest.Builder()
+                        .setDisplayName(fullName)
+                        .setPhotoUri(Uri.parse("https://firebasestorage.googleapis.com/v0/b/freshcookapp-b376c.firebasestorage.app/o/recipe_images%2Favatar_user.png?alt=media&token=1db6c7a8-852f-4271-81df-3f076b38fea6"))
+                        .build()
+                    user.updateProfile(profileUpdates).addOnCompleteListener { profileTask ->
+                        saveUserToFirestore(user, fullName, username) { success ->
+                            onResult(success, if (success) user.displayName else "Failed to save user data.")
+                        }
                     }
                 } else {
                     onResult(false, "Account creation successful, but user is null.")
@@ -93,32 +97,28 @@ fun signInWithEmailAndPassword(
 
 private fun saveUserToFirestore(
     user: FirebaseUser,
-    fullName: String, // <-- Thêm tham số
-    username: String, // <-- Thêm tham số
+    fullName: String,
+    username: String,
     onResult: (Boolean) -> Unit
 ) {
     val db = FirebaseFirestore.getInstance()
     val userRef = db.collection("users").document(user.uid)
+    val photoUrlToSave = user.photoUrl?.toString() ?: "https://firebasestorage.googleapis.com/v0/b/freshcookapp-b376c.firebasestorage.app/o/recipe_images%2Favatar_user.png?alt=media&token=1db6c7a8-852f-4271-81df-3f076b38fea6"
 
-    // Tạo đối tượng người dùng với tất cả các trường
     val userData = hashMapOf(
         "uid" to user.uid,
         "email" to user.email,
-        "fullName" to fullName, // <-- Sử dụng giá trị từ tham số
-        "name" to fullName,     // <-- Sử dụng giá trị từ tham số (giống trong ảnh của bạn)
-        "username" to username, // <-- Sử dụng giá trị từ tham số
-        "photoUrl" to (user.photoUrl?.toString() ?: ""), // Xử lý trường hợp photoUrl bị null
-        "gender" to "Khác",      // Giá trị mặc định
-        "dateOfBirth" to null,     // Giá trị mặc định
-
-        // --- CÁC TRƯỜNG MỚI BẠN MUỐN THÊM ---
-        "followerCount" to 0L,  // Dùng 0L (kiểu Long) cho an toàn
+        "fullName" to fullName,
+        "name" to fullName,
+        "username" to username,
+        "photoUrl" to (user.photoUrl?.toString() ?: ""),
+        "gender" to "Khác",
+        "dateOfBirth" to null,
+        "followerCount" to 0L,
         "followingCount" to 0L,
         "myDishesCount" to 0L
-        // ------------------------------------
     )
 
-    // Dùng set(userData) để tạo hoặc ghi đè document
     userRef.set(userData)
         .addOnSuccessListener { onResult(true) }
         .addOnFailureListener { onResult(false) }

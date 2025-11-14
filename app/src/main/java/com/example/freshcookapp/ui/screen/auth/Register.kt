@@ -197,12 +197,13 @@ fun Register(
                     onClick = {
                         if (password == confirmPassword) {
                             val username = email.split("@").firstOrNull() ?: email
+
                             createUserWithEmailAndPassword(email = email,
                                 password = password,
                                 fullName = fullName,
                                 username = username,
                                 auth = auth
-                                ) { success, message ->
+                            ) { success, message ->
                                 if (success) {
                                     Toast.makeText(context, "Đăng ký thành công!", Toast.LENGTH_SHORT).show()
                                     onRegisterSuccess()
