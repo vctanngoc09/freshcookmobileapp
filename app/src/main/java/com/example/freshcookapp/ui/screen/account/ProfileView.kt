@@ -1,17 +1,12 @@
 package com.example.freshcookapp.ui.screen.account
 
-import androidx.compose.foundation.BorderStroke
-import com.example.freshcookapp.ui.theme.Cinnabar500
+import android.widget.Toast
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,354 +14,194 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavHostController
+import coil.compose.rememberAsyncImagePainter
 import com.example.freshcookapp.R
-import com.example.freshcookapp.domain.model.DemoData
-import com.example.freshcookapp.domain.model.Recipe
-import com.example.freshcookapp.domain.model.User
-import com.example.freshcookapp.ui.theme.FreshCookAppTheme
-import com.example.freshcookapp.ui.theme.WorkSans
+import com.example.freshcookapp.ui.theme.Cinnabar500
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
 
-
-private val allDemoUsers = listOf(
-    User(
-        id = DemoData.authorTanNgoc.id, // "author1"
-        name = "Vo Cao Tan Ngoc", // Tên thật
-        username = DemoData.authorTanNgoc.username,
-        profileImage = R.drawable.avatar1, // Sửa lỗi String -> Int
-        bio = "Yêu thích nấu nướng"
-    ),
-    User(
-        id = DemoData.authorHoangAnh.id, // "author2"
-        name = "Hoàng Anh", // Tên thật
-        username = DemoData.authorHoangAnh.username,
-        profileImage = R.drawable.avatar1, // Sửa lỗi String -> Int
-        bio = "Yêu thích nấu nướng và lập trình"
-    )
-)
-
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UserProfileRoute(
-    userId: String,
-    navController: NavHostController
+fun ProfileViewScreen(
+    userId: String, // ID của người dùng mà chúng ta đang xem
+    onBackClick: () -> Unit
 ) {
-    val user = allDemoUsers.find { it.id == userId }
+    val context = LocalContext.current
+    val firestore = FirebaseFirestore.getInstance()
+    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
 
-    // Xử lý trường hợp không tìm thấy user
-    if (user == null) {
-        navController.popBackStack() // Tự động quay lại
-        return
-    }
-
-    val userRecipes = DemoData.allRecipes.filter { it.author.id == userId }
-    val likedRecipes = DemoData.favoriteRecipes // Tạm thời lấy danh sách yêu thích chung
-
-    val recipeCount = userRecipes.size
-    val followerCount = 23 // Tạm thời hardcode
-    val followingCount = 10 // Tạm thời hardcode
-
-    UserProfile(
-        user = user,
-        recipeCount = recipeCount,
-        followerCount = followerCount,
-        followingCount = followingCount,
-        userRecipes = userRecipes,
-        likedRecipes = likedRecipes,
-        onBackClick = { navController.popBackStack() },
-        onMoreClick = { /* TODO */ }
-    )
-}
-
-@Composable
-fun UserProfile(
-    user: User,
-    recipeCount: Int,
-    followerCount: Int,
-    followingCount: Int,
-    userRecipes: List<Recipe>,
-    likedRecipes: List<Recipe>,
-    onBackClick: () -> Unit,
-    onMoreClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
+    var fullName by remember { mutableStateOf("...") }
+    var username by remember { mutableStateOf("") }
+    var photoUrl by remember { mutableStateOf<String?>(null) }
+    var followerCount by remember { mutableStateOf(0L) }
+    var followingCount by remember { mutableStateOf(0L) }
     var isFollowing by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(true) }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color.White)
-    ) {
-        // ==== Header (thay cho TopAppBar) ====
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            // Nút back
-            IconButton(onClick = onBackClick) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Color.Black
-                )
-            }
-
-            // Tên username ở giữa
-            Text(
-                text = user.username,
-                fontFamily = WorkSans,
-                fontWeight = FontWeight.Bold,
-                fontSize = 20.sp,
-                color = Color.Black
-            )
-
-            // Nút more
-            IconButton(onClick = onMoreClick) {
-                Icon(
-                    imageVector = Icons.Default.MoreVert,
-                    contentDescription = "More Options",
-                    tint = Color.Black
-                )
+    // Lắng nghe dữ liệu người dùng được xem trong thời gian thực
+    LaunchedEffect(userId) {
+        firestore.collection("users").document(userId).addSnapshotListener { snapshot, _ ->
+            if (snapshot != null && snapshot.exists()) {
+                fullName = snapshot.getString("fullName") ?: ""
+                username = snapshot.getString("username") ?: ""
+                photoUrl = snapshot.getString("photoUrl")
+                followerCount = snapshot.getLong("followerCount") ?: 0L
+                followingCount = snapshot.getLong("followingCount") ?: 0L
+                isLoading = false
+            } else {
+                isLoading = false
             }
         }
+    }
 
-        // ==== Phần nội dung chính ====
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 12.dp)
-        ) {
-            // Phần Header (ảnh đại diện, thống kê)
-            ProfileHeader(
-                user = user,
-                recipeCount = recipeCount,
-                followerCount = followerCount,
-                followingCount = followingCount
-            )
+    // Lắng nghe trạng thái follow trong thời gian thực
+    DisposableEffect(currentUserId, userId) {
+        val listener = if (currentUserId != null) {
+            firestore.collection("users").document(currentUserId)
+                .collection("following").document(userId)
+                .addSnapshotListener { document, _ ->
+                    isFollowing = document != null && document.exists()
+                }
+        } else {
+            null
+        }
+        onDispose {
+            listener?.remove()
+        }
+    }
 
-            // Nút Follow / Share
-            ProfileActions(
-                isFollowing = isFollowing,
-                onFollowClick = { isFollowing = !isFollowing },
-                onShareClick = { /* TODO: Xử lý share */ }
-            )
+    val onFollowClick: () -> Unit = {
+        if (currentUserId == null) {
+            Toast.makeText(context, "Bạn cần đăng nhập để thực hiện", Toast.LENGTH_SHORT).show()
+        } else if (currentUserId == userId) {
+            Toast.makeText(context, "Bạn không thể tự theo dõi chính mình", Toast.LENGTH_SHORT).show()
+        } else {
+            val currentUserRef = firestore.collection("users").document(currentUserId)
+            val viewedUserRef = firestore.collection("users").document(userId)
+            val followingSubCollection = currentUserRef.collection("following").document(userId)
+            val followerSubCollection = viewedUserRef.collection("followers").document(currentUserId)
 
-            // Tabs: Công thức / Đã thích
-            ProfileContentTabs(
-                userRecipes = userRecipes,
-                likedRecipes = likedRecipes
+            firestore.runTransaction { transaction ->
+                val isCurrentlyFollowing = transaction.get(followingSubCollection).exists()
+
+                if (isCurrentlyFollowing) {
+                    // --- Bỏ theo dõi ---
+                    transaction.delete(followingSubCollection)
+                    transaction.delete(followerSubCollection)
+                    transaction.update(currentUserRef, "followingCount", FieldValue.increment(-1))
+                    transaction.update(viewedUserRef, "followerCount", FieldValue.increment(-1))
+                } else {
+                    // --- Theo dõi ---
+                    transaction.set(followingSubCollection, mapOf("timestamp" to FieldValue.serverTimestamp()))
+                    transaction.set(followerSubCollection, mapOf("timestamp" to FieldValue.serverTimestamp()))
+                    transaction.update(currentUserRef, "followingCount", FieldValue.increment(1))
+                    transaction.update(viewedUserRef, "followerCount", FieldValue.increment(1))
+                }
+                !isCurrentlyFollowing // Trả về trạng thái mới để dùng trong onSuccessListener
+            }.addOnSuccessListener { nowFollowing ->
+                val message = if (nowFollowing) "Đã theo dõi $username" else "Đã bỏ theo dõi $username"
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            }.addOnFailureListener {
+                Toast.makeText(context, "Đã xảy ra lỗi", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(username) },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
+        }
+    ) { paddingValues ->
+        if (isLoading) {
+            Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(paddingValues),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Profile Header
+                item {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Image(
+                        painter = rememberAsyncImagePainter(model = photoUrl ?: R.drawable.avatar1),
+                        contentDescription = "Profile Image",
+                        modifier = Modifier
+                            .size(120.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(fullName, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+                    if (username.isNotBlank()) {
+                        Text("@$username", fontSize = 16.sp, color = Color.Gray)
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+
+                // Stats
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        StatItem(count = followerCount.toString(), label = "Followers")
+                        StatItem(count = followingCount.toString(), label = "Following")
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+
+                // Follow Button
+                if (currentUserId != userId) { // Ẩn nút nếu đang xem hồ sơ của chính mình
+                    item {
+                        Button(
+                            onClick = onFollowClick,
+                            modifier = Modifier.fillMaxWidth(0.6f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isFollowing) Color.LightGray else Cinnabar500,
+                                contentColor = if (isFollowing) Color.Black else Color.White
+                            )
+                        ) {
+                            Text(if (isFollowing) "Đang theo dõi" else "Theo dõi")
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
-
+// StatItem được tùy chỉnh cho màn hình này
 @Composable
-private fun ProfileHeader(
-    user: User,
-    recipeCount: Int,
-    followerCount: Int,
-    followingCount: Int
-) {
+private fun StatItem(count: String, label: String) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 16.dp, bottom = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Image(
-            painter = painterResource(id = user.profileImage),
-            contentDescription = "Profile Image",
-            modifier = Modifier
-                .size(100.dp)
-                .clip(CircleShape),
-            contentScale = ContentScale.Crop
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
         Text(
-            text = user.name,
+            text = count,
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
-            fontFamily = WorkSans,
-            color = Color.Black
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 32.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            StatTextItem(count = recipeCount, label = "Công thức")
-            StatTextItem(count = followerCount, label = "Followers")
-            StatTextItem(count = followingCount, label = "Following")
-        }
-    }
-}
-
-@Composable
-private fun StatTextItem(count: Int, label: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = count.toString(),
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = WorkSans,
             color = Color.Black
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = label,
             fontSize = 14.sp,
-            fontFamily = WorkSans,
             color = Color.Gray
         )
-    }
-}
-
-@Composable
-private fun ProfileActions(
-    isFollowing: Boolean,
-    onFollowClick: () -> Unit,
-    onShareClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Nút Follow/Following
-        Button(
-            onClick = onFollowClick,
-            modifier = Modifier
-                .weight(1f)
-                .height(48.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(
-                // Khi chưa follow (isFollowing = false), dùng màu Cinnabar500
-                // Khi đã follow (isFollowing = true), dùng màu Xám nhạt
-                containerColor = if (isFollowing) Color.LightGray else Cinnabar500,
-
-                // Màu chữ (text)
-                contentColor = if (isFollowing) Color.Black else Color.White
-            )
-        ) {
-            Text(
-                text = if (isFollowing) "Following" else "Follow",
-                fontSize = 15.sp,
-                fontFamily = WorkSans,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-
-        // Nút Chia sẻ
-        OutlinedButton(
-            onClick = onShareClick,
-            modifier = Modifier
-                .weight(1f)
-                .height(48.dp),
-            shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(1.dp, Color.Gray)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Share,
-                contentDescription = "Share",
-                modifier = Modifier.size(20.dp),
-                tint = Color.Black
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "Chia sẻ",
-                fontSize = 15.sp,
-                fontFamily = WorkSans,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.Black
-            )
-        }
-    }
-}
-
-@Composable
-private fun ProfileContentTabs(
-    userRecipes: List<Recipe>,
-    likedRecipes: List<Recipe>
-) {
-    var selectedTabIndex by remember { mutableStateOf(0) }
-    val tabs = listOf("Công thức", "Đã thích")
-
-    Column(modifier = Modifier.fillMaxWidth()) {
-        TabRow(
-            selectedTabIndex = selectedTabIndex,
-            containerColor = Color.White,
-            contentColor = MaterialTheme.colorScheme.primary
-        ) {
-            tabs.forEachIndexed { index, title ->
-                Tab(
-                    selected = selectedTabIndex == index,
-                    onClick = { selectedTabIndex = index },
-                    text = {
-                        Text(
-                            text = title,
-                            fontFamily = WorkSans,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                )
-            }
-        }
-
-        // Nội dung dựa trên tab được chọn
-        when (selectedTabIndex) {
-            0 -> { // Tab Công thức
-                RecipeGrid(recipes = userRecipes)
-            }
-            1 -> { // Tab Đã thích
-                RecipeGrid(recipes = likedRecipes)
-            }
-        }
-    }
-}
-
-@Composable
-private fun RecipeGrid(recipes: List<Recipe>) {
-    if (recipes.isEmpty()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                "Chưa có công thức nào.",
-                fontFamily = WorkSans,
-                color = Color.Gray
-            )
-        }
-    } else {
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(recipes) { recipe ->
-                RecipeCard()
-            }
-        }
     }
 }

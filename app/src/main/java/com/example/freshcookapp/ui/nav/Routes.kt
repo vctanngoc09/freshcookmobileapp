@@ -60,13 +60,16 @@ sealed class Destination(val route: String) {
     data object Settings: Destination("Quay lại")
 
     @Serializable
-    data object Follow: Destination("Follower/Following")
+    data class Follow(
+        val userId: String,
+        val type: String
+    ): Destination("follow")
 
     @Serializable
     data object Search: Destination("Tìm kiếm")
 
     @Serializable
-    data object Filter
+    data object Filter: Destination("filter")
 
     @Serializable
     data class RecipeDetail(

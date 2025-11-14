@@ -1,5 +1,10 @@
 package com.example.freshcookapp.ui.screen.account
 
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -17,16 +22,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.freshcookapp.R
-import com.example.freshcookapp.ui.component.CustomTextField
+import coil.compose.rememberAsyncImagePainter
 import com.example.freshcookapp.ui.component.PrimaryButton
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.example.freshcookapp.ui.theme.GrayLight
 import com.example.freshcookapp.ui.theme.WorkSans
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,18 +44,60 @@ fun EditProfileScreen(
     onSaveClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    var fullName by remember { mutableStateOf("Võ Cao Tấn Ngọc") }
-    var username by remember { mutableStateOf("ngocvctn09") }
-    var dateOfBirth by remember { mutableStateOf("18/07/2005") }
+    val context = LocalContext.current
+    val currentUser = FirebaseAuth.getInstance().currentUser
+    val firestore = FirebaseFirestore.getInstance()
+
+    var fullName by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
+    var dateOfBirth by remember { mutableStateOf("") }
     var gender by remember { mutableStateOf("Giới tính") }
+    var photoUrl by remember { mutableStateOf<String?>(null) }
+    var email by remember { mutableStateOf("") }
+
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var expanded by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
+    var isNewUser by remember { mutableStateOf(true) } // Để biết đây là người dùng mới hay cũ
+
+
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia(),
+        onResult = { uri -> selectedImageUri = uri }
+    )
+
+    // Fetch user data from Firestore
+    LaunchedEffect(currentUser) {
+        if (currentUser != null) {
+            email = currentUser.email ?: ""
+            val defaultUsername = currentUser.email?.split('@')?.get(0) ?: ""
+
+            firestore.collection("users").document(currentUser.uid).get()
+                .addOnSuccessListener { document ->
+                    if (document != null && document.exists()) {
+                        isNewUser = false // Người dùng đã có hồ sơ
+                        fullName = document.getString("fullName") ?: currentUser.displayName ?: ""
+                        username = document.getString("username")?.takeIf { it.isNotBlank() } ?: defaultUsername
+                        dateOfBirth = document.getString("dateOfBirth") ?: ""
+                        gender = document.getString("gender") ?: "Giới tính"
+                        photoUrl = document.getString("photoUrl")
+                    } else {
+                        isNewUser = true // Người dùng mới, chưa có hồ sơ
+                        fullName = currentUser.displayName ?: ""
+                        username = defaultUsername
+                        photoUrl = currentUser.photoUrl?.toString()
+                    }
+                }
+        }
+    }
+
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(Color.White)
     ) {
-        // Custom Top Bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -61,9 +112,7 @@ fun EditProfileScreen(
                     tint = Cinnabar500
                 )
             }
-
             Spacer(modifier = Modifier.width(8.dp))
-
             Text(
                 text = "Chỉnh sửa trang cá nhân",
                 fontSize = 20.sp,
@@ -73,208 +122,193 @@ fun EditProfileScreen(
             )
         }
 
-        // Scrollable Content
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Profile Image
-            Box(
-                modifier = Modifier.size(120.dp),
-                contentAlignment = Alignment.Center
+        if (isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
+            // Scrollable Content
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Profile Image
                 Box(
-                    modifier = Modifier
-                        .size(120.dp)
-                        .clip(CircleShape)
-                        .background(Color.LightGray)
+                    modifier = Modifier.size(120.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    // Profile image
-                    Image(
-                        painter = painterResource(id = R.drawable.avatar1),
-                        contentDescription = "Profile",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-
-                // Edit photo text
-                Text(
-                    text = "Chỉnh sửa ảnh",
-                    fontSize = 12.sp,
-                    fontFamily = WorkSans,
-                    color = Cinnabar500,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .offset(y = 20.dp)
-                        .clickable { }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(40.dp))
-
-            // Full Name Field
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = "Họ tên",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    fontFamily = WorkSans,
-                    color = Color.Black,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                OutlinedTextField(
-                    value = fullName,
-                    onValueChange = { fullName = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = MaterialTheme.shapes.medium,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = GrayLight,
-                        focusedContainerColor = GrayLight,
-                        unfocusedBorderColor = Color.Transparent,
-                        focusedBorderColor = Cinnabar500
-                    )
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Username Field
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = "Tên người dùng",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    fontFamily = WorkSans,
-                    color = Color.Black,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                OutlinedTextField(
-                    value = username,
-                    onValueChange = { username = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = MaterialTheme.shapes.medium,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = GrayLight,
-                        focusedContainerColor = GrayLight,
-                        unfocusedBorderColor = Color.Transparent,
-                        focusedBorderColor = Cinnabar500
-                    )
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Date of Birth and Gender Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Date of Birth
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Ngày sinh",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        fontFamily = WorkSans,
-                        color = Color.Black,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    OutlinedTextField(
-                        value = dateOfBirth,
-                        onValueChange = { dateOfBirth = it },
+                    Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
-                        shape = MaterialTheme.shapes.medium,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedContainerColor = GrayLight,
-                            focusedContainerColor = GrayLight,
-                            unfocusedBorderColor = Color.Transparent,
-                            focusedBorderColor = Cinnabar500
+                            .size(120.dp)
+                            .clip(CircleShape)
+                            .background(Color.LightGray)
+                            .clickable { imagePickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
+                    ) {
+                        Image(
+                            painter = rememberAsyncImagePainter(
+                                model = selectedImageUri ?: photoUrl ?: com.example.freshcookapp.R.drawable.avatar1
+                            ),
+                            contentDescription = "Profile",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
                         )
+                    }
+                    Text(
+                        text = "Chỉnh sửa ảnh",
+                        fontSize = 12.sp,
+                        fontFamily = WorkSans,
+                        color = Cinnabar500,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .offset(y = 20.dp)
+                            .clickable { imagePickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
                     )
                 }
 
-                // Gender Dropdown
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Giới tính",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        fontFamily = WorkSans,
-                        color = Color.Black,
-                        modifier = Modifier.padding(bottom = 8.dp)
+                Spacer(modifier = Modifier.height(40.dp))
+
+                // Full Name
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text("Họ tên", fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 8.dp))
+                    OutlinedTextField(
+                        value = fullName,
+                        onValueChange = { fullName = it },
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        shape = MaterialTheme.shapes.medium,
+                        colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = GrayLight, focusedContainerColor = GrayLight, unfocusedBorderColor = Color.Transparent, focusedBorderColor = Cinnabar500)
                     )
-                    Box {
-                        OutlinedTextField(
-                            value = gender,
-                            onValueChange = { },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp)
-                                .clickable { expanded = true },
-                            readOnly = true,
-                            shape = MaterialTheme.shapes.medium,
-                            trailingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.ArrowDropDown,
-                                    contentDescription = null
-                                )
-                            },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                unfocusedContainerColor = GrayLight,
-                                focusedContainerColor = GrayLight,
-                                unfocusedBorderColor = Color.Transparent,
-                                focusedBorderColor = Cinnabar500
-                            )
-                        )
-                        DropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Nam") },
-                                onClick = {
-                                    gender = "Nam"
-                                    expanded = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Nữ") },
-                                onClick = {
-                                    gender = "Nữ"
-                                    expanded = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Khác") },
-                                onClick = {
-                                    gender = "Khác"
-                                    expanded = false
-                                }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Username
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text("Tên người dùng", fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 8.dp))
+                    OutlinedTextField(
+                        value = username,
+                        onValueChange = { username = it },
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        shape = MaterialTheme.shapes.medium,
+                        colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = GrayLight, focusedContainerColor = GrayLight, unfocusedBorderColor = Color.Transparent, focusedBorderColor = Cinnabar500)
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Date of Birth
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Ngày sinh", fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 8.dp))
+
+                        // THAY ĐỔI Ở ĐÂY: Dùng Box để bọc và xử lý click
+                        Box(modifier = Modifier.fillMaxWidth().height(56.dp).clip(MaterialTheme.shapes.medium).clickable { showDatePicker = true }) {
+                            OutlinedTextField(
+                                value = dateOfBirth,
+                                onValueChange = { dateOfBirth = it },
+                                modifier = Modifier.fillMaxSize(), // Dùng fillMaxSize để lấp đầy Box
+                                shape = MaterialTheme.shapes.medium,
+                                colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = GrayLight, focusedContainerColor = GrayLight, unfocusedBorderColor = Color.Transparent, focusedBorderColor = Cinnabar500),
+                                readOnly = true // Giữ lại readOnly
                             )
                         }
                     }
+
+                    // Gender
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Giới tính", fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 8.dp))
+                        Box {
+                            // THAY ĐỔI Ở ĐÂY: Dùng Box bọc quanh OutlinedTextField và thêm clickable
+                            Box(modifier = Modifier.fillMaxWidth().height(56.dp).clip(MaterialTheme.shapes.medium).clickable { expanded = true }) {
+                                OutlinedTextField(
+                                    value = gender,
+                                    onValueChange = {},
+                                    modifier = Modifier.fillMaxSize(),
+                                    readOnly = true,
+                                    shape = MaterialTheme.shapes.medium,
+                                    trailingIcon = { Icon(Icons.Default.ArrowDropDown, null) },
+                                    colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = GrayLight, focusedContainerColor = GrayLight, unfocusedBorderColor = Color.Transparent, focusedBorderColor = Cinnabar500)
+                                )
+                            }
+
+                            // Dropdown Menu đặt bên ngoài Box click nhưng vẫn trong Box tổng
+                            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                                DropdownMenuItem(text = { Text("Nam") }, onClick = { gender = "Nam"; expanded = false })
+                                DropdownMenuItem(text = { Text("Nữ") }, onClick = { gender = "Nữ"; expanded = false })
+                                DropdownMenuItem(text = { Text("Khác") }, onClick = { gender = "Khác"; expanded = false })
+                            }
+                        }
+                    }
                 }
+
+                Spacer(modifier = Modifier.height(40.dp))
+
+                PrimaryButton(
+                    text = "Lưu",
+                    onClick = {
+                        if (currentUser != null) {
+                            isLoading = true
+
+                            val userProfile = mutableMapOf<String, Any?>(
+                                "uid" to currentUser.uid,
+                                "fullName" to fullName.takeIf { it.isNotBlank() },
+                                "username" to username.takeIf { it.isNotBlank() },
+                                "dateOfBirth" to dateOfBirth.takeIf { it.isNotBlank() },
+                                "gender" to gender.takeIf { it != "Giới tính" },
+                                "email" to email,
+                                "photoUrl" to (selectedImageUri?.toString() ?: photoUrl)
+                            )
+
+                            if (isNewUser) {
+                                userProfile["followerCount"] = 0
+                                userProfile["followingCount"] = 0
+                                userProfile["dishCount"] = 0 // Khởi tạo số lượng món
+                            }
+
+                            firestore.collection("users").document(currentUser.uid)
+                                .set(userProfile, SetOptions.merge()) // Dùng merge để không ghi đè giá trị cũ
+                                .addOnSuccessListener {
+                                    isLoading = false
+                                    Toast.makeText(context, "Đã lưu hồ sơ!", Toast.LENGTH_SHORT).show()
+                                    onSaveClick()
+                                }
+                                .addOnFailureListener { e ->
+                                    isLoading = false
+                                    Toast.makeText(context, "Lỗi: ${e.message}", Toast.LENGTH_SHORT).show()
+                                }
+                        }
+                    }
+                )
             }
+        }
+    }
 
-            Spacer(modifier = Modifier.height(40.dp))
-
-            // Save Button
-            PrimaryButton(
-                text = "Save",
-                onClick = onSaveClick
-            )
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let {
+                            val formatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                            dateOfBirth = formatter.format(Date(it))
+                        }
+                        showDatePicker = false
+                    }
+                ) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Hủy") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
         }
     }
 }
