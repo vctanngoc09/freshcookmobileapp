@@ -1,7 +1,10 @@
 package com.example.freshcookapp.domain.model
 
+import android.net.Uri
+
 data class Instruction(
-    var stepNumber: Int = 1,
-    var description: String = "",
-    var imageUrl: String = ""
+    val stepNumber: Int,
+    val description: String = "",
+    val imageUrl: String = "",
+    @Transient val imageUri: Uri? = null
 )

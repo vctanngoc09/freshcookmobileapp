@@ -3,7 +3,6 @@ package com.example.freshcookapp.ui.screen.home
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -43,8 +42,9 @@ import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import com.example.freshcookapp.FreshCookAppRoom
 import com.example.freshcookapp.R
+import com.example.freshcookapp.data.local.AppDatabase
 import com.example.freshcookapp.data.repository.RecipeRepository
-import com.example.freshcookapp.domain.model.DemoData
+// KHÔNG CÒN IMPORT DemoData NỮA
 import com.example.freshcookapp.ui.component.NewDishItem
 import com.example.freshcookapp.ui.component.RecipeCard
 import com.example.freshcookapp.ui.component.RecommendedRecipeCard
@@ -57,18 +57,23 @@ import com.example.freshcookapp.ui.theme.Cinnabar500
 @Composable
 fun Home(onFilterClick: () -> Unit) {
     ScreenContainer {
-        val trendingCategories = DemoData.trendingCategories
-        val newDishes = DemoData.newDishes
-        val recommendedRecipes = DemoData.recommendedRecipes
 
         var searchText by remember { mutableStateOf("") }
 
         val context = LocalContext.current
         val app = context.applicationContext as FreshCookAppRoom
-        val repo = remember { RecipeRepository(app.database) }
-        val viewModel = remember { HomeViewModel(repo) }
+
+
+        val db = remember { AppDatabase.getDatabase(app) }
+        val repo = remember { RecipeRepository(db) } // Dùng Repo
+        val categoryDao = remember { db.categoryDao() }
+        val viewModel = remember { HomeViewModel(repo, categoryDao) }
 
         val recipes by viewModel.recipes.collectAsState()
+        val categories by viewModel.categories.collectAsState()
+        val recommendedRecipes by viewModel.recommendedRecipes.collectAsState() // MỚI
+        val newDishes by viewModel.newDishes.collectAsState() // MỚI
+
         val userName by viewModel.userName.collectAsState()
         val userPhotoUrl by viewModel.userPhotoUrl.collectAsState()
 
@@ -171,9 +176,8 @@ fun Home(onFilterClick: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     userScrollEnabled = false
                 ) {
-                    items(trendingCategories) { category ->
+                    items(categories) { category ->
                         TrendingCategoryItem(category = category) {
-                            // TODO: navigate to category detail
                         }
                     }
                 }
@@ -204,17 +208,12 @@ fun Home(onFilterClick: () -> Unit) {
                 SectionHeader(title = "Gợi ý cho bạn")
                 Spacer(modifier = Modifier.height(8.dp))
             }
-
             items(recommendedRecipes) { recipe ->
                 RecommendedRecipeCard(
-                    imageUrl = recipe.imageUrl,
-                    title = recipe.title,
-                    time = recipe.time,
-                    difficulty = recipe.level,
+                    recipe = recipe,
                     onRemoveClick = { /* TODO */ }
                 )
             }
-
 
             item {
                 Spacer(modifier = Modifier.height(20.dp))
@@ -224,16 +223,13 @@ fun Home(onFilterClick: () -> Unit) {
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(newDishes) { (image, title, author) ->
+                    items(newDishes) { dish ->
                         NewDishItem(
-                            imageRes = image,
-                            title = title,
-                            author = author,
+                            dish = dish,
                             onClick = { /* TODO: mở chi tiết món */ }
                         )
                     }
                 }
-
                 Spacer(modifier = Modifier.height(20.dp))
             }
         }
