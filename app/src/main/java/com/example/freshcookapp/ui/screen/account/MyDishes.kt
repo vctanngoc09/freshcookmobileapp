@@ -2,196 +2,132 @@ package com.example.freshcookapp.ui.screen.account
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.rememberAsyncImagePainter
 import com.example.freshcookapp.R
-import com.example.freshcookapp.domain.model.Recipe
-import com.example.freshcookapp.ui.component.SearchBar
 import com.example.freshcookapp.ui.theme.Cinnabar500
-import com.example.freshcookapp.ui.theme.WorkSans
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ktx.toObject
+
+// Giữ lại data class RecipeInfo nếu cần dùng chung
+data class RecipeInfo(
+    val id: String = "",
+    val name: String = "",
+    val imageUrl: String? = null,
+    val timeCookMinutes: Int = 0
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MyDishesScreen(
-    onBackClick: () -> Unit = {},
-    modifier: Modifier = Modifier
+fun MyDishes(
+    onBackClick: () -> Unit,
+    onAddNewClick: () -> Unit = {},
+    onRecipeClick: (String) -> Unit = {}
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color.White)
-    ) {
-        // Custom Top Bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.Start,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBackClick) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Cinnabar500
-                )
-            }
+    val firestore = FirebaseFirestore.getInstance()
+    val currentUser = FirebaseAuth.getInstance().currentUser
+    var myRecipes by remember { mutableStateOf<List<RecipeInfo>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
 
-            Spacer(modifier = Modifier.width(8.dp))
+    LaunchedEffect(currentUser) {
+        if (currentUser != null) {
+            firestore.collection("recipes")
+                .whereEqualTo("userId", currentUser.uid)
+                .addSnapshotListener { snapshot, e ->
+                    if (e != null) {
+                        isLoading = false
+                        return@addSnapshotListener
+                    }
+                    if (snapshot != null) {
+                        myRecipes = snapshot.documents.mapNotNull {
+                            it.toObject<RecipeInfo>()?.copy(id = it.id)
+                        }
+                    }
+                    isLoading = false
+                }
+        } else {
+            isLoading = false
+            myRecipes = emptyList()
+        }
+    }
 
-            Text(
-                text = "Món của tui",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = WorkSans,
-                color = Cinnabar500
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Món của tôi", color = Cinnabar500, fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Cinnabar500)
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onAddNewClick) {
+                        Icon(Icons.Default.Add, "Add New Dish", tint = Cinnabar500)
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
         }
-
-        // Search Bar
-        SearchBar(
-            value = "",
-            onValueChange = {},
-            placeholder = "Tìm kiếm món yêu thích",
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-        )
-
-        // Recipe Grid
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Sample data - first item is different (Salmon)
-            item {
-                MyDishCard(
-                    title = "Salmon with vegetables",
-                    time = "30 min",
-                    level = "Easy",
-                    imageRes = null
-                )
-            }
-
-            // Remaining items (Honey pancakes)
-            items(4) {
-                MyDishCard(
-                    title = "Honey pancakes with...",
-                    time = "30 min",
-                    level = "Dễ",
-                    imageRes = null
-                )
+    ) { paddingValues ->
+        Box(modifier = Modifier.fillMaxSize().padding(paddingValues).background(Color.White)) {
+            if (isLoading) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else if (myRecipes.isEmpty()) {
+                Text("Bạn chưa tạo món ăn nào.", modifier = Modifier.align(Alignment.Center))
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(myRecipes) { recipe ->
+                        MyDishItem(recipe = recipe, onClick = { onRecipeClick(recipe.id) })
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-fun MyDishCard(
-    title: String,
-    time: String,
-    level: String,
-    imageRes: Int?
-) {
+fun MyDishItem(recipe: RecipeInfo, onClick: () -> Unit) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(220.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF1A1D26)
-        )
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = MaterialTheme.shapes.medium,
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            // Image
+        Row(
+            modifier = Modifier.height(100.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Image(
-                painter = painterResource(id = imageRes ?: R.drawable.img_food1),
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(140.dp),
+                painter = rememberAsyncImagePainter(model = recipe.imageUrl ?: R.drawable.img_food1),
+                contentDescription = recipe.name,
+                modifier = Modifier.size(100.dp),
                 contentScale = ContentScale.Crop
             )
-
-            // Favorite icon
-            IconButton(
-                onClick = { },
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Favorite,
-                    contentDescription = "Favorite",
-                    tint = Cinnabar500,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-
-            // Content at bottom
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .fillMaxWidth()
-                    .background(Color(0xFF1A1D26))
-                    .padding(12.dp)
-            ) {
-                Text(
-                    text = title,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    fontFamily = WorkSans,
-                    color = Color.White,
-                    maxLines = 2
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            painter = painterResource(id = android.R.drawable.ic_menu_recent_history),
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = time,
-                            fontSize = 12.sp,
-                            fontFamily = WorkSans,
-                            color = Color.White
-                        )
-                    }
-
-                    Text(
-                        text = level,
-                        fontSize = 12.sp,
-                        fontFamily = WorkSans,
-                        color = Color.White
-                    )
-                }
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f)) {
+                Text(recipe.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Spacer(Modifier.height(4.dp))
+                Text("${recipe.timeCookMinutes} phút", fontSize = 14.sp, color = Color.Gray)
             }
         }
     }

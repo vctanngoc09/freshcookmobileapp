@@ -15,16 +15,13 @@ import com.example.freshcookapp.ui.screen.splash.Splash
 import com.example.freshcookapp.ui.screen.account.ProfileScreen
 import com.example.freshcookapp.ui.screen.account.NotificationScreen
 import com.example.freshcookapp.ui.screen.account.EditProfileScreen
-import com.example.freshcookapp.ui.screen.account.MyDishesScreen
+import com.example.freshcookapp.ui.screen.account.MyDishes
 import com.example.freshcookapp.ui.screen.account.RecentlyViewedScreen
 import com.example.freshcookapp.ui.screen.account.SettingsScreen
 import com.example.freshcookapp.ui.screen.account.FollowScreen
 import com.example.freshcookapp.ui.screen.detail.RecipeDetail
 import com.example.freshcookapp.ui.screen.favorites.Favorite
-import androidx.navigation.NavType
-import androidx.navigation.navArgument
 import com.example.freshcookapp.domain.model.DemoData
-import com.example.freshcookapp.ui.screen.account.UserProfileRoute
 import com.example.freshcookapp.ui.screen.filter.Filter
 import com.example.freshcookapp.ui.screen.newcook.NewCook
 import com.example.freshcookapp.ui.screen.search.Search
@@ -66,18 +63,15 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
             )
         }
 
-        composable(
-            route = "user_profile/{userId}",
-            arguments = listOf(navArgument("userId") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val userId = backStackEntry.arguments?.getString("userId")
-            if (userId == null) {
-                navController.popBackStack()
-                return@composable
-            }
-            UserProfileRoute(
-                userId = userId,
-                navController = navController
+        composable<Destination.Profile> {
+            ProfileScreen(
+                onNotificationClick = { navController.navigate(Destination.Notification) },
+                onMyDishesClick = { navController.navigate(Destination.MyDishes) },
+                onRecentlyViewedClick = { navController.navigate(Destination.RecentlyViewed) },
+                onEditProfileClick = { navController.navigate(Destination.EditProfile) },
+                onMenuClick = { navController.navigate(Destination.Settings) },
+                onFollowerClick = { userId -> navController.navigate(Destination.Follow(userId = userId, type = "followers")) },
+                onFollowingClick = { userId -> navController.navigate(Destination.Follow(userId = userId, type = "following")) }
             )
         }
 
@@ -88,23 +82,14 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
         composable<Destination.Filter> {
             Filter(onBackClick = {navController.navigateUp()}, onApply = {navController.navigate(
                 Destination.Home)} )}
-        composable<Destination.Profile> {
-            ProfileScreen(
-                onNotificationClick = { navController.navigate(Destination.Notification) },
-                onMyDishesClick = { navController.navigate(Destination.MyDishes) },
-                onRecentlyViewedClick = { navController.navigate(Destination.RecentlyViewed) },
-                onEditProfileClick = { navController.navigate(Destination.EditProfile) },
-                onChangePasswordClick = { /* TODO: Navigate to change password */ },
-                onLogoutClick = { navController.navigate(Destination.Welcome) },
-                onMenuClick = { navController.navigate(Destination.Settings) },
-                onFollowerClick = { navController.navigate(Destination.Follow) },
-                onFollowingClick = { navController.navigate(Destination.Follow) }
-            )
-        }
+        
 
         // Account related screens
-        composable<Destination.Follow> {
+        composable<Destination.Follow> {backStackEntry ->
+            val args = backStackEntry.toRoute<Destination.Follow>()
             FollowScreen(
+                userId = args.userId,
+                type = args.type,
                 onBackClick = { navController.navigateUp() }
             )
         }
@@ -131,12 +116,13 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
 
         composable<Destination.EditProfile> {
             EditProfileScreen(
-                onBackClick = { navController.navigateUp() }
+                onBackClick = { navController.navigateUp() },
+                onSaveClick = { navController.navigateUp() } // Quay lại sau khi lưu
             )
         }
 
         composable<Destination.MyDishes> {
-            MyDishesScreen(
+            MyDishes(
                 onBackClick = { navController.navigateUp() }
             )
         }

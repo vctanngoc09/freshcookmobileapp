@@ -1,14 +1,13 @@
 package com.example.freshcookapp.ui.screen.account
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,200 +15,148 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.rememberAsyncImagePainter
 import com.example.freshcookapp.R
-import com.example.freshcookapp.ui.component.SearchBar
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.example.freshcookapp.ui.theme.WorkSans
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ktx.toObject
+
+// Data class to store simplified user information
+data class UserInfo(
+    val uid: String = "",
+    val fullName: String = "",
+    val username: String = "",
+    val photoUrl: String? = null
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FollowScreen(
-    initialTab: Int = 0, // 0 for Follower, 1 for Following
-    onBackClick: () -> Unit = {},
-    modifier: Modifier = Modifier
+    userId: String,
+    type: String, // "followers" or "following"
+    onBackClick: () -> Unit,
+    onProfileClick: (String) -> Unit = {}
 ) {
-    var selectedTab by remember { mutableIntStateOf(initialTab) }
-    var searchQuery by remember { mutableStateOf("") }
+    val firestore = FirebaseFirestore.getInstance()
+    var userList by remember { mutableStateOf<List<UserInfo>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    val title = if (type == "followers") "Followers" else "Following"
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color.White)
-    ) {
-        // Custom Top Bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBackClick) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Cinnabar500
-                )
+    LaunchedEffect(userId, type) {
+        isLoading = true
+        val collectionPath = "users/$userId/$type"
+
+        firestore.collection(collectionPath).get()
+            .addOnSuccessListener { snapshot ->
+                if (snapshot.isEmpty) {
+                    userList = emptyList()
+                    isLoading = false
+                    return@addOnSuccessListener
+                }
+                val userIds = snapshot.documents.map { it.id }
+                firestore.collection("users").whereIn("uid", userIds).get()
+                    .addOnSuccessListener { userDocs ->
+                        userList = userDocs.mapNotNull { doc ->
+                            doc.toObject<UserInfo>().copy(uid = doc.id)
+                        }
+                        isLoading = false
+                    }
+                    .addOnFailureListener {
+                        isLoading = false
+                    }
             }
+            .addOnFailureListener {
+                isLoading = false
+            }
+    }
 
-            Text(
-                text = "Đang theo dõi: 28",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                fontFamily = WorkSans,
-                color = Cinnabar500
+    Scaffold(
+        containerColor = Color.White,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        title,
+                        color = Cinnabar500,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Cinnabar500
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.White
+                )
             )
         }
-
-        // Tab Buttons
-        Row(
+    ) { paddingValues ->
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                .fillMaxSize()
+                .padding(paddingValues)
         ) {
-            // Follower Tab
-            Button(
-                onClick = { selectedTab = 0 },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(56.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (selectedTab == 0) Color(0xFFECECEC) else Cinnabar500,
-                    contentColor = if (selectedTab == 0) Color.Black else Color.White
-                ),
-                shape = MaterialTheme.shapes.large
-            ) {
-                Text(
-                    text = "Follower",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    fontFamily = WorkSans
-                )
-            }
-
-            // Following Tab
-            Button(
-                onClick = { selectedTab = 1 },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(56.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (selectedTab == 1) Color(0xFFECECEC) else Cinnabar500,
-                    contentColor = if (selectedTab == 1) Color.Black else Color.White
-                ),
-                shape = MaterialTheme.shapes.large
-            ) {
-                Text(
-                    text = "Following",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    fontFamily = WorkSans
-                )
-            }
-        }
-
-        // Search Bar
-        SearchBar(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-            placeholder = "Tìm kiếm món yêu thích",
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
-        )
-
-        // Section Header
-        Text(
-            text = "Danh sách đang theo dõi",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold,
-            fontFamily = WorkSans,
-            color = Color.Black,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
-        )
-
-        // List of followers/following
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(3) { index ->
-                FollowListItem(
-                    name = "Maia Adam",
-                    message = "liked your \"Honey pancakes\"",
-                    profileImage = R.drawable.avatar1,
-                    onRemoveClick = {}
-                )
+            if (isLoading) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else if (userList.isEmpty()) {
+                Text("Không có ai trong danh sách này", modifier = Modifier.align(Alignment.Center))
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(vertical = 2.dp)
+                ) {
+                    items(userList) { user ->
+                        UserItem(user = user, onProfileClick = onProfileClick)
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-fun FollowListItem(
-    name: String,
-    message: String,
-    profileImage: Int?,
-    onRemoveClick: () -> Unit
-) {
+fun UserItem(user: UserInfo, onProfileClick: (String) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFFF5F5F5))
-            .padding(16.dp),
+            .clickable { onProfileClick(user.uid) }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Profile image
-        Box(
+        Image(
+            painter = rememberAsyncImagePainter(model = user.photoUrl ?: R.drawable.avatar1),
+            contentDescription = "User Avatar",
             modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(Cinnabar500)
-        ) {
-            if (profileImage != null) {
-                Image(
-                    painter = painterResource(id = profileImage),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
+                .size(50.dp)
+                .clip(CircleShape),
+            contentScale = ContentScale.Crop
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Column {
+            Text(
+                text = user.fullName,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                fontFamily = WorkSans
+            )
+            if (user.username.isNotBlank()) {
+                Text(
+                    text = "@${user.username}",
+                    fontSize = 14.sp,
+                    color = Color.Gray,
+                    fontFamily = WorkSans
                 )
             }
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        // Content
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            Text(
-                text = name,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = WorkSans,
-                color = Color.Black
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = message,
-                fontSize = 14.sp,
-                fontFamily = WorkSans,
-                color = Color.Gray
-            )
-        }
-
-        // Remove button
-        IconButton(onClick = onRemoveClick) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = "Remove",
-                tint = Cinnabar500,
-                modifier = Modifier.size(24.dp)
-            )
         }
     }
 }
