@@ -1,11 +1,9 @@
 package com.example.freshcookapp.ui.component
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -15,7 +13,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,23 +21,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import com.example.freshcookapp.ui.theme.Cinnabar500
-import com.example.freshcookapp.R
-import com.example.freshcookapp.ui.theme.Cinnabar50
 import coil.compose.AsyncImage
+import com.example.freshcookapp.domain.model.Recipe // <-- Import model
+import com.example.freshcookapp.ui.theme.Cinnabar50
+import com.example.freshcookapp.ui.theme.Cinnabar500
+
 @Composable
 fun RecommendedRecipeCard(
-    imageUrl: String?,
-    title: String,
-    time: String,
-    difficulty: String,
+    recipe: Recipe,
     onRemoveClick: (() -> Unit)? = null
 ) {
     Row(
@@ -54,8 +48,8 @@ fun RecommendedRecipeCard(
     ) {
         // Ảnh món ăn
         AsyncImage(
-            model = imageUrl ?: "",
-            contentDescription = title,
+            model = recipe.imageUrl,
+            contentDescription = recipe.title,
             modifier = Modifier
                 .size(68.dp)
                 .clip(RoundedCornerShape(12.dp)),
@@ -64,21 +58,25 @@ fun RecommendedRecipeCard(
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        // Nội dung: tên món + thời gian + độ khó
+
         Column(
             modifier = Modifier.weight(1f)
         ) {
             Text(
+
                 buildAnnotatedString {
+                    val titleParts = recipe.title.split(" ")
                     withStyle(
                         style = SpanStyle(
                             color = Cinnabar500,
                             fontWeight = FontWeight.Bold
                         )
                     ) {
-                        append(title.split(" ").first()) // phần đầu tô đỏ
+                        append(titleParts.firstOrNull() ?: "")
                     }
-                    append(" " + title.substringAfter(" "))
+                    if (titleParts.size > 1) {
+                        append(" " + titleParts.drop(1).joinToString(" "))
+                    }
                 },
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
@@ -98,14 +96,14 @@ fun RecommendedRecipeCard(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = time,
+                    text = recipe.time,
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )
 
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    text = difficulty,
+                    text = recipe.level,
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )

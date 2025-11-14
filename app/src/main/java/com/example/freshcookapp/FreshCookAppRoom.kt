@@ -12,6 +12,6 @@ class FreshCookAppRoom : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        database = AppDatabase.create(this)
+        database = AppDatabase.getDatabase(this)
     }
 }

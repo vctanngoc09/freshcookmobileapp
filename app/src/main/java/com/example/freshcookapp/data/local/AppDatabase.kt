@@ -16,9 +16,11 @@ import kotlinx.coroutines.launch
     entities = [
         RecipeEntity::class,
         RecipeIngredientEntity::class,
-        InstructionEntity::class
+        InstructionEntity::class,
+        CategoryEntity::class,
+        NewDishEntity::class
     ],
-    version = 1,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -26,29 +28,46 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun recipeDao(): RecipeDao
     abstract fun ingredientDao(): RecipeIngredientDao
     abstract fun instructionDao(): InstructionDao
+    abstract fun categoryDao(): CategoryDao
+    abstract fun newDishDao(): NewDishDao
 
     companion object {
-        fun create(application: Application): AppDatabase {
-            return Room.databaseBuilder(
-                application,
-                AppDatabase::class.java,
-                "freshcook.db"
-            )
-                .addCallback(object : Callback() {
-                    override fun onCreate(db: SupportSQLiteDatabase) {
-                        super.onCreate(db)
-                        // INSERT SEED DATA NGAY SAU KHI DB TẠO
-                        application.let { app ->
-                            CoroutineScope(Dispatchers.IO).launch {
-                                val database = create(app)
-                                SeedData.recipes.forEach {
-                                    database.recipeDao().insert(it)
-                                }
-                            }
-                        }
+        @Volatile
+        private var INSTANCE: AppDatabase? = null
+
+        fun getDatabase(application: Application): AppDatabase {
+            return INSTANCE ?: synchronized(this) {
+                val instance = Room.databaseBuilder(
+                    application,
+                    AppDatabase::class.java,
+                    "freshcook.db"
+                )
+                    .fallbackToDestructiveMigration()
+                    .addCallback(AppDatabaseCallback(application))
+                    .build()
+                INSTANCE = instance
+                instance
+            }
+        }
+
+        private class AppDatabaseCallback(
+            private val application: Application
+        ) : RoomDatabase.Callback() {
+            override fun onCreate(db: SupportSQLiteDatabase) {
+                super.onCreate(db)
+                CoroutineScope(Dispatchers.IO).launch {
+                    val database = getDatabase(application)
+
+
+                    SeedData.recipes.forEach {
+                        database.recipeDao().insert(it)
                     }
-                })
-                .build()
+
+                    database.categoryDao().insertAll(SeedData.categories)
+
+                    database.newDishDao().insertAll(SeedData.newDishes)
+                }
+            }
         }
     }
 }

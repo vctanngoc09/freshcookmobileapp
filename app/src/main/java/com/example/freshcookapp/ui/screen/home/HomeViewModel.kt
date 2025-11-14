@@ -9,33 +9,63 @@ import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import com.example.freshcookapp.data.local.dao.CategoryDao
+import com.example.freshcookapp.data.local.entity.CategoryEntity
+import com.example.freshcookapp.data.local.entity.NewDishEntity
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map // <-- Quan trọng: import map
+import kotlinx.coroutines.flow.stateIn
 
-class HomeViewModel(private val repo: RecipeRepository) : ViewModel() {
+class HomeViewModel(
+    private val repo: RecipeRepository,
+    categoryDao: CategoryDao
+) : ViewModel() {
 
-    private val _recipes = MutableStateFlow<List<Recipe>>(emptyList())
-    val recipes = _recipes.asStateFlow()
 
+    val recipes = repo.getTrendingRecipes()
+        .map { list -> list.map { it.toRecipe() } }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000L),
+            initialValue = emptyList()
+        )
+
+
+    val categories = categoryDao.getAllCategories()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000L),
+            initialValue = emptyList()
+        )
+
+    val recommendedRecipes = repo.getRecommendedRecipes()
+        .map { list -> list.map { it.toRecipe() } }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000L),
+            initialValue = emptyList()
+        )
+
+    val newDishes = repo.getNewDishes()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000L),
+            initialValue = emptyList()
+        )
+
+    // Thông tin User
     private val _userName = MutableStateFlow<String?>(null)
     val userName = _userName.asStateFlow()
-
-    private val _userEmail = MutableStateFlow<String?>(null)
-    val userEmail = _userEmail.asStateFlow()
-
     private val _userPhotoUrl = MutableStateFlow<String?>(null)
     val userPhotoUrl = _userPhotoUrl.asStateFlow()
 
     init {
-        viewModelScope.launch {
-            _recipes.value = repo.getAllRecipes()
-                .map { it.toRecipe() }
-        }
         loadCurrentUser()
     }
 
     private fun loadCurrentUser() {
         val user = FirebaseAuth.getInstance().currentUser
         _userName.value = user?.displayName
-        _userEmail.value = user?.email
         _userPhotoUrl.value = user?.photoUrl?.toString()
     }
 }

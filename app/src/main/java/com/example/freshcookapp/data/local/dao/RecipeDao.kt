@@ -2,18 +2,24 @@ package com.example.freshcookapp.data.local.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.example.freshcookapp.data.local.entity.RecipeEntity
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface RecipeDao {
 
-    @Query("SELECT * FROM recipes")
-    suspend fun getAll(): List<RecipeEntity>
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(recipe: RecipeEntity)
 
-    @Query("SELECT * FROM recipes WHERE id = :id LIMIT 1")
-    suspend fun getById(id: Long): RecipeEntity?
+    // Hàm mới: Lấy các món Gợi ý (ID = 100)
+    @Query("SELECT * FROM recipes WHERE category_id = 100")
+    fun getRecommendedRecipes(): Flow<List<RecipeEntity>>
 
-    @Insert
-    suspend fun insert(recipe: RecipeEntity): Long
+    // Hàm mới: Lấy các món Xu hướng (KHÔNG phải ID 100)
+    @Query("SELECT * FROM recipes WHERE category_id != 100")
+    fun getTrendingRecipes(): Flow<List<RecipeEntity>>
+
+    // (Bạn có thể giữ các hàm cũ khác nếu có)
 }
