@@ -1,5 +1,6 @@
 package com.example.freshcookapp.ui.screen.newcook
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.freshcookapp.data.repository.RecipeRepository
@@ -89,12 +90,16 @@ class NewCookViewModel(private val recipeRepository: RecipeRepository) : ViewMod
             )
         }
 
+        // ensure non-null numeric fields before writing to Firestore
+        val safeTime = (timeCookMinutes ?: 0).toLong()
+        val safePeople = (people ?: 1).toLong()
+
         val recipeData = hashMapOf(
             "id" to recipeId,
             "name" to name,
             "description" to description,
-            "timeCookMinutes" to timeCookMinutes,
-            "people" to people,
+            "timeCookMinutes" to safeTime,
+            "people" to safePeople,
             "imageUrl" to imageUrl,
             "userId" to userId,
             "categoryId" to categoryId,
@@ -102,6 +107,22 @@ class NewCookViewModel(private val recipeRepository: RecipeRepository) : ViewMod
             "instructions" to instructionMaps
         )
 
+        Log.d("NewCookViewModel", "Will save recipe to Firestore (id=${recipeId}): timeCookMinutes=$safeTime, people=$safePeople")
+        Log.d("NewCookViewModel", "recipeData=$recipeData")
+
         recipeRef.set(recipeData).await()
+
+        // Read back the document and log its data to verify what was saved
+        val snapshot = recipeRef.get().await()
+        if (snapshot.exists()) {
+            val saved = snapshot.data
+            Log.d("NewCookViewModel", "Read back doc after save: id=${snapshot.id}, data=$saved")
+            val savedTime = snapshot.getLong("timeCookMinutes")
+            Log.d("NewCookViewModel", "Read back timeCookMinutes (from Firestore) = $savedTime")
+        } else {
+            Log.w("NewCookViewModel", "Document not found right after set()")
+        }
+
+        Log.d("NewCookViewModel", "Saved recipe to Firestore (id=${recipeId})")
     }
 }
