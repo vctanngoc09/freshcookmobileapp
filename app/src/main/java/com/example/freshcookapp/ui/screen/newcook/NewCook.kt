@@ -126,42 +126,6 @@ fun NewCook(onBackClick: () -> Unit){
                             }
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = White,   // nền nhạt như ảnh
-                            contentColor = Color.Black            // chữ đen
-                        ),
-                        shape = RoundedCornerShape(10.dp), // bo tròn đều (hình viên thuốc)
-                        border = BorderStroke(1.dp, Cinnabar500), // viền đỏ
-                        contentPadding = PaddingValues(
-                            horizontal = 16.dp, // giảm padding ngang (mặc định 24.dp)
-                            vertical = 6.dp     // giảm padding dọc (mặc định 12.dp)
-                        )
-                    ) {
-                        Text(
-                            text = "Lưu",
-                            style = MaterialTheme.typography.labelLarge
-                        )
-                    }
-
-
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                viewModel.saveRecipe(
-                                    name = recipeName,
-                                    description = description,
-                                    timeCookMinutes = parseCookTime(cookTime),
-                                    people = parsePeople(people),
-                                    imageUrl = null, // TODO: add imageUrl
-                                    userId = 1, // TODO: get current user id
-                                    categoryId = 1, // TODO: get category
-                                    ingredients = ingredients.filter { it.name.isNotBlank() },
-                                    instructions = instructions.filter { it.description.isNotBlank() },
-                                    onSuccess = { isSaved = true },
-                                    onError = { /* TODO: handle error */ }
-                                )
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(
                             containerColor = Cinnabar500,   // nền nhạt như ảnh
                             contentColor = White            // chữ đen
                         ),
