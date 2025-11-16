@@ -44,6 +44,11 @@ import com.example.freshcookapp.ui.theme.Cinnabar50
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.example.freshcookapp.ui.theme.White
 import java.io.ByteArrayOutputStream
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.freshcookapp.FreshCookAppRoom
+import com.example.freshcookapp.data.local.AppDatabase
+import com.example.freshcookapp.data.repository.RecipeRepository
+import kotlinx.coroutines.launch
 
 @Composable
 fun NewCook(onBackClick: () -> Unit){
@@ -61,61 +66,120 @@ fun NewCook(onBackClick: () -> Unit){
         )
     }
 
+    val context = LocalContext.current
+    val app = context.applicationContext as FreshCookAppRoom
+    val db = remember { AppDatabase.getDatabase(app) }
+    val repo = remember { RecipeRepository(db) }
+    val viewModel = remember { NewCookViewModel(repo) }
+    val scope = rememberCoroutineScope()
+
+    var isSaved by remember { mutableStateOf(false) }
+
+    // Helper function to parse cookTime to minutes
+    fun parseCookTime(timeStr: String): Int? {
+        // Simple parse, assume format like "90 phút" or "1 tiếng 30 phút"
+        val regex = Regex("(\\d+)\\s*tiếng\\s*(\\d+)\\s*phút|(\\d+)\\s*phút")
+        val match = regex.find(timeStr)
+        return match?.let {
+            val hours = it.groups[1]?.value?.toIntOrNull() ?: 0
+            val minutes = it.groups[2]?.value?.toIntOrNull() ?: it.groups[3]?.value?.toIntOrNull() ?: 0
+            hours * 60 + minutes
+        }
+    }
+
+    // Helper function to parse people
+    fun parsePeople(peopleStr: String): Int? {
+        return Regex("(\\d+)").find(peopleStr)?.groups?.get(1)?.value?.toIntOrNull()
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(vertical = 12.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.End,
-        ) {
+        if (!isSaved) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ){
-                Button(
-                    onClick = { /* Lưu */ },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = White,   // nền nhạt như ảnh
-                        contentColor = Color.Black            // chữ đen
-                    ),
-                    shape = RoundedCornerShape(10.dp), // bo tròn đều (hình viên thuốc)
-                    border = BorderStroke(1.dp, Cinnabar500), // viền đỏ
-                    contentPadding = PaddingValues(
-                        horizontal = 16.dp, // giảm padding ngang (mặc định 24.dp)
-                        vertical = 6.dp     // giảm padding dọc (mặc định 12.dp)
-                    )
-                ) {
-                    Text(
-                        text = "Lưu",
-                        style = MaterialTheme.typography.labelLarge
-                    )
+                modifier = Modifier.fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.End,
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ){
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                viewModel.saveRecipe(
+                                    name = recipeName,
+                                    description = description,
+                                    timeCookMinutes = parseCookTime(cookTime),
+                                    people = parsePeople(people),
+                                    imageUrl = null, // TODO: add imageUrl
+                                    userId = 1, // TODO: get current user id
+                                    categoryId = 1, // TODO: get category
+                                    ingredients = ingredients.filter { it.name.isNotBlank() },
+                                    instructions = instructions.filter { it.description.isNotBlank() },
+                                    onSuccess = { isSaved = true },
+                                    onError = { /* TODO: handle error */ }
+                                )
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = White,   // nền nhạt như ảnh
+                            contentColor = Color.Black            // chữ đen
+                        ),
+                        shape = RoundedCornerShape(10.dp), // bo tròn đều (hình viên thuốc)
+                        border = BorderStroke(1.dp, Cinnabar500), // viền đỏ
+                        contentPadding = PaddingValues(
+                            horizontal = 16.dp, // giảm padding ngang (mặc định 24.dp)
+                            vertical = 6.dp     // giảm padding dọc (mặc định 12.dp)
+                        )
+                    ) {
+                        Text(
+                            text = "Lưu",
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+
+
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                viewModel.saveRecipe(
+                                    name = recipeName,
+                                    description = description,
+                                    timeCookMinutes = parseCookTime(cookTime),
+                                    people = parsePeople(people),
+                                    imageUrl = null, // TODO: add imageUrl
+                                    userId = 1, // TODO: get current user id
+                                    categoryId = 1, // TODO: get category
+                                    ingredients = ingredients.filter { it.name.isNotBlank() },
+                                    instructions = instructions.filter { it.description.isNotBlank() },
+                                    onSuccess = { isSaved = true },
+                                    onError = { /* TODO: handle error */ }
+                                )
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Cinnabar500,   // nền nhạt như ảnh
+                            contentColor = White            // chữ đen
+                        ),
+                        shape = RoundedCornerShape(10.dp), // bo tròn đều (hình viên thuốc)
+                        contentPadding = PaddingValues(
+                            horizontal = 16.dp, // giảm padding ngang (mặc định 24.dp)
+                            vertical = 6.dp     // giảm padding dọc (mặc định 12.dp)
+                        )
+                    ) {
+                        Text(
+                            text = "Lên sóng",
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
                 }
 
 
-                Button(
-                    onClick = { /* Lưu */ },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Cinnabar500,   // nền nhạt như ảnh
-                        contentColor = White            // chữ đen
-                    ),
-                    shape = RoundedCornerShape(10.dp), // bo tròn đều (hình viên thuốc)
-                    contentPadding = PaddingValues(
-                        horizontal = 16.dp, // giảm padding ngang (mặc định 24.dp)
-                        vertical = 6.dp     // giảm padding dọc (mặc định 12.dp)
-                    )
-                ) {
-                    Text(
-                        text = "Lên sóng",
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                }
             }
-
-
         }
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -512,4 +576,3 @@ fun showImageSourceDialog(
         )
     }
 }
-

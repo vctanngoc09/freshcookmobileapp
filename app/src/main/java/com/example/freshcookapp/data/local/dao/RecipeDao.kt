@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.Flow
 interface RecipeDao {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insert(recipe: RecipeEntity)
+    suspend fun insert(recipe: RecipeEntity): Long
 
     // Hàm mới: Lấy các món Gợi ý (ID = 100)
     @Query("SELECT * FROM recipes WHERE category_id = 100")
