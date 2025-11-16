@@ -57,11 +57,23 @@ fun FollowScreen(
                     isLoading = false
                     return@addOnSuccessListener
                 }
+
+                // Lấy danh sách user IDs
                 val userIds = snapshot.documents.map { it.id }
+
+                // Cần xử lý trường hợp userIds rỗng sau khi map
+                if (userIds.isEmpty()) {
+                    userList = emptyList()
+                    isLoading = false
+                    return@addOnSuccessListener
+                }
+
+                // Firestore "whereIn" chỉ hỗ trợ tối đa 10 item mỗi lần
+                // (Tạm thời code này xử lý < 10)
                 firestore.collection("users").whereIn("uid", userIds).get()
                     .addOnSuccessListener { userDocs ->
                         userList = userDocs.mapNotNull { doc ->
-                            doc.toObject<UserInfo>().copy(uid = doc.id)
+                            doc.toObject<UserInfo>()?.copy(uid = doc.id)
                         }
                         isLoading = false
                     }
@@ -76,6 +88,9 @@ fun FollowScreen(
 
     Scaffold(
         containerColor = Color.White,
+
+        // ▼▼▼ TÔI ĐÃ XÓA DÒNG "windowInsets = WindowInsets(0.dp)," GÂY LỖI ▼▼▼
+
         topBar = {
             TopAppBar(
                 title = {
@@ -109,6 +124,7 @@ fun FollowScreen(
             if (isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else if (userList.isEmpty()) {
+                // Chữ "Không có ai..." vẫn ở giữa
                 Text("Không có ai trong danh sách này", modifier = Modifier.align(Alignment.Center))
             } else {
                 LazyColumn(

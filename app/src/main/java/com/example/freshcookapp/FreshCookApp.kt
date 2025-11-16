@@ -94,17 +94,22 @@ fun FreshCookApp(auth: FirebaseAuth, googleSignInClient: GoogleSignInClient) {
             }
         }
     ) { innerPadding ->
-        Surface(
-            modifier = Modifier
+        val surfaceModifier = if (hideBottomBar) {
+            Modifier.fillMaxSize()
+        } else {
+            Modifier
                 .padding(innerPadding)
-                .fillMaxSize(),
+                .fillMaxSize()
+        }
+        Surface(
+            modifier = surfaceModifier,
             color = White
         ) {
             MyAppNavgation(
                 navController = navController,
                 startDestination = startDestination,
-                onGoogleSignInClick = { 
-                    googleSignInClient.signOut().addOnCompleteListener { 
+                onGoogleSignInClick = {
+                    googleSignInClient.signOut().addOnCompleteListener {
                         val signInIntent = googleSignInClient.signInIntent
                         googleSignInLauncher.launch(signInIntent)
                     }

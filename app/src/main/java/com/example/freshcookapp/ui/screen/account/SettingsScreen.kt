@@ -31,90 +31,99 @@ fun SettingsScreen(
     onLogoutClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color.White)
-    ) {
-        // Top Bar
-        Row(
+    // 1. Dùng Scaffold
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = Color.White,
+        topBar = {
+            // 2. Dùng TopAppBar chuẩn
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Quay lại",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = WorkSans,
+                        color = Cinnabar500
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Cinnabar500
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.White
+                )
+            )
+        }
+    ) { innerPadding -> // 3. Lấy innerPadding
+        // 4. Áp dụng innerPadding cho Column chứa nội dung
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.Start,
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxSize()
+                .padding(innerPadding)
+                .background(Color.White)
         ) {
-            IconButton(onClick = onBackClick) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Cinnabar500
+            Spacer(modifier = Modifier.height(40.dp))
+
+            // Menu Items (giữ nguyên)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                SettingsMenuItem(
+                    icon = Icons.Default.Person,
+                    text = "Chỉnh sửa tài khoản",
+                    onClick = onEditProfileClick
+                )
+
+                SettingsMenuItem(
+                    icon = Icons.Default.AccessTime,
+                    text = "Món vừa xem",
+                    onClick = onRecentlyViewedClick
+                )
+
+                SettingsMenuItem(
+                    icon = Icons.Default.Book,
+                    text = "Món ngon của bạn",
+                    onClick = onMyDishesClick
                 )
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.weight(1f))
 
-            Text(
-                text = "Quay lại",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = WorkSans,
-                color = Cinnabar500
-            )
-        }
-
-        Spacer(modifier = Modifier.height(40.dp))
-
-        // Menu Items
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            SettingsMenuItem(
-                icon = Icons.Default.Person,
-                text = "Chỉnh sửa tài khoản",
-                onClick = onEditProfileClick
-            )
-
-            SettingsMenuItem(
-                icon = Icons.Default.AccessTime,
-                text = "Món vừa xem",
-                onClick = onRecentlyViewedClick
-            )
-
-            SettingsMenuItem(
-                icon = Icons.Default.Book,
-                text = "Món ngon của bạn",
-                onClick = onMyDishesClick
-            )
-        }
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        // Logout Button
-        Button(
-            onClick = onLogoutClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 40.dp)
-                .height(56.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Cinnabar500
-            ),
-            shape = MaterialTheme.shapes.large
-        ) {
-            Text(
-                text = "Đăng xuất",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                fontFamily = WorkSans,
-                color = Color.White
-            )
+            // Logout Button (giữ nguyên)
+            Button(
+                onClick = onLogoutClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 40.dp)
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Cinnabar500
+                ),
+                shape = MaterialTheme.shapes.large
+            ) {
+                Text(
+                    text = "Đăng xuất",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = WorkSans,
+                    color = Color.White
+                )
+            }
         }
     }
 }
+
+// ... (Hàm SettingsMenuItem giữ nguyên) ...
 
 @Composable
 fun SettingsMenuItem(
@@ -156,4 +165,3 @@ fun SettingsMenuItem(
         )
     }
 }
-

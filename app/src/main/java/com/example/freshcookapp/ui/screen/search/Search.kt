@@ -20,10 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.* // Thêm import Material3
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -40,102 +37,105 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.freshcookapp.R
-import com.example.freshcookapp.ui.component.ScreenContainer
+// Xóa ScreenContainer
 import com.example.freshcookapp.ui.component.SearchBar
 import com.example.freshcookapp.ui.theme.Black
 import com.example.freshcookapp.ui.theme.Cinnabar400
 import com.example.freshcookapp.ui.theme.Cinnabar500
 
+@OptIn(ExperimentalMaterial3Api::class) // Thêm OptIn
 @Composable
 fun Search(onBackClick: () -> Unit, onFilterClick: () -> Unit) {
-    ScreenContainer {
-        var searchText by remember { mutableStateOf("") }
+    var searchText by remember { mutableStateOf("") }
 
-        // Dữ liệu giả lập (lịch sử tìm kiếm)
-        val recentSearches = remember {
-            mutableStateListOf("trứng", "trứng chiên", "cá kho")
-        }
+    // Dữ liệu giả lập (lịch sử tìm kiếm)
+    val recentSearches = remember {
+        mutableStateListOf("trứng", "trứng chiên", "cá kho")
+    }
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(vertical = 12.dp)
-        ) {
-            // --- Hàng đầu: Nút Back + SearchBar ---
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = onBackClick,
-                    modifier = Modifier.size(28.dp)
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_back),
-                        contentDescription = "Back",
-                        tint = Color.Black,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-
-                // Ô tìm kiếm tái sử dụng
-                SearchBar(
-                    value = searchText,
-                    onValueChange = { searchText = it },
-                    placeholder = "Tìm kiếm",
-                    onFilterClick = onFilterClick,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 4.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // --- Danh sách lịch sử tìm kiếm ---
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(bottom = 32.dp)
-            ) {
-                items(recentSearches, key = { it }) { item ->
-                    Row(
+    // 1. Dùng Scaffold thay vì ScreenContainer
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = Color.White,
+        topBar = {
+            // 2. Tạo TopAppBar để chứa nút back và SearchBar
+            TopAppBar(
+                title = {
+                    // Ô tìm kiếm tái sử dụng
+                    SearchBar(
+                        value = searchText,
+                        onValueChange = { searchText = it },
+                        placeholder = "Tìm kiếm",
+                        onFilterClick = onFilterClick,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(end = 16.dp) // Thêm padding cuối
+                    )
+                },
+                navigationIcon = {
+                    IconButton(
+                        onClick = onBackClick,
+                        modifier = Modifier.size(28.dp)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.AccessTime,
-                                contentDescription = "History",
-                                tint = Cinnabar400,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = item,
-                                color = Color.Black,
-                                fontSize = 15.sp
-                            )
-                        }
+                        Icon(
+                            painter = painterResource(R.drawable.ic_back),
+                            contentDescription = "Back",
+                            tint = Color.Black,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.White
+                )
+            )
+        }
+    ) { innerPadding -> // 3. Lấy innerPadding
+        // 4. Áp dụng innerPadding cho nội dung
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding) // Áp dụng padding ở đây
+                .padding(top = 16.dp), // Thêm 1 chút đệm ở trên
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(bottom = 32.dp)
+        ) {
+            items(recentSearches, key = { it }) { item ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp), // Thêm padding ngang
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.AccessTime,
+                            contentDescription = "History",
+                            tint = Cinnabar400,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = item,
+                            color = Color.Black,
+                            fontSize = 15.sp
+                        )
+                    }
 
-                        IconButton(
-                            onClick = { recentSearches.remove(item) },
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Remove",
-                                tint = Cinnabar400,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
+                    IconButton(
+                        onClick = { recentSearches.remove(item) },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Remove",
+                            tint = Cinnabar400,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
                 }
             }
         }
     }
 }
-

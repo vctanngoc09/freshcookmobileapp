@@ -30,41 +30,42 @@ fun NotificationScreen(
     onBackClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color.White)
-    ) {
-        // Custom Top Bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.Start,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBackClick) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Cinnabar500
+    // 1. Dùng Scaffold thay vì Column
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = Color.White,
+        topBar = {
+            // 2. Dùng TopAppBar chuẩn
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Thông báo",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = WorkSans,
+                        color = Cinnabar500
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Cinnabar500
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.White
                 )
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Text(
-                text = "Thông báo",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = WorkSans,
-                color = Cinnabar500
             )
         }
-
-        // Scrollable Content
+    ) { innerPadding -> // 3. Lấy innerPadding
+        // 4. Áp dụng innerPadding cho nội dung
         LazyColumn(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
         ) {
             // Hôm nay section
             item {
@@ -104,6 +105,8 @@ fun NotificationScreen(
         }
     }
 }
+
+// ... (Các Composable NotificationSectionHeader và NotificationItem giữ nguyên) ...
 
 @Composable
 fun NotificationSectionHeader(

@@ -80,6 +80,7 @@ fun ProfileScreen(
             .addSnapshotListener { snapshot, e ->
                 if (e != null) return@addSnapshotListener
                 if (snapshot != null) {
+                    recipes = snapshot.documents.mapNotNull { it.toObject<RecipeInfo>()?.copy(id = it.id) }
                     recipes = snapshot.documents.map { doc ->
                         val id = doc.id
                         val name = doc.getString("name") ?: ""

@@ -31,63 +31,72 @@ fun RecentlyViewedScreen(
     onBackClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color.White)
-    ) {
-        // Custom Top Bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.Start,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBackClick) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Cinnabar500
+    // 1. Dùng Scaffold
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = Color.White,
+        topBar = {
+            // 2. Dùng TopAppBar chuẩn
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Xem gần đây",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = WorkSans,
+                        color = Cinnabar500
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Cinnabar500
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.White
                 )
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Text(
-                text = "Xem gần đây",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = WorkSans,
-                color = Cinnabar500
             )
         }
-
-        // Search Bar
-        SearchBar(
-            value = "",
-            onValueChange = {},
-            placeholder = "Tìm kiếm món yêu thích",
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-        )
-
-        // Recently Viewed List
-        LazyColumn(
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) { innerPadding -> // 3. Lấy innerPadding
+        // 4. Áp dụng innerPadding cho Column chứa nội dung
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .background(Color.White)
         ) {
-            items(4) {
-                RecentlyViewedItem(
-                    title = "Sandwich",
-                    subtitle = "with chicken and onion",
-                    time = "30p trước",
-                    imageRes = null,
-                    onRemoveClick = {}
-                )
+            // Search Bar (giữ nguyên)
+            SearchBar(
+                value = "",
+                onValueChange = {},
+                placeholder = "Tìm kiếm món yêu thích",
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+
+            // Recently Viewed List (giữ nguyên)
+            LazyColumn(
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(4) {
+                    RecentlyViewedItem(
+                        title = "Sandwich",
+                        subtitle = "with chicken and onion",
+                        time = "30p trước",
+                        imageRes = null,
+                        onRemoveClick = {}
+                    )
+                }
             }
         }
     }
 }
+
+// ... (Hàm RecentlyViewedItem giữ nguyên) ...
 
 @Composable
 fun RecentlyViewedItem(
