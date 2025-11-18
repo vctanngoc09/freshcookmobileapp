@@ -147,7 +147,6 @@ fun ProfileScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
                             .clip(RoundedCornerShape(20.dp))
                             .background(Cinnabar500)
                             .padding(vertical = 16.dp),
@@ -164,7 +163,7 @@ fun ProfileScreen(
 
                 item {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 24.dp),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         OutlinedButton(
@@ -191,7 +190,6 @@ fun ProfileScreen(
                 if (recipes.isNotEmpty()) {
                     item {
                         Box(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                             contentAlignment = Alignment.CenterEnd
                         ) {
                             Text(
@@ -215,8 +213,7 @@ fun ProfileScreen(
                             columns = GridCells.Fixed(2),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(gridHeight) //Sử dụng chiều cao cố định, đã tính toán
-                                .padding(horizontal = 16.dp),
+                                .height(gridHeight), //Sử dụng chiều cao cố định, đã tính toán
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                             contentPadding = PaddingValues(top = 12.dp),

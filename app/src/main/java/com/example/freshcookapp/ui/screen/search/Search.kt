@@ -1,7 +1,10 @@
 package com.example.freshcookapp.ui.screen.search
 
+import android.app.Application
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,8 +23,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.* // Thêm import Material3
+import androidx.compose.material3.* // GIỮ LẠI
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -31,57 +35,56 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.freshcookapp.R
-// Xóa ScreenContainer
 import com.example.freshcookapp.ui.component.SearchBar
 import com.example.freshcookapp.ui.theme.Black
 import com.example.freshcookapp.ui.theme.Cinnabar400
 import com.example.freshcookapp.ui.theme.Cinnabar500
+import com.example.freshcookapp.ui.theme.White // THÊM IMPORT NÀY
 
-@OptIn(ExperimentalMaterial3Api::class) // Thêm OptIn
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Search(onBackClick: () -> Unit, onFilterClick: () -> Unit) {
-    var searchText by remember { mutableStateOf("") }
+fun Search(
+    onBackClick: () -> Unit,
+    onFilterClick: () -> Unit,
+    onSuggestionClick: (String) -> Unit
+) {
+    val context = LocalContext.current
 
-    // Dữ liệu giả lập (lịch sử tìm kiếm)
-    val recentSearches = remember {
-        mutableStateListOf("trứng", "trứng chiên", "cá kho")
-    }
+    val viewModel: SearchViewModel = viewModel(
+        factory = SearchViewModelFactory(context.applicationContext as Application)
+    )
 
-    // 1. Dùng Scaffold thay vì ScreenContainer
+    val searchText by viewModel.query.collectAsState()
+    val suggestions by viewModel.suggestions.collectAsState()
+
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = Color.White,
         topBar = {
-            // 2. Tạo TopAppBar để chứa nút back và SearchBar
             TopAppBar(
                 title = {
-                    // Ô tìm kiếm tái sử dụng
                     SearchBar(
                         value = searchText,
-                        onValueChange = { searchText = it },
+                        onValueChange = { viewModel.onQueryChange(it) },
                         placeholder = "Tìm kiếm",
                         onFilterClick = onFilterClick,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(end = 16.dp) // Thêm padding cuối
+                            .padding(end = 16.dp)
                     )
                 },
                 navigationIcon = {
-                    IconButton(
-                        onClick = onBackClick,
-                        modifier = Modifier.size(28.dp)
-                    ) {
+                    IconButton(onClick = onBackClick) {
                         Icon(
-                            painter = painterResource(R.drawable.ic_back),
-                            contentDescription = "Back",
-                            tint = Color.Black,
-                            modifier = Modifier.size(22.dp)
+                            painterResource(R.drawable.ic_back),
+                            null,
+                            tint = Color.Black
                         )
                     }
                 },
@@ -89,51 +92,37 @@ fun Search(onBackClick: () -> Unit, onFilterClick: () -> Unit) {
                     containerColor = Color.White
                 )
             )
-        }
-    ) { innerPadding -> // 3. Lấy innerPadding
-        // 4. Áp dụng innerPadding cho nội dung
+        },
+        containerColor = White // THÊM DÒNG NÀY
+    ) { padding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding) // Áp dụng padding ở đây
-                .padding(top = 16.dp), // Thêm 1 chút đệm ở trên
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(bottom = 32.dp)
+                .background(White) // THÊM DÒNG NÀY
+                .padding(padding)
+                .padding(top = 16.dp)
         ) {
-            items(recentSearches, key = { it }) { item ->
+            items(suggestions) { item ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp), // Thêm padding ngang
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                        .clickable { onSuggestionClick(item) }
+                        .background(White) // THÊM DÒNG NÀY
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.AccessTime,
-                            contentDescription = "History",
-                            tint = Cinnabar400,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = item,
-                            color = Color.Black,
-                            fontSize = 15.sp
-                        )
-                    }
-
-                    IconButton(
-                        onClick = { recentSearches.remove(item) },
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Remove",
-                            tint = Cinnabar400,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
+                    Icon(
+                        Icons.Default.AccessTime,
+                        contentDescription = null,
+                        tint = Cinnabar400,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        item,
+                        fontSize = 15.sp,
+                        color = Black // THÊM MÀU CHỮ ĐỂ ĐẢM BẢO
+                    )
                 }
             }
         }

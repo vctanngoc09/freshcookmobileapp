@@ -2,6 +2,7 @@ package com.example.freshcookapp.ui.screen.home
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -52,10 +53,11 @@ import com.example.freshcookapp.ui.component.ScreenContainer
 import com.example.freshcookapp.ui.component.SearchBar
 import com.example.freshcookapp.ui.component.SectionHeader
 import com.example.freshcookapp.ui.component.TrendingCategoryItem
+import com.example.freshcookapp.ui.nav.Destination
 import com.example.freshcookapp.ui.theme.Cinnabar500
 
 @Composable
-fun Home(onFilterClick: () -> Unit) {
+fun Home(onFilterClick: () -> Unit, onEditProfileClick: () -> Unit) {
     ScreenContainer {
 
         var searchText by remember { mutableStateOf("") }
@@ -91,7 +93,8 @@ fun Home(onFilterClick: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable { onEditProfileClick() }) {
                         Image(
                             painter = rememberAsyncImagePainter(userPhotoUrl ?: R.drawable.avatar1),
                             contentDescription = "Avatar",

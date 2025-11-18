@@ -25,6 +25,8 @@ import com.example.freshcookapp.domain.model.DemoData
 import com.example.freshcookapp.ui.screen.filter.Filter
 import com.example.freshcookapp.ui.screen.newcook.NewCook
 import com.example.freshcookapp.ui.screen.search.Search
+import com.example.freshcookapp.ui.screen.search.SearchResultScreen
+import com.google.android.gms.appsearch.SearchResult
 
 @Composable
 fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifier, startDestination: Destination, onGoogleSignInClick: () -> Unit){
@@ -36,7 +38,7 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
         composable<Destination.Splash> { Splash(onGetStartedClicked = {navController.navigate(Destination.Welcome) {
             popUpTo(Destination.Splash) { inclusive = true } // ✅ xóa Splash khỏi back stack
         }}) }
-        composable<Destination.Home> { Home(onFilterClick = {navController.navigate(Destination.Filter)}) }
+        composable<Destination.Home> { Home(onFilterClick = {navController.navigate(Destination.Filter)}, onEditProfileClick = { navController.navigate(Destination.EditProfile) }) }
         composable<Destination.New> { NewCook(onBackClick = {navController.navigateUp()} ) }
         composable<Destination.Favorites> {
             Favorite(
@@ -76,8 +78,25 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
         }
 
         composable<Destination.Search> {
-            Search(onBackClick = {navController.popBackStack()} , onFilterClick = {navController.navigate(
-                Destination.Filter)})} 
+            Search(
+                onBackClick = { navController.popBackStack() },
+                onFilterClick = { navController.navigate(Destination.Filter) },
+                onSuggestionClick = { keyword ->
+                    navController.navigate(Destination.SearchResult(keyword))
+                }
+            )
+        }
+
+        composable<Destination.SearchResult> { backStackEntry ->
+            val args = backStackEntry.toRoute<Destination.SearchResult>()
+
+            SearchResultScreen(
+                keyword = args.keyword,
+                onBackClick = { navController.navigateUp() }
+            )
+        }
+
+
 
         composable<Destination.Filter> {
             Filter(onBackClick = {navController.navigateUp()}, onApply = {navController.navigate(

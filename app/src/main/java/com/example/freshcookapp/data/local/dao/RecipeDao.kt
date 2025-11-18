@@ -21,5 +21,11 @@ interface RecipeDao {
     @Query("SELECT * FROM recipes WHERE category_id != 100")
     fun getTrendingRecipes(): Flow<List<RecipeEntity>>
 
-    // (Bạn có thể giữ các hàm cũ khác nếu có)
+    // 🔍 Tìm món ăn theo tên (dùng cho màn kết quả tìm kiếm)
+    @Query("""
+        SELECT * FROM recipes
+        WHERE name LIKE '%' || :keyword || '%' COLLATE NOCASE
+        ORDER BY name
+    """)
+    fun searchRecipes(keyword: String): Flow<List<RecipeEntity>>
 }
