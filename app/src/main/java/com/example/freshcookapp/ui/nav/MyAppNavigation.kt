@@ -92,9 +92,13 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
 
             SearchResultScreen(
                 keyword = args.keyword,
-                onBackClick = { navController.navigateUp() }
+                onBackClick = { navController.navigateUp() },
+                onRecipeClick = { recipeId ->
+                    navController.navigate(Destination.RecipeDetail(recipeId))
+                }
             )
         }
+
 
 
 

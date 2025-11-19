@@ -14,13 +14,14 @@ import kotlinx.coroutines.launch
 
 @Database(
     entities = [
+        RecipeIndexEntity::class,
         RecipeEntity::class,
         RecipeIngredientEntity::class,
         InstructionEntity::class,
         CategoryEntity::class,
         NewDishEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -30,6 +31,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun instructionDao(): InstructionDao
     abstract fun categoryDao(): CategoryDao
     abstract fun newDishDao(): NewDishDao
+
+    abstract fun recipeIndexDao(): RecipeIndexDao
 
     abstract fun searchDao(): SearchDao
     companion object {

@@ -1,6 +1,7 @@
 package com.example.freshcookapp.ui.screen.search
 
 import android.app.Application
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,11 +20,11 @@ import com.example.freshcookapp.ui.component.RecipeCard
 @Composable
 fun SearchResultScreen(
     keyword: String,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onRecipeClick: (String) -> Unit
 ) {
-    val context = LocalContext.current
     val viewModel: SearchResultViewModel = viewModel(
-        factory = SearchResultViewModelFactory(keyword, context.applicationContext as Application)
+        factory = SearchResultViewModelFactory(keyword)
     )
 
     val results by viewModel.results.collectAsState()
@@ -34,25 +35,29 @@ fun SearchResultScreen(
                 title = { Text("Kết quả cho \"$keyword\"") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
         }
     ) { padding ->
         LazyColumn(
-            modifier = Modifier.padding(padding).padding(16.dp),
+            modifier = Modifier
+                .padding(padding)
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(results) { recipe ->
                 RecipeCard(
                     imageUrl = recipe.imageUrl,
-                    title = recipe.name,
-                    time = "${recipe.timeCookMinutes ?: 0} phút",
-                    level = "Dễ", // bạn tự map nếu có level
+                    title = recipe.title,
+                    time = recipe.time,
+                    level = recipe.level,
                     isFavorite = false,
-                    onFavoriteClick = { /* TODO */ },
-                    modifier = Modifier.fillMaxWidth()
+                    onFavoriteClick = {},
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onRecipeClick(recipe.id) }
                 )
             }
         }

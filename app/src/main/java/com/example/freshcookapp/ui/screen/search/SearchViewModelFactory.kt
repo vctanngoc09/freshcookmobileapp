@@ -15,9 +15,9 @@ class SearchViewModelFactory(
 
             val db = AppDatabase.getDatabase(application)
             val repository = SearchRepository(
-                recipeDao = db.recipeDao(),
-                searchDao = db.searchDao()
+                indexDao = db.recipeIndexDao()
             )
+
 
             @Suppress("UNCHECKED_CAST")
             return SearchViewModel(repository) as T

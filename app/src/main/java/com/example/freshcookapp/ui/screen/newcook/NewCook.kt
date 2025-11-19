@@ -4,6 +4,7 @@ import android.Manifest
 import android.graphics.Bitmap
 import android.net.Uri
 import android.provider.MediaStore
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
@@ -567,15 +568,15 @@ fun NewCook(onBackClick: () -> Unit){
 fun RecipeImagePicker() {
     val context = LocalContext.current
     var imageUri by remember { mutableStateOf<Uri?>(null) }
-    var showDialog by remember { mutableStateOf(false) } // ✅ trạng thái bật/tắt dialog
+    var showDialog by remember { mutableStateOf(false) }
 
-    // --- Bộ chọn ảnh từ thư viện ---
+    // --- Pick photo from gallery ---
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
         onResult = { uri -> imageUri = uri }
     )
 
-    // --- Bộ chụp ảnh bằng camera ---
+    // --- Take photo with camera ---
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicturePreview(),
         onResult = { bitmap ->
@@ -585,7 +586,7 @@ fun RecipeImagePicker() {
                 val path = MediaStore.Images.Media.insertImage(
                     context.contentResolver,
                     bitmap,
-                    "captured_image",
+                    "captured_image_${System.currentTimeMillis()}",
                     null
                 )
                 imageUri = path.toUri()
@@ -593,23 +594,34 @@ fun RecipeImagePicker() {
         }
     )
 
-    // --- UI chính ---
+    // --- MUST HAVE: permission for CAMERA ---
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            cameraLauncher.launch(null)   // open camera after permission
+        } else {
+            Toast.makeText(context, "Bạn cần cấp quyền camera", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // --- UI ---
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(160.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(Cinnabar100)
-            .clickable {
-                showDialog = true // ✅ chỉ bật cờ lên thôi
-            },
+            .clickable { showDialog = true },
         contentAlignment = Alignment.Center
     ) {
         if (imageUri == null) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Icon(
                     painter = painterResource(R.drawable.ic_camera),
-                    contentDescription = "Camera",
+                    contentDescription = null,
                     tint = Color.Gray,
                     modifier = Modifier.size(36.dp)
                 )
@@ -622,14 +634,14 @@ fun RecipeImagePicker() {
         } else {
             Image(
                 painter = rememberAsyncImagePainter(imageUri),
-                contentDescription = "Recipe image",
+                contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
         }
     }
 
-    // --- Dialog chọn nguồn ảnh ---
+    // --- Dialog choose source ---
     if (showDialog) {
         ShowImageSourceDialog(
             onPickGallery = {
@@ -637,7 +649,7 @@ fun RecipeImagePicker() {
                 showDialog = false
             },
             onTakePhoto = {
-                cameraLauncher.launch(null)
+                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                 showDialog = false
             }
         )

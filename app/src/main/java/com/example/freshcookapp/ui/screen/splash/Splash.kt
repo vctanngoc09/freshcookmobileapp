@@ -1,14 +1,19 @@
 package com.example.freshcookapp.ui.screen.splash
 
+import android.app.Application
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -16,6 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.freshcookapp.ui.component.ScreenContainer
 import com.example.freshcookapp.ui.theme.FreshCookAppTheme
 import com.example.freshcookapp.R
@@ -26,6 +32,18 @@ import com.example.freshcookapp.ui.theme.WorkSans
 
 @Composable
 fun Splash(onGetStartedClicked: () -> Unit) {
+    val context = LocalContext.current
+    val viewModel: SplashViewModel = viewModel(
+        factory = SplashViewModelFactory(context.applicationContext as Application)
+    )
+
+    val isReady by viewModel.isReady.collectAsState()
+
+    // Khi sync xong -> điều hướng
+    LaunchedEffect(isReady) {
+        if (isReady) onGetStartedClicked()
+    }
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = Cinnabar600
