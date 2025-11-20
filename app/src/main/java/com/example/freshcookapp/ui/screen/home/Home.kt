@@ -53,7 +53,6 @@ import com.example.freshcookapp.ui.component.ScreenContainer
 import com.example.freshcookapp.ui.component.SearchBar
 import com.example.freshcookapp.ui.component.SectionHeader
 import com.example.freshcookapp.ui.component.TrendingCategoryItem
-import com.example.freshcookapp.ui.nav.Destination
 import com.example.freshcookapp.ui.theme.Cinnabar500
 
 @Composable
@@ -73,8 +72,10 @@ fun Home(onFilterClick: () -> Unit, onEditProfileClick: () -> Unit) {
 
         val recipes by viewModel.recipes.collectAsState()
         val categories by viewModel.categories.collectAsState()
-        val recommendedRecipes by viewModel.recommendedRecipes.collectAsState() // MỚI
-        val newDishes by viewModel.newDishes.collectAsState() // MỚI
+        val recommendedRecipes by viewModel.recommendedRecipes.collectAsState()
+
+        // Dữ liệu này giờ là List<Recipe> chứ không phải List<NewDishEntity> nữa
+        val newDishes by viewModel.newDishes.collectAsState()
 
         val userName by viewModel.userName.collectAsState()
         val userPhotoUrl by viewModel.userPhotoUrl.collectAsState()
@@ -227,9 +228,16 @@ fun Home(onFilterClick: () -> Unit, onEditProfileClick: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(newDishes) { dish ->
-                        NewDishItem(
-                            dish = dish,
-                            onClick = { /* TODO: mở chi tiết món */ }
+                        // Dùng RecipeCard thay vì NewDishItem
+                        // Vì 'dish' bây giờ là Recipe object, giống hệt ở trên
+                        RecipeCard(
+                            imageUrl = dish.imageUrl,
+                            title = dish.title,
+                            time = dish.time,
+                            level = dish.level,
+                            isFavorite = dish.isFavorite,
+                            onFavoriteClick = {},
+                            // modifier = Modifier.width(160.dp)
                         )
                     }
                 }

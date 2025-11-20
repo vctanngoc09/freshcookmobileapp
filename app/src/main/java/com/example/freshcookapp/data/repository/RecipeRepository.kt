@@ -1,70 +1,45 @@
 package com.example.freshcookapp.data.repository
 
 import com.example.freshcookapp.data.local.AppDatabase
-import com.example.freshcookapp.data.local.entity.InstructionEntity
-import com.example.freshcookapp.data.local.entity.NewDishEntity
 import com.example.freshcookapp.data.local.entity.RecipeEntity
-import com.example.freshcookapp.data.local.entity.RecipeIngredientEntity
 import com.example.freshcookapp.domain.model.Ingredient
 import com.example.freshcookapp.domain.model.Instruction
 import kotlinx.coroutines.flow.Flow
+import java.util.UUID
 
 class RecipeRepository(private val db: AppDatabase) {
 
-    fun getTrendingRecipes(): Flow<List<RecipeEntity>> {
-        return db.recipeDao().getTrendingRecipes()
-    }
+    fun getTrendingRecipes() = db.recipeDao().getTrendingRecipes()
+    fun getRecommendedRecipes() = db.recipeDao().getRecommendedRecipes()
+    fun getNewDishes() = db.recipeDao().getNewDishes()
 
-    fun getRecommendedRecipes(): Flow<List<RecipeEntity>> {
-        return db.recipeDao().getRecommendedRecipes()
-    }
-    fun getNewDishes(): Flow<List<NewDishEntity>> {
-        return db.newDishDao().getAllNewDishes()
-    }
-
+    // Hàm saveRecipe này dùng cho tạo món Offline (nếu cần)
     suspend fun saveRecipe(
         name: String,
         description: String,
         timeCookMinutes: Int?,
         people: Int?,
         imageUrl: String?,
-        userId: Long,
-        categoryId: Long,
+        userId: String,
+        categoryId: String,
         ingredients: List<Ingredient>,
         instructions: List<Instruction>
-    ): Long {
+    ) {
+        val ingredientsList = ingredients.map { "${it.quantity} ${it.unit} ${it.name}" }
+        val stepsList = instructions.map { "Bước ${it.stepNumber}: ${it.description}" }
+
         val recipeEntity = RecipeEntity(
+            id = UUID.randomUUID().toString(),
             name = name,
             description = description,
-            timeCookMinutes = timeCookMinutes,
-            people = people,
+            timeCookMinutes = timeCookMinutes ?: 0,
             imageUrl = imageUrl,
             userId = userId,
-            categoryId = categoryId
+            categoryId = categoryId,
+            ingredients = ingredientsList,
+            steps = stepsList,
+            createdAt = System.currentTimeMillis()
         )
-        val recipeId = db.recipeDao().insert(recipeEntity)
-
-        val ingredientEntities = ingredients.map { ingredient ->
-            RecipeIngredientEntity(
-                recipeId = recipeId,
-                name = ingredient.name,
-                quantity = ingredient.quantity,
-                unit = ingredient.unit,
-                note = ingredient.notes
-            )
-        }
-        db.ingredientDao().insertAll(ingredientEntities)
-
-        val instructionEntities = instructions.map { instruction ->
-            InstructionEntity(
-                recipeId = recipeId,
-                stepNumber = instruction.stepNumber,
-                description = instruction.description,
-                imageUrl = instruction.imageUrl
-            )
-        }
-        db.instructionDao().insertAll(instructionEntities)
-
-        return recipeId
+        db.recipeDao().insert(recipeEntity)
     }
 }

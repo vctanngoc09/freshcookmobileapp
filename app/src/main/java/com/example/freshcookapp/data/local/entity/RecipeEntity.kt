@@ -6,10 +6,9 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "recipes")
 data class RecipeEntity(
-
-    @PrimaryKey(autoGenerate = true)
+    @PrimaryKey
     @ColumnInfo(name = "id")
-    val id: Long = 0,
+    val id: String,
 
     @ColumnInfo(name = "name")
     val name: String,
@@ -18,18 +17,28 @@ data class RecipeEntity(
     val description: String? = null,
 
     @ColumnInfo(name = "time_cook_minutes")
-    val timeCookMinutes: Int? = null,
+    val timeCookMinutes: Int = 0,
 
-    @ColumnInfo(name = "people")
-    val people: Int? = null,
+    @ColumnInfo(name = "level")
+    val level: String? = "Trung bình",
 
     @ColumnInfo(name = "image_url")
     val imageUrl: String? = null,
 
-    // FOREIGN KEYS
+    // Lưu danh sách nguyên liệu dạng: "500 g Cánh gà"
+    @ColumnInfo(name = "ingredients")
+    val ingredients: List<String> = emptyList(),
+
+    // Lưu danh sách các bước dạng: "Bước 1: Ướp gà..."
+    @ColumnInfo(name = "steps")
+    val steps: List<String> = emptyList(),
+
     @ColumnInfo(name = "user_id")
-    val userId: Long,
+    val userId: String = "",
 
     @ColumnInfo(name = "category_id")
-    val categoryId: Long
+    val categoryId: String = "",
+
+    @ColumnInfo(name = "created_at")
+    val createdAt: Long = 0L
 )

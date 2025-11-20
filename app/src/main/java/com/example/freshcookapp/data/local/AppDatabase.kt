@@ -7,10 +7,11 @@ import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.freshcookapp.data.local.entity.*
 import com.example.freshcookapp.data.local.dao.*
-import com.example.freshcookapp.data.local.seed.SeedData
+//import com.example.freshcookapp.data.local.seed.SeedData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import androidx.room.TypeConverters
 
 @Database(
     entities = [
@@ -21,9 +22,10 @@ import kotlinx.coroutines.launch
         CategoryEntity::class,
         NewDishEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
+@TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun recipeDao(): RecipeDao
@@ -59,7 +61,7 @@ abstract class AppDatabase : RoomDatabase() {
         ) : RoomDatabase.Callback() {
             override fun onCreate(db: SupportSQLiteDatabase) {
                 super.onCreate(db)
-                CoroutineScope(Dispatchers.IO).launch {
+                /*CoroutineScope(Dispatchers.IO).launch {
                     val database = getDatabase(application)
 
 
@@ -70,7 +72,7 @@ abstract class AppDatabase : RoomDatabase() {
                     database.categoryDao().insertAll(SeedData.categories)
 
                     database.newDishDao().insertAll(SeedData.newDishes)
-                }
+                }*/
             }
         }
     }

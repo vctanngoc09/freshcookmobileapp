@@ -47,6 +47,7 @@ class HomeViewModel(
         )
 
     val newDishes = repo.getNewDishes()
+        .map { list -> list.map { it.toRecipe() } }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000L),

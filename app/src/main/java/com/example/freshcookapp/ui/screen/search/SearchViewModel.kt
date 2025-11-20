@@ -13,16 +13,19 @@ class SearchViewModel(
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query
 
-    // Gợi ý tên món theo text user gõ
+    // Logic cũ: Trả về danh sách TÊN MÓN (List<String>)
     val suggestions: StateFlow<List<String>> =
         _query
-            .debounce(200)
+            .debounce(200) // Đợi 200ms
             .distinctUntilChanged()
             .flatMapLatest { keyword ->
                 if (keyword.isBlank()) {
                     flowOf(emptyList())
                 } else {
-                    repository.suggestNames(keyword)
+                    // Gọi Repository để lấy danh sách tên
+                    repository.searchRecipes(keyword).map { entities ->
+                        entities.map { it.name }
+                    }
                 }
             }
             .stateIn(

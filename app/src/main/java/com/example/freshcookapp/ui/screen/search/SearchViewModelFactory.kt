@@ -10,16 +10,14 @@ class SearchViewModelFactory(
     private val application: Application
 ) : ViewModelProvider.Factory {
 
+    @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(SearchViewModel::class.java)) {
-
             val db = AppDatabase.getDatabase(application)
-            val repository = SearchRepository(
-                indexDao = db.recipeIndexDao()
-            )
 
+            // SỬA: Truyền RecipeDao vào
+            val repository = SearchRepository(db.recipeDao())
 
-            @Suppress("UNCHECKED_CAST")
             return SearchViewModel(repository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

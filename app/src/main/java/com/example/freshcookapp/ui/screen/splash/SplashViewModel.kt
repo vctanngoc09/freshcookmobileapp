@@ -14,15 +14,18 @@ class SplashViewModel(
 ) : AndroidViewModel(application) {
 
     private val db = AppDatabase.getDatabase(application)
-    private val syncRepo = FirestoreSyncRepository(db.recipeIndexDao())
+
+    // Truyền đủ recipeDao VÀ categoryDao
+    private val syncRepo = FirestoreSyncRepository(db.recipeDao(), db.categoryDao())
 
     private val _isReady = MutableStateFlow(false)
     val isReady = _isReady.asStateFlow()
 
     init {
         viewModelScope.launch {
-            syncRepo.syncRecipeIndex()   // ⬅ tải id + name xuống Room
-            _isReady.value = true        // báo cho SplashScreen biết đã xong
+            // Gọi hàm đồng bộ
+            syncRepo.syncRecipes()
+            _isReady.value = true
         }
     }
 }
