@@ -55,6 +55,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import com.example.freshcookapp.ui.screen.filter.DifficultyChip
 import com.example.freshcookapp.ui.screen.filter.FilterChip
+import com.google.firebase.firestore.FirebaseFirestore
 
 @Composable
 fun NewCook(onBackClick: () -> Unit) {
@@ -63,6 +64,8 @@ fun NewCook(onBackClick: () -> Unit) {
     var description by remember { mutableStateOf("") }
     var cookTime by remember { mutableStateOf("") }
     var people by remember { mutableStateOf("") }
+    var selectedCategoryId by remember { mutableStateOf<String?>(null) }
+    var categoryList by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
 
     val ingredients = remember {
         mutableStateListOf(
@@ -186,6 +189,17 @@ fun NewCook(onBackClick: () -> Unit) {
         return Regex("(\\d+)").find(peopleStr)?.groups?.get(1)?.value?.toIntOrNull()
     }
 
+    LaunchedEffect(true) {
+        val db = FirebaseFirestore.getInstance()
+        db.collection("categories")
+            .get()
+            .addOnSuccessListener { snapshot ->
+                categoryList = snapshot.documents.map { doc ->
+                    doc.id to (doc.getString("name") ?: "")
+                }
+            }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -221,6 +235,7 @@ fun NewCook(onBackClick: () -> Unit) {
                                     imageUri = recipeImageUri,                 // ⭐ ảnh đại diện
                                     hashtags = hashtagList.toList(),          // ⭐ hashtag
                                     difficultyUi = difficulty,               // ⭐ "Dễ"/"Trung"/"Khó"
+                                    categoryId = selectedCategoryId,
                                     ingredients = ingredients.filter { it.name.isNotBlank() },
                                     instructions = instructions.filter { it.description.isNotBlank() },
                                     onSuccess = {
@@ -332,6 +347,8 @@ fun NewCook(onBackClick: () -> Unit) {
                     }
                 }
 
+
+
                 /** HASHTAG + DIFFICULTY */
                 item {
                     ScreenContainer {
@@ -392,6 +409,46 @@ fun NewCook(onBackClick: () -> Unit) {
                         }
 
                         Spacer(Modifier.height(16.dp))
+                    }
+                }
+
+                // === CATEGORY CHOICE ===
+                item {
+                    ScreenContainer {
+                        Spacer(Modifier.height(20.dp))
+
+                        Text(
+                            "Danh mục",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(8.dp))
+
+                        if (categoryList.isNotEmpty()) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                categoryList.forEach { (id, name) ->
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { selectedCategoryId = id }
+                                    ) {
+                                        RadioButton(
+                                            selected = selectedCategoryId == id,
+                                            onClick = { selectedCategoryId = id },
+                                            colors = RadioButtonDefaults.colors(
+                                                selectedColor = Cinnabar500
+                                            )
+                                        )
+                                        Text(name)
+                                    }
+                                }
+                            }
+                        } else {
+                            Text("Đang tải danh mục...")
+                        }
+
+                        Spacer(Modifier.height(20.dp))
                     }
                 }
 

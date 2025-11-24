@@ -34,6 +34,7 @@ class NewCookViewModel(
         imageUri: Uri?,                      // ảnh đại diện món ăn (có thể null)
         hashtags: List<String>,              // list hashtag người dùng nhập
         difficultyUi: String,                // "Dễ" / "Trung" / "Khó"
+        categoryId: String?,
         ingredients: List<Ingredient>,       // list nguyên liệu
         instructions: List<Instruction>,     // list bước làm
         onSuccess: () -> Unit,
@@ -45,8 +46,8 @@ class NewCookViewModel(
                 val currentUserId =
                     FirebaseAuth.getInstance().currentUser?.uid ?: "admin"
 
-                // 2. Tạo id cho recipe (dùng chung cho Firestore)
-                val recipeId = UUID.randomUUID().toString()
+                val recipeRef = FirebaseFirestore.getInstance().collection("recipes").document()
+                val recipeId = recipeRef.id
 
                 // 3. Upload ảnh đại diện (nếu có) lên Firebase Storage
                 val imageUrl = uploadRecipeImageIfNeeded(recipeId, imageUri)
@@ -60,7 +61,7 @@ class NewCookViewModel(
                 }
 
                 // 5. CategoryId: tạm thời fix "soup" giống mẫu bạn đưa
-                val categoryId = "soup"
+                val finalCategoryId = categoryId ?: "other"
 
                 // 6. Lưu local Room (cho offline / home list)
                 recipeRepository.saveRecipe(
@@ -70,7 +71,7 @@ class NewCookViewModel(
                     people = people,
                     imageUrl = imageUrl,
                     userId = currentUserId,
-                    categoryId = categoryId,
+                    categoryId = finalCategoryId,
                     ingredients = ingredients,
                     instructions = instructions
                 )
@@ -84,7 +85,7 @@ class NewCookViewModel(
                     people = people,
                     imageUrl = imageUrl,
                     userId = currentUserId,
-                    categoryId = categoryId,
+                    categoryId = finalCategoryId,
                     hashtags = hashtags,
                     difficulty = difficulty,
                     ingredients = ingredients,
@@ -172,7 +173,8 @@ class NewCookViewModel(
         instructions: List<Instruction>
     ) {
         val db = FirebaseFirestore.getInstance()
-        val recipeRef = db.collection("recipes").document(recipeId)
+        // ⭐ Firestore tự tạo ID
+        val recipeRef = db.collection("recipes").document()
 
         val safeTime = (timeCookMinutes ?: 0)
         val safePeople = (people ?: 1)
