@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,9 +22,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
@@ -52,8 +51,6 @@ fun RecipeDetail(
     }
 
     val recipeToShow by viewModel.recipe.collectAsState()
-
-    // Lắng nghe trạng thái follow từ ViewModel
     val isFollowingAuthor by viewModel.isFollowingAuthor.collectAsState()
 
     if (recipeToShow == null) {
@@ -63,20 +60,11 @@ fun RecipeDetail(
     } else {
         RecipeDetailView(
             recipe = recipeToShow!!,
-            isFollowingAuthor = isFollowingAuthor, // Truyền trạng thái vào
+            isFollowingAuthor = isFollowingAuthor,
             onBackClick = { navController.navigateUp() },
-            onFavoriteClick = {
-                viewModel.toggleFavorite()
-                val msg = if (!recipeToShow!!.isFavorite) "Đã thêm vào yêu thích" else "Đã bỏ yêu thích"
-                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-            },
-            onAuthorClick = { authorId ->
-                navController.navigate("user_profile/$authorId")
-            },
-            onFollowClick = {
-                // Gọi hàm xử lý follow
-                viewModel.toggleFollowAuthor()
-            }
+            onFavoriteClick = { viewModel.toggleFavorite() },
+            onAuthorClick = { authorId -> navController.navigate("user_profile/$authorId") },
+            onFollowClick = { viewModel.toggleFollowAuthor() }
         )
     }
 }
@@ -90,9 +78,7 @@ private fun RecipeDetailView(
     onAuthorClick: (String) -> Unit,
     onFollowClick: () -> Unit
 ) {
-    Box(
-        modifier = Modifier.fillMaxSize().background(Color.White)
-    ) {
+    Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
         RecipeDetailContent(
             recipe = recipe,
             isFollowingAuthor = isFollowingAuthor,
@@ -102,6 +88,7 @@ private fun RecipeDetailView(
             onFollowClick = onFollowClick
         )
 
+        // Gradient nền đen mờ
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -160,29 +147,45 @@ private fun RecipeDetailContent(
     onFollowClick: () -> Unit
 ) {
     LazyColumn(modifier = modifier) {
+        // 1. Ảnh bìa
         item { RecipeHeader(recipe) }
+
+        // 2. Thông tin chung
         item { RecipeInfoSection(recipe) }
+
+        // 3. Nguyên liệu
         item { RecipeIngredients(recipe.ingredients) }
+
+        // 4. Cách làm
         item { RecipeInstructions(recipe.instructions) }
 
-        // Nút Yêu Thích
+        // 5. Nút Yêu thích
         item {
             Button(
                 onClick = onFavoriteClick,
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .height(50.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Cinnabar500.copy(alpha = 0.1f),
-                    contentColor = Cinnabar500
+                    containerColor = if(recipe.isFavorite) Cinnabar500.copy(alpha = 0.1f) else Color(0xFFF5F5F5),
+                    contentColor = if(recipe.isFavorite) Cinnabar500 else Color.Gray
                 ),
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(12.dp),
+                elevation = ButtonDefaults.buttonElevation(0.dp)
             ) {
-                Icon(if(recipe.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder, null)
+                Icon(
+                    imageVector = if (recipe.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = null
+                )
                 Spacer(Modifier.width(8.dp))
-                Text(if(recipe.isFavorite) "Đã thêm vào yêu thích" else "Thêm vào yêu thích")
+                Text(if (recipe.isFavorite) "Đã thích" else "Yêu thích", fontWeight = FontWeight.Bold)
+                Spacer(Modifier.weight(1f))
+                Text(text = "${recipe.likeCount} lượt", fontSize = 14.sp, fontWeight = FontWeight.Normal)
             }
         }
 
-        // --- PHẦN TÁC GIẢ ĐÃ CẬP NHẬT LOGIC FOLLOW ---
+        // 6. Tác giả
         item {
             AuthorInfoSection(
                 author = recipe.author,
@@ -192,12 +195,76 @@ private fun RecipeDetailContent(
             )
         }
 
-        // ... (Giữ nguyên phần Comment và Related Recipes) ...
+        // 7. KHUNG BÌNH LUẬN (ĐÃ KHÔI PHỤC)
         item {
-            RelatedRecipesSection(recipes = recipe.relatedRecipes)
+            CommentSection()
+        }
+
+        // 8. CÁC MÓN TƯƠNG TỰ (ĐÃ KHÔI PHỤC)
+        item {
+            if (recipe.relatedRecipes.isNotEmpty()) {
+                RelatedRecipesSection(recipes = recipe.relatedRecipes)
+            } else {
+                // Nếu không có món tương tự (do DB ít món), ẩn hoặc hiện text
+                // Text("Chưa có món tương tự", modifier = Modifier.padding(16.dp), color = Color.Gray)
+            }
         }
 
         item { Spacer(modifier = Modifier.height(60.dp)) }
+    }
+}
+
+// ===================== CÁC COMPONENT CON =====================
+
+@Composable
+private fun RecipeHeader(recipe: Recipe) {
+    Image(
+        painter = rememberAsyncImagePainter(model = recipe.imageUrl ?: R.drawable.img_food1),
+        contentDescription = null,
+        modifier = Modifier.fillMaxWidth().height(300.dp),
+        contentScale = ContentScale.Crop
+    )
+}
+
+@Composable
+private fun RecipeInfoSection(recipe: Recipe) {
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text(recipe.title, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(8.dp))
+        if (recipe.description.isNotBlank()) {
+            Text(recipe.description, fontSize = 14.sp, color = Color.Gray)
+            Spacer(Modifier.height(8.dp))
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Schedule, null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(4.dp))
+            Text(recipe.time, color = Color.Gray)
+            Spacer(Modifier.width(16.dp))
+            Text("Độ khó: ${recipe.level}", color = Color.Gray, fontSize = 14.sp)
+        }
+    }
+}
+
+@Composable
+private fun RecipeIngredients(ingredients: List<String>) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Text("Nguyên Liệu", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(8.dp))
+        if (ingredients.isEmpty()) Text("Đang cập nhật...", color = Color.Gray)
+        else ingredients.forEach { Text("• $it", modifier = Modifier.padding(bottom = 4.dp)) }
+    }
+}
+
+@Composable
+private fun RecipeInstructions(steps: List<InstructionStep>) {
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text("Cách làm", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(8.dp))
+        if (steps.isEmpty()) Text("Đang cập nhật...", color = Color.Gray)
+        else steps.forEach { step ->
+            Text("Bước ${step.stepNumber}", color = Cinnabar500, fontWeight = FontWeight.Bold)
+            Text(step.description, modifier = Modifier.padding(bottom = 12.dp))
+        }
     }
 }
 
@@ -212,103 +279,76 @@ fun AuthorInfoSection(
     val isMe = currentUserId == author.id
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 24.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Lên sóng vào 01 tháng 9, 2025", fontSize = 12.sp, color = Color.Gray.copy(alpha = 0.5f))
-        Spacer(Modifier.height(16.dp))
-
         Image(
             painter = rememberAsyncImagePainter(model = author.avatarUrl ?: R.drawable.avatar1),
             contentDescription = null,
-            modifier = Modifier
-                .size(60.dp)
-                .clip(CircleShape)
-                .clickable { onAuthorClick(author.id) },
+            modifier = Modifier.size(60.dp).clip(CircleShape).clickable { onAuthorClick(author.id) },
             contentScale = ContentScale.Crop
         )
-
         Spacer(Modifier.height(8.dp))
         Text("Lên sóng bởi", fontSize = 12.sp, color = Cinnabar500.copy(alpha = 0.5f))
-
         Text(
             text = author.name,
             fontWeight = FontWeight.Bold,
             fontSize = 16.sp,
             modifier = Modifier.padding(vertical = 4.dp).clickable { onAuthorClick(author.id) }
         )
-
         Spacer(Modifier.height(12.dp))
-
-        // Logic hiển thị nút Follow:
-        // Nếu không phải là tôi thì mới hiện nút Follow
         if (!isMe) {
             Button(
                 onClick = onFollowClick,
                 colors = ButtonDefaults.buttonColors(
-                    // Nếu đang follow -> Màu xám, Ngược lại -> Màu đen
                     containerColor = if (isFollowing) Color.LightGray else Color.Black,
                     contentColor = if (isFollowing) Color.Black else Color.White
                 ),
                 shape = RoundedCornerShape(20.dp),
                 modifier = Modifier.width(150.dp)
             ) {
-                Text(
-                    text = if (isFollowing) "Đang theo dõi" else "Follow",
-                    fontWeight = FontWeight.Bold
-                )
+                Text(if (isFollowing) "Đang theo dõi" else "Follow", fontWeight = FontWeight.Bold)
             }
         }
     }
 }
 
-// ... Các component khác (RecipeHeader, RecipeInfoSection...) giữ nguyên ...
+// --- KHUNG BÌNH LUẬN (UI Only - Chưa có logic Backend) ---
 @Composable
-private fun RecipeHeader(recipe: Recipe) {
-    Image(
-        painter = rememberAsyncImagePainter(model = recipe.imageUrl ?: R.drawable.ic_launcher_background),
-        contentDescription = null,
-        modifier = Modifier.fillMaxWidth().height(300.dp),
-        contentScale = ContentScale.Crop
-    )
-}
-
-@Composable
-private fun RecipeInfoSection(recipe: Recipe) {
+fun CommentSection() {
     Column(modifier = Modifier.padding(16.dp)) {
-        Text(recipe.title, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
+        Text("Bình luận", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(16.dp))
+
+        // Input bình luận
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Schedule, null, tint = Color.Gray, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(4.dp))
-            Text(recipe.time, color = Color.Gray)
+            TextField(
+                value = "",
+                onValueChange = {},
+                placeholder = { Text("Viết bình luận...", fontSize = 14.sp) },
+                modifier = Modifier.weight(1f),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color(0xFFF5F5F5),
+                    unfocusedContainerColor = Color(0xFFF5F5F5),
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent
+                ),
+                shape = RoundedCornerShape(12.dp)
+            )
+            Spacer(Modifier.width(8.dp))
+            IconButton(onClick = {}) {
+                Icon(Icons.Outlined.Send, contentDescription = "Send", tint = Cinnabar500)
+            }
         }
+
+        Spacer(Modifier.height(16.dp))
+
+        // Danh sách bình luận giả lập
+        Text("Chưa có bình luận nào. Hãy là người đầu tiên!", color = Color.Gray, fontSize = 14.sp)
     }
 }
 
-@Composable
-private fun RecipeIngredients(ingredients: List<String>) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-        Text("Nguyên Liệu", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
-        ingredients.forEach { Text("• $it", modifier = Modifier.padding(bottom = 4.dp)) }
-    }
-}
-
-@Composable
-private fun RecipeInstructions(steps: List<InstructionStep>) {
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text("Cách làm", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
-        steps.forEach { step ->
-            Text("Bước ${step.stepNumber}", color = Cinnabar500, fontWeight = FontWeight.Bold)
-            Text(step.description, modifier = Modifier.padding(bottom = 12.dp))
-        }
-    }
-}
-
+// --- MÓN TƯƠNG TỰ ---
 @Composable
 fun RelatedRecipesSection(recipes: List<RecipePreview>) {
     Column(modifier = Modifier.padding(top = 24.dp)) {
@@ -325,10 +365,7 @@ fun RelatedRecipesSection(recipes: List<RecipePreview>) {
         ) {
             items(recipes) { item ->
                 Card(
-                    modifier = Modifier
-                        .width(160.dp)
-                        .height(200.dp)
-                        .clickable { /* Navigate to detail */ },
+                    modifier = Modifier.width(160.dp).height(200.dp).clickable { /* Navigate */ },
                     shape = RoundedCornerShape(16.dp),
                     elevation = CardDefaults.cardElevation(4.dp)
                 ) {
@@ -340,19 +377,13 @@ fun RelatedRecipesSection(recipes: List<RecipePreview>) {
                             modifier = Modifier.fillMaxSize()
                         )
                         Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(80.dp)
-                                .align(Alignment.BottomCenter)
-                                .background(Brush.verticalGradient(colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))))
+                            modifier = Modifier.fillMaxWidth().height(80.dp).align(Alignment.BottomCenter).background(Brush.verticalGradient(colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))))
                         )
                         Text(
                             text = item.title,
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier
-                                .align(Alignment.BottomStart)
-                                .padding(12.dp),
+                            modifier = Modifier.align(Alignment.BottomStart).padding(12.dp),
                             maxLines = 2
                         )
                     }

@@ -52,7 +52,7 @@ interface RecipeDao {
     fun getFavoriteRecipes(): Flow<List<RecipeEntity>>
 
     @Query("UPDATE recipes SET is_favorite = :isFavorite WHERE id = :id")
-    suspend fun updateFavoriteStatus(id: String, isFavorite: Boolean)
+    suspend fun updateFavoriteStatus(id: String, isFavorite: Boolean): Int
 
     // --- SỬA LỖI: lastViewedTime -> last_viewed_time ---
     @Query("SELECT * FROM recipes WHERE last_viewed_time IS NOT NULL ORDER BY last_viewed_time DESC")

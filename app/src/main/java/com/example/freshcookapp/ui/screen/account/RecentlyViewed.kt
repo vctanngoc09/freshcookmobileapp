@@ -20,7 +20,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -34,7 +33,7 @@ import com.example.freshcookapp.ui.component.SearchBar
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.example.freshcookapp.ui.theme.WorkSans
 
-// 1. Model dữ liệu UI (Dùng để hiển thị)
+// 1. Model dữ liệu UI
 data class ViewedRecipeModel(
     val id: String,
     val title: String,
@@ -47,33 +46,25 @@ data class ViewedRecipeModel(
 @Composable
 fun RecentlyViewedScreen(
     onBackClick: () -> Unit = {},
+    // --- THÊM DÒNG NÀY ĐỂ NHẬN SỰ KIỆN TỪ NAVIGATION ---
+    onRecipeClick: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    // 2. KẾT NỐI VIEWMODEL VÀ DỮ LIỆU THẬT
     val context = LocalContext.current
     val app = context.applicationContext as FreshCookAppRoom
     val db = remember { AppDatabase.getDatabase(app) }
     val repo = remember { RecipeRepository(db) }
-
-    // Lưu ý: Cần đảm bảo bạn đã tạo file RecentlyViewedViewModel.kt như hướng dẫn trước
     val viewModel = remember { RecentlyViewedViewModel(repo) }
 
-    // Lắng nghe dữ liệu từ Database
     val viewedList by viewModel.recentlyViewedList.collectAsState()
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = Color.White,
-
-        // 3. FIX LỖI GIẬT LAYOUT (MANUAL MODE)
-        // Tắt tính năng tự động tính toán padding của hệ thống
         contentWindowInsets = WindowInsets(0.dp),
-
         topBar = {
             TopAppBar(
-                // Tự tay cố định vị trí TopBar dưới thanh trạng thái
                 modifier = Modifier.statusBarsPadding(),
-
                 title = {
                     Text(
                         text = "Xem gần đây",
@@ -98,20 +89,15 @@ fun RecentlyViewedScreen(
             )
         }
     ) { innerPadding ->
-
-        // 4. Logic hiển thị
         if (viewedList.isEmpty()) {
-            // Nếu chưa có lịch sử -> Hiện màn hình trống
             EmptyHistoryState(modifier = Modifier.padding(innerPadding))
         } else {
-            // Nếu có dữ liệu -> Hiện danh sách
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
                     .background(Color.White)
             ) {
-                // Thanh tìm kiếm (Giữ nguyên logic giao diện, chưa xử lý lọc)
                 SearchBar(
                     value = "",
                     onValueChange = {},
@@ -127,8 +113,11 @@ fun RecentlyViewedScreen(
                         RecentlyViewedItem(
                             item = item,
                             onRemoveClick = {
-                                // Gọi hàm xóa trong ViewModel khi bấm nút X
                                 viewModel.removeFromHistory(item.id)
+                            },
+                            // --- TRUYỀN SỰ KIỆN CLICK VÀO ITEM ---
+                            onClick = {
+                                onRecipeClick(item.id)
                             }
                         )
                     }
@@ -138,7 +127,6 @@ fun RecentlyViewedScreen(
     }
 }
 
-// --- Giao diện khi danh sách trống ---
 @Composable
 fun EmptyHistoryState(modifier: Modifier = Modifier) {
     Column(
@@ -169,25 +157,23 @@ fun EmptyHistoryState(modifier: Modifier = Modifier) {
     }
 }
 
-// --- Item hiển thị món ăn trong lịch sử ---
 @Composable
 fun RecentlyViewedItem(
     item: ViewedRecipeModel,
-    onRemoveClick: () -> Unit
+    onRemoveClick: () -> Unit,
+    // --- THÊM THAM SỐ CLICK ---
+    onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(80.dp)
-            .clickable {
-                // Có thể thêm logic điều hướng vào chi tiết tại đây nếu muốn
-            },
+            .clickable { onClick() }, // --- GỌI HÀM CLICK ---
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Ảnh món ăn (Dùng Coil load từ URL)
         Image(
             painter = rememberAsyncImagePainter(
-                model = item.imageUrl ?: R.drawable.ic_launcher_background // Ảnh placeholder nếu null
+                model = item.imageUrl ?: R.drawable.ic_launcher_background
             ),
             contentDescription = null,
             modifier = Modifier
@@ -199,10 +185,7 @@ fun RecentlyViewedItem(
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        // Nội dung chữ
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = item.title,
                 fontSize = 16.sp,
@@ -239,7 +222,6 @@ fun RecentlyViewedItem(
             }
         }
 
-        // Nút xóa
         IconButton(onClick = onRemoveClick) {
             Icon(
                 imageVector = Icons.Default.Close,

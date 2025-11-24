@@ -59,7 +59,7 @@ fun EditProfileScreen(
     var expanded by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
-    var isNewUser by remember { mutableStateOf(true) } // Để biết đây là người dùng mới hay cũ
+    var isNewUser by remember { mutableStateOf(true) }
 
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
@@ -76,14 +76,14 @@ fun EditProfileScreen(
             firestore.collection("users").document(currentUser.uid).get()
                 .addOnSuccessListener { document ->
                     if (document != null && document.exists()) {
-                        isNewUser = false // Người dùng đã có hồ sơ
+                        isNewUser = false
                         fullName = document.getString("fullName") ?: currentUser.displayName ?: ""
                         username = document.getString("username")?.takeIf { it.isNotBlank() } ?: defaultUsername
                         dateOfBirth = document.getString("dateOfBirth") ?: ""
                         gender = document.getString("gender") ?: "Giới tính"
                         photoUrl = document.getString("photoUrl")
                     } else {
-                        isNewUser = true // Người dùng mới, chưa có hồ sơ
+                        isNewUser = true
                         fullName = currentUser.displayName ?: ""
                         username = defaultUsername
                         photoUrl = currentUser.photoUrl?.toString()
@@ -207,15 +207,25 @@ fun EditProfileScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Ngày sinh", fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 8.dp))
 
-                        // THAY ĐỔI Ở ĐÂY: Dùng Box để bọc và xử lý click
-                        Box(modifier = Modifier.fillMaxWidth().height(56.dp).clip(MaterialTheme.shapes.medium).clickable { showDatePicker = true }) {
+                        // --- SỬA LỖI CLICK TRÊN MÁY THẬT ---
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp)
+                                .clip(MaterialTheme.shapes.medium)
+                                .clickable { showDatePicker = true } // Click hoạt động vì enabled=false bên dưới
+                        ) {
                             OutlinedTextField(
                                 value = dateOfBirth,
-                                onValueChange = { dateOfBirth = it },
-                                modifier = Modifier.fillMaxSize(), // Dùng fillMaxSize để lấp đầy Box
+                                onValueChange = { },
+                                modifier = Modifier.fillMaxSize(),
                                 shape = MaterialTheme.shapes.medium,
-                                colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = GrayLight, focusedContainerColor = GrayLight, unfocusedBorderColor = Color.Transparent, focusedBorderColor = Cinnabar500),
-                                readOnly = true // Giữ lại readOnly
+                                enabled = false, // QUAN TRỌNG: Tắt hẳn tương tác để sự kiện click lọt ra ngoài Box
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    disabledContainerColor = GrayLight, // Màu nền khi disable
+                                    disabledTextColor = Color.Black,    // Màu chữ vẫn đen đậm
+                                    disabledBorderColor = Color.Transparent // Border trong suốt
+                                )
                             )
                         }
                     }
@@ -224,20 +234,30 @@ fun EditProfileScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Giới tính", fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 8.dp))
                         Box {
-                            // THAY ĐỔI Ở ĐÂY: Dùng Box bọc quanh OutlinedTextField và thêm clickable
-                            Box(modifier = Modifier.fillMaxWidth().height(56.dp).clip(MaterialTheme.shapes.medium).clickable { expanded = true }) {
+                            // --- SỬA LỖI CLICK TRÊN MÁY THẬT ---
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp)
+                                    .clip(MaterialTheme.shapes.medium)
+                                    .clickable { expanded = true }
+                            ) {
                                 OutlinedTextField(
                                     value = gender,
                                     onValueChange = {},
                                     modifier = Modifier.fillMaxSize(),
-                                    readOnly = true,
+                                    enabled = false, // QUAN TRỌNG: Tắt tương tác
                                     shape = MaterialTheme.shapes.medium,
-                                    trailingIcon = { Icon(Icons.Default.ArrowDropDown, null) },
-                                    colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = GrayLight, focusedContainerColor = GrayLight, unfocusedBorderColor = Color.Transparent, focusedBorderColor = Cinnabar500)
+                                    trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, tint = Color.Black) },
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        disabledContainerColor = GrayLight,
+                                        disabledTextColor = Color.Black,
+                                        disabledBorderColor = Color.Transparent,
+                                        disabledTrailingIconColor = Color.Black // Icon vẫn đen
+                                    )
                                 )
                             }
 
-                            // Dropdown Menu đặt bên ngoài Box click nhưng vẫn trong Box tổng
                             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                                 DropdownMenuItem(text = { Text("Nam") }, onClick = { gender = "Nam"; expanded = false })
                                 DropdownMenuItem(text = { Text("Nữ") }, onClick = { gender = "Nữ"; expanded = false })
@@ -268,11 +288,11 @@ fun EditProfileScreen(
                             if (isNewUser) {
                                 userProfile["followerCount"] = 0
                                 userProfile["followingCount"] = 0
-                                userProfile["dishCount"] = 0 // Khởi tạo số lượng món
+                                userProfile["dishCount"] = 0
                             }
 
                             firestore.collection("users").document(currentUser.uid)
-                                .set(userProfile, SetOptions.merge()) // Dùng merge để không ghi đè giá trị cũ
+                                .set(userProfile, SetOptions.merge())
                                 .addOnSuccessListener {
                                     isLoading = false
                                     Toast.makeText(context, "Đã lưu hồ sơ!", Toast.LENGTH_SHORT).show()

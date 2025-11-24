@@ -7,11 +7,12 @@ data class Recipe(
     val imageUrl: String? = null,
     val time: String,
     val level: String,
-
-    // --- THÊM DÒNG NÀY ĐỂ KHỚP VỚI VIEWMODEL ---
     val description: String = "",
 
-    val isFavorite: Boolean = false,
+    // --- QUAN TRỌNG: TRẠNG THÁI VÀ SỐ LƯỢNG ---
+    val isFavorite: Boolean = false, // Tôi có thích không? (Để tô đỏ tim)
+    val likeCount: Int = 0,          // Có bao nhiêu người thích? (Để hiện số)
+
     val author: Author,
     val hashtags: List<String> = listOf(),
     val ingredients: List<String> = listOf(),

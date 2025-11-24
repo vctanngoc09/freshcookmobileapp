@@ -27,8 +27,8 @@ class RecipeRepository(private val db: AppDatabase) {
     }
 
     // 3. Cập nhật trạng thái yêu thích
-    suspend fun toggleFavorite(recipeId: String, isFavorite: Boolean) {
-        db.recipeDao().updateFavoriteStatus(recipeId, isFavorite)
+    suspend fun toggleFavorite(recipeId: String, isFavorite: Boolean): Int {
+        return db.recipeDao().updateFavoriteStatus(recipeId, isFavorite)
     }
 
     // Gọi hàm này khi vào xem chi tiết (Lịch sử)
@@ -39,6 +39,10 @@ class RecipeRepository(private val db: AppDatabase) {
     // Gọi hàm này ở trang Xem gần đây
     fun getRecentlyViewed(): Flow<List<RecipeEntity>> {
         return db.recipeDao().getRecentlyViewedRecipes()
+    }
+
+    suspend fun insertRecipe(recipe: RecipeEntity) {
+        db.recipeDao().insert(recipe)
     }
 
     // Xóa 1 món khỏi lịch sử

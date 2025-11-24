@@ -36,7 +36,7 @@ data class UserInfo(
 @Composable
 fun FollowScreen(
     userId: String,
-    type: String,
+    type: String, // "followers" hoặc "following"
     onBackClick: () -> Unit,
     onProfileClick: (String) -> Unit = {}
 ) {
@@ -45,46 +45,66 @@ fun FollowScreen(
     var isLoading by remember { mutableStateOf(true) }
     val title = if (type == "followers") "Followers" else "Following"
 
-    LaunchedEffect(userId, type) {
-        isLoading = true
+    DisposableEffect(userId, type) {
         val collectionPath = "users/$userId/$type"
-        firestore.collection(collectionPath).get()
-            .addOnSuccessListener { snapshot ->
-                if (snapshot.isEmpty) {
+
+        val listener = firestore.collection(collectionPath)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    isLoading = false
+                    return@addSnapshotListener
+                }
+
+                if (snapshot == null || snapshot.isEmpty) {
                     userList = emptyList()
                     isLoading = false
-                    return@addOnSuccessListener
+                    return@addSnapshotListener
                 }
+
                 val userIds = snapshot.documents.map { it.id }
-                if (userIds.isEmpty()) {
+
+                if (userIds.isNotEmpty()) {
+                    val chunks = userIds.chunked(10)
+                    val tempUserList = mutableListOf<UserInfo>()
+                    var loadedChunks = 0
+
+                    chunks.forEach { chunk ->
+                        firestore.collection("users")
+                            .whereIn("uid", chunk)
+                            .get()
+                            .addOnSuccessListener { userDocs ->
+                                val users = userDocs.mapNotNull { doc ->
+                                    doc.toObject<UserInfo>()?.copy(uid = doc.id)
+                                }
+                                tempUserList.addAll(users)
+                                loadedChunks++
+
+                                if (loadedChunks == chunks.size) {
+                                    userList = tempUserList
+                                    isLoading = false
+                                }
+                            }
+                            .addOnFailureListener {
+                                isLoading = false
+                            }
+                    }
+                } else {
                     userList = emptyList()
                     isLoading = false
-                    return@addOnSuccessListener
                 }
-                firestore.collection("users").whereIn("uid", userIds).get()
-                    .addOnSuccessListener { userDocs ->
-                        userList = userDocs.mapNotNull { doc ->
-                            doc.toObject<UserInfo>()?.copy(uid = doc.id)
-                        }
-                        isLoading = false
-                    }
-                    .addOnFailureListener { isLoading = false }
             }
-            .addOnFailureListener { isLoading = false }
+
+        onDispose {
+            listener.remove()
+        }
     }
 
     Scaffold(
         containerColor = Color.White,
-
-        // 1. TẮT TỰ ĐỘNG TÍNH TOÁN CỦA SCAFFOLD
         contentWindowInsets = WindowInsets(0.dp),
-
         topBar = {
             TopAppBar(
-                // 2. TỰ TAY THÊM PADDING CHO TOPBAR
-                // Cách này "đóng băng" vị trí TopBar, không cho nó nhảy lung tung
                 modifier = Modifier.statusBarsPadding(),
-
                 title = {
                     Text(
                         title,
@@ -116,7 +136,11 @@ fun FollowScreen(
             if (isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else if (userList.isEmpty()) {
-                Text("Không có ai trong danh sách này", modifier = Modifier.align(Alignment.Center))
+                Text(
+                    text = "Chưa có ai trong danh sách này",
+                    modifier = Modifier.align(Alignment.Center),
+                    color = Color.Gray
+                )
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -130,7 +154,7 @@ fun FollowScreen(
         }
     }
 }
-// ... UserItem component (giữ nguyên) ...
+
 @Composable
 fun UserItem(user: UserInfo, onProfileClick: (String) -> Unit) {
     Row(

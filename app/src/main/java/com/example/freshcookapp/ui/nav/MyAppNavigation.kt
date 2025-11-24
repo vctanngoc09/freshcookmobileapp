@@ -6,6 +6,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
+// --- CÁC IMPORT PHẢI ĐẦY ĐỦ NHƯ DƯỚI ---
 import com.example.freshcookapp.ui.screen.auth.ForgotPassword
 import com.example.freshcookapp.ui.screen.auth.Login
 import com.example.freshcookapp.ui.screen.auth.Register
@@ -17,9 +18,7 @@ import com.example.freshcookapp.ui.screen.account.NotificationScreen
 import com.example.freshcookapp.ui.screen.account.EditProfileScreen
 import com.example.freshcookapp.ui.screen.account.MyDishes
 import com.example.freshcookapp.ui.screen.account.RecentlyViewedScreen
-import com.example.freshcookapp.ui.screen.account.SettingsScreen
-import com.example.freshcookapp.ui.screen.account.FollowScreen
-// Import màn hình mới
+import com.example.freshcookapp.ui.screen.account.FollowScreen // <-- Đã thêm Import FollowScreen
 import com.example.freshcookapp.ui.screen.account.AuthorProfileScreen
 import com.example.freshcookapp.ui.screen.detail.RecipeDetail
 import com.example.freshcookapp.ui.screen.favorites.Favorite
@@ -35,13 +34,24 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
         startDestination = startDestination,
         modifier = modifier
     ) {
-        composable<Destination.Splash> { Splash(onGetStartedClicked = {navController.navigate(Destination.Welcome) {
-            popUpTo(Destination.Splash) { inclusive = true }
-        }}) }
+        composable<Destination.Splash> {
+            Splash(onGetStartedClicked = {
+                navController.navigate(Destination.Welcome) {
+                    popUpTo(Destination.Splash) { inclusive = true }
+                }
+            })
+        }
 
-        composable<Destination.Home> { Home(onFilterClick = {navController.navigate(Destination.Filter)}, onEditProfileClick = { navController.navigate(Destination.EditProfile) }) }
+        composable<Destination.Home> {
+            Home(
+                onFilterClick = { navController.navigate(Destination.Filter) },
+                onEditProfileClick = { navController.navigate(Destination.EditProfile) }
+            )
+        }
 
-        composable<Destination.New> { NewCook(onBackClick = {navController.navigateUp()} ) }
+        composable<Destination.New> {
+            NewCook(onBackClick = { navController.navigateUp() } )
+        }
 
         composable<Destination.Favorites> {
             Favorite(
@@ -70,17 +80,24 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
                 onMyDishesClick = { navController.navigate(Destination.MyDishes) },
                 onRecentlyViewedClick = { navController.navigate(Destination.RecentlyViewed) },
                 onEditProfileClick = { navController.navigate(Destination.EditProfile) },
-                onMenuClick = { navController.navigate(Destination.Settings) },
+
+                // onMenuClick để trống cũng được vì giờ nó tự mở Drawer
+                onMenuClick = { },
+
                 onFollowerClick = { userId -> navController.navigate(Destination.Follow(userId = userId, type = "followers")) },
-                onFollowingClick = { userId -> navController.navigate(Destination.Follow(userId = userId, type = "following")) }
+                onFollowingClick = { userId -> navController.navigate(Destination.Follow(userId = userId, type = "following")) },
+
+                // THÊM DÒNG NÀY ĐỂ XỬ LÝ LOGOUT TỪ DRAWER
+                onLogoutClick = {
+                    navController.navigate(Destination.Welcome) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
             )
         }
 
-        // --- ROUTE ĐÃ SỬA: XEM PROFILE NGƯỜI KHÁC ---
         composable("user_profile/{userId}") { backStackEntry ->
             val userId = backStackEntry.arguments?.getString("userId") ?: ""
-
-            // Gọi màn hình AuthorProfileScreen (đã đổi tên trong file ProfileView.kt)
             AuthorProfileScreen(
                 userId = userId,
                 onBackClick = { navController.navigateUp() }
@@ -99,7 +116,6 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
 
         composable<Destination.SearchResult> { backStackEntry ->
             val args = backStackEntry.toRoute<Destination.SearchResult>()
-
             SearchResultScreen(
                 keyword = args.keyword,
                 onBackClick = { navController.navigateUp() },
@@ -110,11 +126,13 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
         }
 
         composable<Destination.Filter> {
-            Filter(onBackClick = {navController.navigateUp()}, onApply = {navController.navigate(
-                Destination.Home)} )}
+            Filter(
+                onBackClick = { navController.navigateUp() },
+                onApply = { navController.navigate(Destination.Home) }
+            )
+        }
 
-
-        composable<Destination.Follow> {backStackEntry ->
+        composable<Destination.Follow> { backStackEntry ->
             val args = backStackEntry.toRoute<Destination.Follow>()
             FollowScreen(
                 userId = args.userId,
@@ -123,19 +141,6 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
             )
         }
 
-        composable<Destination.Settings> {
-            SettingsScreen(
-                onBackClick = { navController.navigateUp() },
-                onEditProfileClick = { navController.navigate(Destination.EditProfile) },
-                onRecentlyViewedClick = { navController.navigate(Destination.RecentlyViewed) },
-                onMyDishesClick = { navController.navigate(Destination.MyDishes) },
-                onLogoutClick = {
-                    navController.navigate(Destination.Welcome) {
-                        popUpTo(0) { inclusive = true }
-                    }
-                }
-            )
-        }
 
         composable<Destination.Notification> {
             NotificationScreen(
@@ -150,15 +155,26 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
             )
         }
 
+        // --- MÓN CỦA TÔI ---
         composable<Destination.MyDishes> {
             MyDishes(
-                onBackClick = { navController.navigateUp() }
+                onBackClick = { navController.navigateUp() },
+                onAddNewClick = { navController.navigate(Destination.New) },
+                onRecipeClick = { recipeId ->
+                    navController.navigate(Destination.RecipeDetail(recipeId = recipeId))
+                }
             )
         }
 
+        // --- XEM GẦN ĐÂY ---
         composable<Destination.RecentlyViewed> {
             RecentlyViewedScreen(
-                onBackClick = { navController.navigateUp() }
+                onBackClick = { navController.navigateUp() },
+                // Nếu trang RecentlyViewedScreen của bạn chưa có tham số này thì tạm thời xóa dòng này đi
+                // Nhưng tốt nhất là cập nhật RecentlyViewedScreen như tôi đã gửi ở tin nhắn trước
+                onRecipeClick = { recipeId ->
+                    navController.navigate(Destination.RecipeDetail(recipeId = recipeId))
+                }
             )
         }
 

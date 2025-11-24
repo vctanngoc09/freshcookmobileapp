@@ -8,6 +8,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -21,62 +22,56 @@ import androidx.compose.ui.unit.sp
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.example.freshcookapp.ui.theme.WorkSans
 
-@OptIn(ExperimentalMaterial3Api::class)
+// Đổi tên hàm thành Content để dễ hiểu là nội dung bên trong Drawer
 @Composable
-fun SettingsScreen(
-    onBackClick: () -> Unit = {},
+fun SettingsDrawerContent(
+    onCloseClick: () -> Unit = {}, // Nút đóng menu
     onEditProfileClick: () -> Unit = {},
     onRecentlyViewedClick: () -> Unit = {},
     onMyDishesClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    // 1. Dùng Scaffold
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = Color.White,
-        topBar = {
-            // 2. Dùng TopAppBar chuẩn
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Quay lại",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = WorkSans,
-                        color = Cinnabar500
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Cinnabar500
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
-                )
-            )
-        }
-    ) { innerPadding -> // 3. Lấy innerPadding
-        // 4. Áp dụng innerPadding cho Column chứa nội dung
+    // Sử dụng ModalDrawerSheet để tạo giao diện chuẩn Hamburger
+    ModalDrawerSheet(
+        modifier = modifier.fillMaxHeight().width(300.dp), // Chiếm chiều rộng 300dp (hoặc chỉnh fillMaxWidth(0.8f))
+        drawerContainerColor = Color.White
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .background(Color.White)
+                .padding(16.dp)
         ) {
+            // HEADER CỦA MENU
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Cài đặt",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = WorkSans,
+                    color = Cinnabar500
+                )
+
+                // Nút đóng menu (Thay cho nút Back)
+                IconButton(onClick = onCloseClick) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close",
+                        tint = Cinnabar500
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(40.dp))
 
-            // Menu Items (giữ nguyên)
+            // DANH SÁCH MENU
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 SettingsMenuItem(
                     icon = Icons.Default.Person,
@@ -99,17 +94,17 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Logout Button (giữ nguyên)
+            // NÚT ĐĂNG XUẤT
             Button(
                 onClick = onLogoutClick,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 40.dp)
-                    .height(56.dp),
+                    .padding(vertical = 24.dp)
+                    .height(50.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Cinnabar500
                 ),
-                shape = MaterialTheme.shapes.large
+                shape = MaterialTheme.shapes.medium
             ) {
                 Text(
                     text = "Đăng xuất",
@@ -123,8 +118,6 @@ fun SettingsScreen(
     }
 }
 
-// ... (Hàm SettingsMenuItem giữ nguyên) ...
-
 @Composable
 fun SettingsMenuItem(
     icon: ImageVector,
@@ -136,13 +129,13 @@ fun SettingsMenuItem(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
+            .padding(vertical = 12.dp), // Tăng padding chút cho dễ bấm
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = icon,
             contentDescription = text,
-            tint = Color.Black,
+            tint = Color.Gray,
             modifier = Modifier.size(24.dp)
         )
 
@@ -160,8 +153,8 @@ fun SettingsMenuItem(
         Icon(
             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = "Arrow",
-            tint = Color.Black,
-            modifier = Modifier.size(24.dp)
+            tint = Color.Gray,
+            modifier = Modifier.size(20.dp)
         )
     }
 }
