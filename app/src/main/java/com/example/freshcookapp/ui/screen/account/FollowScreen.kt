@@ -25,7 +25,6 @@ import com.example.freshcookapp.ui.theme.WorkSans
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.toObject
 
-// Data class to store simplified user information
 data class UserInfo(
     val uid: String = "",
     val fullName: String = "",
@@ -37,7 +36,7 @@ data class UserInfo(
 @Composable
 fun FollowScreen(
     userId: String,
-    type: String, // "followers" or "following"
+    type: String,
     onBackClick: () -> Unit,
     onProfileClick: (String) -> Unit = {}
 ) {
@@ -49,7 +48,6 @@ fun FollowScreen(
     LaunchedEffect(userId, type) {
         isLoading = true
         val collectionPath = "users/$userId/$type"
-
         firestore.collection(collectionPath).get()
             .addOnSuccessListener { snapshot ->
                 if (snapshot.isEmpty) {
@@ -57,19 +55,12 @@ fun FollowScreen(
                     isLoading = false
                     return@addOnSuccessListener
                 }
-
-                // Lấy danh sách user IDs
                 val userIds = snapshot.documents.map { it.id }
-
-                // Cần xử lý trường hợp userIds rỗng sau khi map
                 if (userIds.isEmpty()) {
                     userList = emptyList()
                     isLoading = false
                     return@addOnSuccessListener
                 }
-
-                // Firestore "whereIn" chỉ hỗ trợ tối đa 10 item mỗi lần
-                // (Tạm thời code này xử lý < 10)
                 firestore.collection("users").whereIn("uid", userIds).get()
                     .addOnSuccessListener { userDocs ->
                         userList = userDocs.mapNotNull { doc ->
@@ -77,22 +68,23 @@ fun FollowScreen(
                         }
                         isLoading = false
                     }
-                    .addOnFailureListener {
-                        isLoading = false
-                    }
+                    .addOnFailureListener { isLoading = false }
             }
-            .addOnFailureListener {
-                isLoading = false
-            }
+            .addOnFailureListener { isLoading = false }
     }
 
     Scaffold(
         containerColor = Color.White,
 
-        // ▼▼▼ TÔI ĐÃ XÓA DÒNG "windowInsets = WindowInsets(0.dp)," GÂY LỖI ▼▼▼
+        // 1. TẮT TỰ ĐỘNG TÍNH TOÁN CỦA SCAFFOLD
+        contentWindowInsets = WindowInsets(0.dp),
 
         topBar = {
             TopAppBar(
+                // 2. TỰ TAY THÊM PADDING CHO TOPBAR
+                // Cách này "đóng băng" vị trí TopBar, không cho nó nhảy lung tung
+                modifier = Modifier.statusBarsPadding(),
+
                 title = {
                     Text(
                         title,
@@ -124,12 +116,11 @@ fun FollowScreen(
             if (isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else if (userList.isEmpty()) {
-                // Chữ "Không có ai..." vẫn ở giữa
                 Text("Không có ai trong danh sách này", modifier = Modifier.align(Alignment.Center))
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(vertical = 2.dp)
+                    contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
                     items(userList) { user ->
                         UserItem(user = user, onProfileClick = onProfileClick)
@@ -139,7 +130,7 @@ fun FollowScreen(
         }
     }
 }
-
+// ... UserItem component (giữ nguyên) ...
 @Composable
 fun UserItem(user: UserInfo, onProfileClick: (String) -> Unit) {
     Row(

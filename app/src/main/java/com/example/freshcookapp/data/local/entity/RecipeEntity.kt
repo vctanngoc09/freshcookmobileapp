@@ -40,5 +40,11 @@ data class RecipeEntity(
     val categoryId: String = "",
 
     @ColumnInfo(name = "created_at")
-    val createdAt: Long = 0L
+    val createdAt: Long = 0L,
+
+    @ColumnInfo(defaultValue = "0") // Mặc định là 0 (False - chưa yêu thích)
+    val isFavorite: Boolean = false,
+
+    @ColumnInfo(defaultValue = "NULL")
+    val lastViewedTime: Long? = null
 )

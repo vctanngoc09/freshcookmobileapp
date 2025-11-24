@@ -4,8 +4,10 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -13,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -88,21 +91,32 @@ fun FreshCookApp(auth: FirebaseAuth, googleSignInClient: GoogleSignInClient) {
 
     Scaffold(
         containerColor = White,
+        // 1. TẮT TỰ ĐỘNG CĂN CHỈNH (QUAN TRỌNG)
+        contentWindowInsets = WindowInsets(0.dp),
+
         bottomBar = {
             if (!hideBottomBar) {
                 MyBottomBar(navController, currentDestination)
             }
         }
     ) { innerPadding ->
-        val surfaceModifier = if (hideBottomBar) {
+
+        val modifier = if (hideBottomBar) {
+            // Nếu ẩn BottomBar (như trang Follow):
+            // Cho phép tràn toàn màn hình, trang Follow sẽ tự lo phần tai thỏ
             Modifier.fillMaxSize()
         } else {
+            // Nếu hiện BottomBar (như trang Home):
+            // Tự tay thêm padding cho BottomBar (innerPadding)
+            // VÀ tự tay thêm padding cho StatusBar (.statusBarsPadding) -> Khắc phục lỗi che chữ
             Modifier
-                .padding(innerPadding)
                 .fillMaxSize()
+                .padding(innerPadding)
+                .statusBarsPadding()
         }
+
         Surface(
-            modifier = surfaceModifier,
+            modifier = modifier,
             color = White
         ) {
             MyAppNavgation(

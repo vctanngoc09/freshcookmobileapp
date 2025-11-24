@@ -9,11 +9,45 @@ import java.util.UUID
 
 class RecipeRepository(private val db: AppDatabase) {
 
+    // --- CÁC HÀM LẤY DATA TRANG HOME (GIỮ NGUYÊN) ---
     fun getTrendingRecipes() = db.recipeDao().getTrendingRecipes()
     fun getRecommendedRecipes() = db.recipeDao().getRecommendedRecipes()
     fun getNewDishes() = db.recipeDao().getNewDishes()
 
-    // Hàm saveRecipe này dùng cho tạo món Offline (nếu cần)
+    // --- CÁC HÀM MỚI THÊM (CHO FAVORITE & DETAIL) ---
+
+    // 1. Lấy chi tiết một món ăn bằng ID (Dùng cho trang Detail)
+    suspend fun getRecipeById(id: String): RecipeEntity? {
+        return db.recipeDao().getRecipeById(id)
+    }
+
+    // 2. Lấy danh sách các món đã thả tim (Dùng cho trang Favorite)
+    fun getFavoriteRecipes(): Flow<List<RecipeEntity>> {
+        return db.recipeDao().getFavoriteRecipes()
+    }
+
+    // 3. Cập nhật trạng thái yêu thích (Dùng khi bấm nút Tim)
+    suspend fun toggleFavorite(recipeId: String, isFavorite: Boolean) {
+        db.recipeDao().updateFavoriteStatus(recipeId, isFavorite)
+    }
+
+
+    // Gọi hàm này khi vào xem chi tiết
+    suspend fun addToHistory(recipeId: String) {
+        db.recipeDao().updateLastViewed(recipeId, System.currentTimeMillis())
+    }
+
+    // Gọi hàm này ở trang Xem gần đây
+    fun getRecentlyViewed(): Flow<List<RecipeEntity>> {
+        return db.recipeDao().getRecentlyViewedRecipes()
+    }
+
+    // Xóa 1 món khỏi lịch sử
+    suspend fun removeFromHistory(recipeId: String) {
+        db.recipeDao().removeFromHistory(recipeId)
+    }
+
+    // --- HÀM TẠO MÓN (GIỮ NGUYÊN) ---
     suspend fun saveRecipe(
         name: String,
         description: String,

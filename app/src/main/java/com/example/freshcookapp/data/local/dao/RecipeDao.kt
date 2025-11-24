@@ -50,4 +50,25 @@ interface RecipeDao {
         ORDER BY name
     """)
     fun searchRecipes(keyword: String): Flow<List<RecipeEntity>>
+
+    @Query("SELECT * FROM recipes WHERE id = :id")
+    suspend fun getRecipeById(id: String): RecipeEntity?
+
+    @Query("SELECT * FROM recipes WHERE isFavorite = 1")
+    fun getFavoriteRecipes(): Flow<List<RecipeEntity>>
+
+    @Query("UPDATE recipes SET isFavorite = :isFavorite WHERE id = :id")
+    suspend fun updateFavoriteStatus(id: String, isFavorite: Boolean)
+
+    // Lấy danh sách xem gần đây (Sắp xếp mới xem lên đầu)
+    @Query("SELECT * FROM recipes WHERE lastViewedTime IS NOT NULL ORDER BY lastViewedTime DESC")
+    fun getRecentlyViewedRecipes(): Flow<List<RecipeEntity>>
+
+    // Cập nhật thời gian xem cho một món ăn
+    @Query("UPDATE recipes SET lastViewedTime = :timestamp WHERE id = :id")
+    suspend fun updateLastViewed(id: String, timestamp: Long)
+
+    // Xóa lịch sử (Set lại thành null)
+    @Query("UPDATE recipes SET lastViewedTime = NULL WHERE id = :id")
+    suspend fun removeFromHistory(id: String)
 }

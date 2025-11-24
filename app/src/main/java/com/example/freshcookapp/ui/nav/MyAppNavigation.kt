@@ -42,17 +42,17 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
         composable<Destination.New> { NewCook(onBackClick = {navController.navigateUp()} ) }
         composable<Destination.Favorites> {
             Favorite(
-                recipes = DemoData.favoriteRecipes,
-                searchQuery = "",
-                onSearchQueryChanged = {},
-                onRecipeClick = { recipe ->
-                    navController.navigate(Destination.RecipeDetail(recipeId = recipe.id))
-                },
+                // 1. Xử lý nút Back
                 onBackClick = {
-                    navController.navigate(Destination.Home)
+                    navController.navigate(Destination.Home) {
+                        popUpTo(Destination.Home) { inclusive = true }
+                    }
                 },
-                onFilterClick = {navController.navigate(
-                    Destination.Filter)}
+                // 2. Xử lý khi bấm vào món ăn (QUAN TRỌNG)
+                // Thay vì truyền navController vào trong, ta xử lý chuyển trang ngay tại đây
+                onRecipeClick = { recipeId ->
+                    navController.navigate(Destination.RecipeDetail(recipeId = recipeId))
+                }
             )
         }
 

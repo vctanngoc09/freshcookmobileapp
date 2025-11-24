@@ -4,14 +4,10 @@ import android.app.Application
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import androidx.sqlite.db.SupportSQLiteDatabase
-import com.example.freshcookapp.data.local.entity.*
-import com.example.freshcookapp.data.local.dao.*
-//import com.example.freshcookapp.data.local.seed.SeedData
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import androidx.room.TypeConverters
+import androidx.sqlite.db.SupportSQLiteDatabase
+import com.example.freshcookapp.data.local.dao.*
+import com.example.freshcookapp.data.local.entity.*
 
 @Database(
     entities = [
@@ -20,9 +16,10 @@ import androidx.room.TypeConverters
         RecipeIngredientEntity::class,
         InstructionEntity::class,
         CategoryEntity::class,
-        NewDishEntity::class
+        NewDishEntity::class,
+        SearchHistoryEntity::class
     ],
-    version = 5,
+    version = 8,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -33,10 +30,13 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun instructionDao(): InstructionDao
     abstract fun categoryDao(): CategoryDao
     abstract fun newDishDao(): NewDishDao
-
     abstract fun recipeIndexDao(): RecipeIndexDao
 
+    // Giữ nguyên SearchDao cũ (nếu dùng cho FTS/tìm kiếm món ăn)
     abstract fun searchDao(): SearchDao
+
+    abstract fun searchHistoryDao(): SearchHistoryDao
+
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null
@@ -48,7 +48,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "freshcook.db"
                 )
-                    .fallbackToDestructiveMigration()
+                    .fallbackToDestructiveMigration() // Cho phép xóa data cũ để tạo bảng mới (tránh crash)
                     .addCallback(AppDatabaseCallback(application))
                     .build()
                 INSTANCE = instance
@@ -61,18 +61,6 @@ abstract class AppDatabase : RoomDatabase() {
         ) : RoomDatabase.Callback() {
             override fun onCreate(db: SupportSQLiteDatabase) {
                 super.onCreate(db)
-                /*CoroutineScope(Dispatchers.IO).launch {
-                    val database = getDatabase(application)
-
-
-                    SeedData.recipes.forEach {
-                        database.recipeDao().insert(it)
-                    }
-
-                    database.categoryDao().insertAll(SeedData.categories)
-
-                    database.newDishDao().insertAll(SeedData.newDishes)
-                }*/
             }
         }
     }

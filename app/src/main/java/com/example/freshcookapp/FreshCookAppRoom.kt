@@ -2,8 +2,8 @@ package com.example.freshcookapp
 
 import android.app.Application
 import com.example.freshcookapp.data.local.AppDatabase
-import com.example.freshcookapp.data.repository.FirestoreSyncRepository
-import com.example.freshcookapp.data.sync.FirestoreRealtimeSync
+// import com.example.freshcookapp.data.repository.FirestoreSyncRepository
+// import com.example.freshcookapp.data.sync.FirestoreRealtimeSync
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -18,12 +18,13 @@ class FreshCookAppRoom : Application() {
 
         database = AppDatabase.getDatabase(this)
 
-        // SỬA: Truyền đủ 2 tham số (recipeDao, categoryDao)
-        CoroutineScope(Dispatchers.IO).launch {
+        // --- QUAN TRỌNG: TẠM THỜI COMMENT ĐOẠN NÀY LẠI ---
+        // Lý do: Nó đang tải lại dữ liệu gốc từ Server và xóa mất trạng thái Yêu thích của bạn
+
+        /* CoroutineScope(Dispatchers.IO).launch {
             FirestoreSyncRepository(database.recipeDao(), database.categoryDao()).syncRecipes()
         }
-
-
         FirestoreRealtimeSync(database.recipeDao()).start()
+        */
     }
 }

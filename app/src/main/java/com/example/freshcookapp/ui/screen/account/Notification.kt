@@ -9,8 +9,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -18,11 +20,25 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.rememberAsyncImagePainter
+import com.example.freshcookapp.R
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.example.freshcookapp.ui.theme.GrayLight
 import com.example.freshcookapp.ui.theme.WorkSans
+
+// 1. Tạo Model cho Thông báo (Chuẩn bị cho dữ liệu thật sau này)
+data class NotificationModel(
+    val id: String,
+    val userId: String,
+    val userName: String,
+    val userAvatar: String?,
+    val message: String,
+    val time: String,
+    val isRead: Boolean = false
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,13 +46,22 @@ fun NotificationScreen(
     onBackClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    // 1. Dùng Scaffold thay vì Column
+    // 2. Giả lập dữ liệu thật: Danh sách rỗng (Empty List)
+    // Sau này bạn sẽ lấy list này từ ViewModel/Firebase
+    val notifications = remember { listOf<NotificationModel>() }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = Color.White,
+
+        // --- ÁP DỤNG FIX LỖI GIẬT LAYOUT (MANUAL MODE) ---
+        contentWindowInsets = WindowInsets(0.dp),
+
         topBar = {
-            // 2. Dùng TopAppBar chuẩn
             TopAppBar(
+                // Đóng băng vị trí TopBar
+                modifier = Modifier.statusBarsPadding(),
+
                 title = {
                     Text(
                         text = "Thông báo",
@@ -60,103 +85,78 @@ fun NotificationScreen(
                 )
             )
         }
-    ) { innerPadding -> // 3. Lấy innerPadding
-        // 4. Áp dụng innerPadding cho nội dung
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            // Hôm nay section
-            item {
-                NotificationSectionHeader(
-                    title = "Hôm nay",
-                    onClearClick = {}
-                )
-            }
+    ) { innerPadding ->
 
-            // Sample notifications for today
-            items(2) { index ->
-                NotificationItem(
-                    userName = "Maia Adam",
-                    message = "thích \"Cà chiên\" của bạn",
-                    time = "5p trước",
-                    profileImage = null
-                )
-            }
-
-            // Hôm qua section
-            item {
-                NotificationSectionHeader(
-                    title = "Hôm qua",
-                    onClearClick = {}
-                )
-            }
-
-            // Sample notifications for yesterday
-            items(5) { index ->
-                NotificationItem(
-                    userName = "Maia Adam",
-                    message = "liked your \"Honey pancakes\"",
-                    time = if (index == 0) "1p trước" else "1 day ago",
-                    profileImage = null
-                )
-            }
+        // 3. Logic hiển thị: Nếu rỗng thì hiện màn hình trống, ngược lại hiện list
+        if (notifications.isEmpty()) {
+            EmptyNotificationState(modifier = Modifier.padding(innerPadding))
+        } else {
+            NotificationList(
+                notifications = notifications,
+                paddingValues = innerPadding
+            )
         }
     }
 }
 
-// ... (Các Composable NotificationSectionHeader và NotificationItem giữ nguyên) ...
-
+// --- Giao diện khi chưa có thông báo (Empty State) ---
 @Composable
-fun NotificationSectionHeader(
-    title: String,
-    onClearClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+fun EmptyNotificationState(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                painter = painterResource(id = android.R.drawable.ic_popup_reminder),
-                contentDescription = null,
-                tint = Cinnabar500,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = title,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                fontFamily = WorkSans,
-                color = Color.Black
-            )
-        }
-        Text(
-            text = "Xóa tất cả",
-            fontSize = 14.sp,
-            fontFamily = WorkSans,
-            color = Cinnabar500,
-            modifier = Modifier.clickable { onClearClick() }
+        Icon(
+            imageVector = Icons.Outlined.NotificationsOff,
+            contentDescription = "No Notifications",
+            modifier = Modifier.size(100.dp),
+            tint = Color.LightGray
         )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Chưa có thông báo nào",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.Gray
+        )
+        Text(
+            text = "Khi có tương tác mới, chúng sẽ hiện ở đây.",
+            fontSize = 14.sp,
+            color = Color.LightGray,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 32.dp)
+        )
+    }
+}
+
+// --- Danh sách thông báo (Dùng cho sau này khi có data) ---
+@Composable
+fun NotificationList(
+    notifications: List<NotificationModel>,
+    paddingValues: PaddingValues
+) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues)
+    ) {
+        // Ví dụ cách render (Logic gom nhóm theo ngày làm sau)
+        items(notifications) { notification ->
+            NotificationItem(notification = notification)
+        }
     }
 }
 
 @Composable
 fun NotificationItem(
-    userName: String,
-    message: String,
-    time: String,
-    profileImage: Int?
+    notification: NotificationModel
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(if (notification.isRead) Color.White else Color(0xFFFFF0F0)) // Chưa đọc thì nền hồng nhạt
+            .clickable { /* Handle click */ }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.Center
     ) {
@@ -165,29 +165,24 @@ fun NotificationItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Profile image
-            Box(
+            Image(
+                painter = rememberAsyncImagePainter(
+                    model = notification.userAvatar ?: R.drawable.avatar1 // Ảnh mặc định nếu null
+                ),
+                contentDescription = null,
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(Color.LightGray)
-            ) {
-                // Placeholder for profile image
-                if (profileImage != null) {
-                    Image(
-                        painter = painterResource(id = profileImage),
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-            }
+                    .background(Color.LightGray),
+                contentScale = ContentScale.Crop
+            )
 
             Spacer(modifier = Modifier.width(12.dp))
 
             // Content
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = userName,
+                    text = notification.userName,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = WorkSans,
@@ -195,10 +190,11 @@ fun NotificationItem(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = message,
+                    text = notification.message,
                     fontSize = 14.sp,
                     fontFamily = WorkSans,
-                    color = Color.Gray
+                    color = Color.Gray,
+                    maxLines = 2
                 )
             }
 
@@ -206,16 +202,15 @@ fun NotificationItem(
 
             // Time
             Text(
-                text = time,
+                text = notification.time,
                 fontSize = 12.sp,
                 fontFamily = WorkSans,
                 color = Color.Gray
             )
         }
 
-        // Divider between items
         Divider(
-            modifier = Modifier.padding(vertical = 8.dp),
+            modifier = Modifier.padding(top = 12.dp),
             color = Color(0xFFEEEEEE),
             thickness = 1.dp
         )

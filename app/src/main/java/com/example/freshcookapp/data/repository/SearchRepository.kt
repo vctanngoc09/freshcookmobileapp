@@ -1,23 +1,52 @@
 package com.example.freshcookapp.data.repository
 
 import com.example.freshcookapp.data.local.dao.RecipeDao
+import com.example.freshcookapp.data.local.dao.SearchHistoryDao
 import com.example.freshcookapp.data.local.entity.RecipeEntity
+import com.example.freshcookapp.data.local.entity.SearchHistoryEntity
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map // <--- QUAN TRỌNG: Phải có import này
+import kotlinx.coroutines.flow.map
 
 class SearchRepository(
-    private val recipeDao: RecipeDao
+    private val recipeDao: RecipeDao,
+    private val historyDao: SearchHistoryDao // <--- THÊM THAM SỐ NÀY
 ) {
-    // Hàm này trả về danh sách tên món ăn (String) để hiển thị gợi ý text
+
+    // --- PHẦN 1: TÌM KIẾM MÓN ĂN (GIỮ NGUYÊN) ---
+
+    // Trả về danh sách tên món ăn (dùng cho gợi ý khi đang gõ)
     fun suggestNames(keyword: String): Flow<List<String>> {
-        // Lấy danh sách RecipeEntity từ Dao, sau đó map sang List<String>
         return recipeDao.searchRecipes(keyword).map { list ->
-            list.map { recipe -> recipe.name } // Sửa 'it' thành 'recipe' cho rõ ràng
+            list.map { recipe -> recipe.name }
         }
     }
 
-    // Hàm tìm kiếm thực tế (trả về Entity để ViewModel map sang RecipeCard)
+    // Trả về danh sách Entity món ăn (dùng cho trang kết quả)
     fun searchRecipes(keyword: String): Flow<List<RecipeEntity>> {
         return recipeDao.searchRecipes(keyword)
+    }
+
+    // --- PHẦN 2: LỊCH SỬ TÌM KIẾM (MỚI THÊM) ---
+
+    // Lấy danh sách từ khóa lịch sử (đã được sắp xếp mới nhất ở Dao)
+    fun getSearchHistory(): Flow<List<String>> {
+        return historyDao.getSearchHistory()
+    }
+
+    // Lưu từ khóa vào lịch sử
+    suspend fun saveSearchQuery(query: String) {
+        // Chỉ lưu nếu từ khóa không rỗng
+        if (query.isNotBlank()) {
+            val entity = SearchHistoryEntity(
+                query = query.trim(),
+                timestamp = System.currentTimeMillis()
+            )
+            historyDao.insert(entity)
+        }
+    }
+
+    // Xóa toàn bộ lịch sử (nếu cần dùng nút "Xóa tất cả")
+    suspend fun clearHistory() {
+        historyDao.clearAll()
     }
 }

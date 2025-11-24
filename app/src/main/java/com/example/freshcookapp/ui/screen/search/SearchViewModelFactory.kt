@@ -15,8 +15,11 @@ class SearchViewModelFactory(
         if (modelClass.isAssignableFrom(SearchViewModel::class.java)) {
             val db = AppDatabase.getDatabase(application)
 
-            // SỬA: Truyền RecipeDao vào
-            val repository = SearchRepository(db.recipeDao())
+            // CẬP NHẬT: Truyền đủ 2 tham số (RecipeDao và SearchHistoryDao)
+            val repository = SearchRepository(
+                recipeDao = db.recipeDao(),
+                historyDao = db.searchHistoryDao() // Thêm cái này
+            )
 
             return SearchViewModel(repository) as T
         }

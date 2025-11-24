@@ -7,7 +7,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.History // Icon đồng hồ cho lịch sử
+import androidx.compose.material.icons.filled.Search  // Icon kính lúp cho tìm kiếm
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -48,7 +49,7 @@ fun Search(
                     SearchBar(
                         value = searchText,
                         onValueChange = { viewModel.onQueryChange(it) },
-                        placeholder = "Tìm kiếm",
+                        placeholder = "Tìm kiếm món ăn...",
                         onFilterClick = onFilterClick,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -59,7 +60,7 @@ fun Search(
                     IconButton(onClick = onBackClick) {
                         Icon(
                             painterResource(R.drawable.ic_back),
-                            null,
+                            contentDescription = "Back",
                             tint = Color.Black
                         )
                     }
@@ -78,26 +79,39 @@ fun Search(
                 .padding(padding)
                 .padding(top = 16.dp)
         ) {
-            // Hiển thị danh sách gợi ý (Text đơn giản)
+            // Hiển thị danh sách (Lịch sử hoặc Gợi ý tùy vào searchText)
             items(suggestions) { item ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onSuggestionClick(item) }
+                        .clickable {
+                            // 1. Lưu từ khóa vào lịch sử
+                            viewModel.saveSearchQuery(item)
+                            // 2. Chuyển sang trang kết quả
+                            onSuggestionClick(item)
+                        }
                         .background(White)
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(horizontal = 16.dp, vertical = 12.dp), // Tăng padding dọc chút cho dễ bấm
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // Logic đổi icon:
+                    // Nếu đang tìm kiếm (có chữ) -> Hiện kính lúp
+                    // Nếu chưa nhập gì (lịch sử) -> Hiện đồng hồ
+                    val icon = if (searchText.isNotBlank()) Icons.Default.Search else Icons.Default.History
+                    val iconColor = if (searchText.isNotBlank()) Cinnabar400 else Color.Gray
+
                     Icon(
-                        Icons.Default.AccessTime,
+                        imageVector = icon,
                         contentDescription = null,
-                        tint = Cinnabar400,
-                        modifier = Modifier.size(18.dp)
+                        tint = iconColor,
+                        modifier = Modifier.size(20.dp)
                     )
-                    Spacer(Modifier.width(8.dp))
+
+                    Spacer(Modifier.width(12.dp))
+
                     Text(
-                        text = item, // Hiển thị tên món
-                        fontSize = 15.sp,
+                        text = item,
+                        fontSize = 16.sp,
                         color = Black
                     )
                 }
