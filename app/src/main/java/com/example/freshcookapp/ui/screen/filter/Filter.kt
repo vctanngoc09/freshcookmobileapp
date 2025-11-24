@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.freshcookapp.R
 import com.example.freshcookapp.ui.component.CustomTextField
 import com.example.freshcookapp.ui.theme.*
@@ -236,22 +237,30 @@ fun FilterChip(text: String, onRemove: () -> Unit) {
 }
 
 @Composable
-fun DifficultyChip(text: String, isSelected: Boolean, onClick: () -> Unit) {
+fun DifficultyChip(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(25.dp))
+            .clip(RoundedCornerShape(20.dp))
             .border(
                 width = 1.dp,
-                color = if (isSelected) Cinnabar500 else Color.Gray,
-                shape = RoundedCornerShape(25.dp)
+                color = if (isSelected) Cinnabar500 else Color(0xFFBDBDBD),
+                shape = RoundedCornerShape(20.dp)
             )
             .clickable { onClick() }
-            .padding(horizontal = 20.dp, vertical = 8.dp),
+            .padding(horizontal = 14.dp, vertical = 6.dp), // ⭐ gọn hơn
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = text,
-            color = if (isSelected) Cinnabar500 else Color.Gray
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontSize = 14.sp,          // ⭐ nhỏ lại
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                color = if (isSelected) Cinnabar500 else Color(0xFF6D6D6D) // mềm hơn
+            )
         )
     }
 }

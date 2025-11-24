@@ -8,17 +8,17 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
@@ -32,6 +32,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import coil.compose.rememberAsyncImagePainter
@@ -39,15 +40,11 @@ import com.example.freshcookapp.R
 import com.example.freshcookapp.domain.model.Ingredient
 import com.example.freshcookapp.domain.model.Instruction
 import com.example.freshcookapp.ui.component.ScreenContainer
-import com.example.freshcookapp.ui.component.SearchBar
 import com.example.freshcookapp.ui.component.UnderlineTextField
-import com.example.freshcookapp.ui.theme.Cinnabar100
-import com.example.freshcookapp.ui.theme.Cinnabar200
 import com.example.freshcookapp.ui.theme.Cinnabar400
 import com.example.freshcookapp.ui.theme.Cinnabar50
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.example.freshcookapp.ui.theme.White
-import java.io.ByteArrayOutputStream
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.freshcookapp.FreshCookAppRoom
 import com.example.freshcookapp.data.local.AppDatabase
@@ -56,22 +53,38 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import com.example.freshcookapp.ui.screen.filter.DifficultyChip
+import com.example.freshcookapp.ui.screen.filter.FilterChip
 
 @Composable
-fun NewCook(onBackClick: () -> Unit){
+fun NewCook(onBackClick: () -> Unit) {
+    // --- STATE CHÍNH ---
     var recipeName by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var cookTime by remember { mutableStateOf("") }
     var people by remember { mutableStateOf("") }
-    val ingredients = remember { mutableStateListOf(
-        Ingredient(), Ingredient()
-    ) }
+
+    val ingredients = remember {
+        mutableStateListOf(
+            Ingredient(), Ingredient()
+        )
+    }
     val instructions = remember {
         mutableStateListOf(
             Instruction(stepNumber = 1),
             Instruction(stepNumber = 2)
         )
     }
+
+    // ⭐ State cho ảnh đại diện món
+    var recipeImageUri by remember { mutableStateOf<Uri?>(null) }
+
+    // ⭐ State cho hashtag
+    var hashtagInput by remember { mutableStateOf("") }
+    val hashtagList = remember { mutableStateListOf<String>() }
+
+    // ⭐ State cho độ khó ("Dễ" / "Trung" / "Khó")
+    var difficulty by remember { mutableStateOf("Dễ") }
 
     val context = LocalContext.current
     val app = context.applicationContext as FreshCookAppRoom
@@ -104,7 +117,7 @@ fun NewCook(onBackClick: () -> Unit){
         contract = ActivityResultContracts.TakePicturePreview(),
         onResult = { bitmap: Bitmap? ->
             bitmap?.let { b ->
-                val bytes = ByteArrayOutputStream()
+                val bytes = java.io.ByteArrayOutputStream()
                 b.compress(Bitmap.CompressFormat.JPEG, 100, bytes)
                 val path = MediaStore.Images.Media.insertImage(
                     context.contentResolver,
@@ -127,7 +140,6 @@ fun NewCook(onBackClick: () -> Unit){
             if (granted) {
                 cameraStepLauncher.launch(null)
             } else {
-                // show snackbar if denied
                 scope.launch { snackbarHostState.showSnackbar("Cần quyền camera để chụp ảnh") }
             }
         }
@@ -138,17 +150,11 @@ fun NewCook(onBackClick: () -> Unit){
         val s = timeStr.trim().lowercase()
         if (s.isEmpty()) return null
 
-        // Normalize common Vietnamese no-diacritic variants to unify matching
         val normalized = s
             .replace("tieng", "tiếng")
             .replace("gio", "giờ")
             .replace("phut", "phút")
 
-        // Patterns to support many formats (including no-diacritic variants):
-        // - "1 giờ 30 phút", "1 tiếng 30 phút"
-        // - "1h30" or "1h 30"
-        // - "90 phút" or just "90"
-        // - "3 giờ" / "3 tiếng" / "3h" / "3 tieng"
         val hourMinuteRegex = Regex("(\\d+)\\s*(giờ|tiếng|h)\\s*(\\d+)\\s*(phút|p|min|m)?")
         val compactHRegex = Regex("^(\\d+)h(\\d+)")
         val hourOnlyRegex = Regex("^(\\d+)\\s*(giờ|tiếng|h)$")
@@ -173,11 +179,9 @@ fun NewCook(onBackClick: () -> Unit){
             return minutes
         }
 
-        // last resort: try parse as plain number (assume minutes)
         return normalized.toIntOrNull()
     }
 
-    // Helper function to parse people
     fun parsePeople(peopleStr: String): Int? {
         return Regex("(\\d+)").find(peopleStr)?.groups?.get(1)?.value?.toIntOrNull()
     }
@@ -190,92 +194,85 @@ fun NewCook(onBackClick: () -> Unit){
         ) {
             if (!isSaved) {
                 Row(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
                         .padding(horizontal = 20.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.End,
                 ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ){
-                        Button(
-                            onClick = {
-                                val parsedMinutes = parseCookTime(cookTime)
-                                if (parsedMinutes == null) {
-                                    // show helpful message and do not save
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar("Không hiểu định dạng thời gian. Ví dụ: '3 tiếng', '1h30', '90 phút'")
-                                    }
-                                    return@Button
-                                }
-
+                    Button(
+                        onClick = {
+                            val parsedMinutes = parseCookTime(cookTime)
+                            if (parsedMinutes == null) {
                                 scope.launch {
-                                    // show parsed result to help debug (so user sees what will be saved)
-                                    snackbarHostState.showSnackbar("Thời gian được nhận dạng: ${'$'}{parsedMinutes} phút")
-
-                                    viewModel.saveRecipe(
-                                        name = recipeName,
-                                        description = description,
-                                        // đảm bảo không truyền null vào repository/firestore
-                                        timeCookMinutes = parsedMinutes,
-                                        people = parsePeople(people) ?: 1,
-                                        imageUrl = null, // TODO: add imageUrl
-                                        userId = 1L, // use Long
-                                        categoryId = 1L, // use Long
-                                        ingredients = ingredients.filter { it.name.isNotBlank() },
-                                        instructions = instructions.filter { it.description.isNotBlank() },
-                                        onSuccess = {
-                                            // run UI actions in UI coroutine scope
-                                            scope.launch {
-                                                isSaved = true
-                                                snackbarHostState.showSnackbar("Lưu công thức thành công!")
-                                                delay(1000)
-                                                onBackClick()
-                                            }
-                                        },
-                                        onError = { /* TODO: handle error */ }
+                                    snackbarHostState.showSnackbar(
+                                        "Không hiểu định dạng thời gian. Ví dụ: '3 tiếng', '1h30', '90 phút'"
                                     )
                                 }
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Cinnabar500,   // nền nhạt như ảnh
-                                contentColor = White            // chữ đen
-                            ),
-                            shape = RoundedCornerShape(10.dp), // bo tròn đều (hình viên thuốc)
-                            contentPadding = PaddingValues(
-                                horizontal = 16.dp, // giảm padding ngang (mặc định 24.dp)
-                                vertical = 6.dp     // giảm padding dọc (mặc định 12.dp)
-                            )
-                        ) {
-                            Text(
-                                text = "Lên sóng",
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                        }
+                                return@Button
+                            }
+
+                            scope.launch {
+                                viewModel.saveRecipe(
+                                    name = recipeName,
+                                    description = description,
+                                    timeCookMinutes = parsedMinutes,
+                                    people = parsePeople(people) ?: 1,
+                                    imageUri = recipeImageUri,                 // ⭐ ảnh đại diện
+                                    hashtags = hashtagList.toList(),          // ⭐ hashtag
+                                    difficultyUi = difficulty,               // ⭐ "Dễ"/"Trung"/"Khó"
+                                    ingredients = ingredients.filter { it.name.isNotBlank() },
+                                    instructions = instructions.filter { it.description.isNotBlank() },
+                                    onSuccess = {
+                                        isSaved = true
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar("Lưu công thức thành công!")
+                                            delay(1000)
+                                            onBackClick()
+                                        }
+                                    },
+                                    onError = {
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar("Lỗi lưu công thức: ${it.message}")
+                                        }
+                                    }
+                                )
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Cinnabar500,
+                            contentColor = White
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(
+                            horizontal = 16.dp,
+                            vertical = 6.dp
+                        )
+                    ) {
+                        Text(
+                            text = "Lên sóng",
+                            style = MaterialTheme.typography.labelLarge
+                        )
                     }
-
-
                 }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
 
-
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
+                modifier = Modifier.fillMaxSize()
             ) {
                 /** ẢNH MÓN ĂN */
                 item {
-                    RecipeImagePicker()
+                    RecipeImagePicker(
+                        imageUri = recipeImageUri,
+                        onImageChanged = { recipeImageUri = it }
+                    )
                 }
-
 
                 /** TÊN MÓN + MÔ TẢ + THỜI GIAN */
                 item {
                     ScreenContainer {
-
-                        // --- Ô “Tên món” to hơn ---
                         Spacer(Modifier.height(16.dp))
                         UnderlineTextField(
                             value = recipeName,
@@ -291,17 +288,13 @@ fun NewCook(onBackClick: () -> Unit){
                             )
                         )
 
-                        // --- Ô mô tả bình thường ---
                         Spacer(Modifier.height(16.dp))
                         UnderlineTextField(
                             value = description,
                             onValueChange = { description = it },
-                            placeholder = "Hãy chia sẻ với mọi người về món này của bạn nhé. " +
-                                    "Ai hay điều gì đã truyền cảm hứng cho bạn nấu nó? " +
-                                    "Tại sao nó đặc biệt? Bạn thích thưởng thức nó theo cách nào?"
+                            placeholder = "Hãy chia sẻ với mọi người về món này của bạn nhé..."
                         )
 
-                        // --- Ô thời gian nấu bình thường ---
                         Spacer(Modifier.height(16.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -339,6 +332,68 @@ fun NewCook(onBackClick: () -> Unit){
                     }
                 }
 
+                /** HASHTAG + DIFFICULTY */
+                item {
+                    ScreenContainer {
+                        Spacer(Modifier.height(20.dp))
+
+                        Text(
+                            "Hashtag",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(8.dp))
+
+                        UnderlineTextField(
+                            value = hashtagInput,
+                            onValueChange = { hashtagInput = it },
+                            placeholder = "Gõ vào hashtag...",
+                            keyboardActions = KeyboardActions(
+                                onDone = {
+                                    if (hashtagInput.isNotBlank()) {
+                                        hashtagList.add(hashtagInput.trim())
+                                        hashtagInput = ""
+                                    }
+                                }
+                            ),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
+                        )
+
+                        Spacer(Modifier.height(10.dp))
+
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            hashtagList.forEach { tag ->
+                                FilterChip(text = tag) {
+                                    hashtagList.remove(tag)
+                                }
+                            }
+                        }
+
+                        Spacer(Modifier.height(28.dp))
+
+                        Text(
+                            "Độ khó",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(8.dp))
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            listOf("Dễ", "Trung", "Khó").forEach { level ->
+                                DifficultyChip(
+                                    text = level,
+                                    isSelected = difficulty == level,
+                                    onClick = { difficulty = level }
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(16.dp))
+                    }
+                }
 
                 /** NGUYÊN LIỆU */
                 item {
@@ -379,7 +434,7 @@ fun NewCook(onBackClick: () -> Unit){
                             UnderlineTextField(
                                 value = ingredient.name,
                                 onValueChange = { new -> ingredients[index] = ingredient.copy(name = new) },
-                                placeholder = "Tên nguyên liệu (VD: Bột mì)"
+                                placeholder = "Tên nguyên liệu"
                             )
 
                             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -392,7 +447,7 @@ fun NewCook(onBackClick: () -> Unit){
                                 UnderlineTextField(
                                     value = ingredient.unit,
                                     onValueChange = { new -> ingredients[index] = ingredient.copy(unit = new) },
-                                    placeholder = "Đơn vị (VD: gram, ml)",
+                                    placeholder = "Đơn vị",
                                     modifier = Modifier.weight(1f)
                                 )
                             }
@@ -514,6 +569,7 @@ fun NewCook(onBackClick: () -> Unit){
 
                             Spacer(Modifier.height(20.dp))
                         }
+                        Spacer(Modifier.height(20.dp))
                     }
                 }
 
@@ -540,7 +596,6 @@ fun NewCook(onBackClick: () -> Unit){
             }
         }
 
-        // Snackbar host at bottom center
         SnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier
@@ -549,7 +604,6 @@ fun NewCook(onBackClick: () -> Unit){
         )
     }
 
-    // Step image source dialog
     if (showStepDialog) {
         ShowImageSourceDialog(
             onPickGallery = {
@@ -564,24 +618,27 @@ fun NewCook(onBackClick: () -> Unit){
     }
 }
 
+/**
+ * RecipeImagePicker: nhận imageUri từ ngoài & callback onImageChanged
+ */
 @Composable
-fun RecipeImagePicker() {
+fun RecipeImagePicker(
+    imageUri: Uri?,
+    onImageChanged: (Uri?) -> Unit
+) {
     val context = LocalContext.current
-    var imageUri by remember { mutableStateOf<Uri?>(null) }
     var showDialog by remember { mutableStateOf(false) }
 
-    // --- Pick photo from gallery ---
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
-        onResult = { uri -> imageUri = uri }
+        onResult = { uri -> onImageChanged(uri) }
     )
 
-    // --- Take photo with camera ---
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicturePreview(),
         onResult = { bitmap ->
             if (bitmap != null) {
-                val bytes = ByteArrayOutputStream()
+                val bytes = java.io.ByteArrayOutputStream()
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 100, bytes)
                 val path = MediaStore.Images.Media.insertImage(
                     context.contentResolver,
@@ -589,36 +646,32 @@ fun RecipeImagePicker() {
                     "captured_image_${System.currentTimeMillis()}",
                     null
                 )
-                imageUri = path.toUri()
+                onImageChanged(path.toUri())
             }
         }
     )
 
-    // --- MUST HAVE: permission for CAMERA ---
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            cameraLauncher.launch(null)   // open camera after permission
+            cameraLauncher.launch(null)
         } else {
             Toast.makeText(context, "Bạn cần cấp quyền camera", Toast.LENGTH_SHORT).show()
         }
     }
 
-    // --- UI ---
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(160.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(Cinnabar100)
+            .background(Cinnabar50)
             .clickable { showDialog = true },
         contentAlignment = Alignment.Center
     ) {
         if (imageUri == null) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(
                     painter = painterResource(R.drawable.ic_camera),
                     contentDescription = null,
@@ -641,7 +694,6 @@ fun RecipeImagePicker() {
         }
     }
 
-    // --- Dialog choose source ---
     if (showDialog) {
         ShowImageSourceDialog(
             onPickGallery = {
