@@ -1,6 +1,7 @@
 package com.example.freshcookapp.ui.screen.favorites
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,18 +21,15 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavHostController
-import coil.compose.rememberAsyncImagePainter // Cần thêm thư viện Coil nếu chưa có
+import coil.compose.rememberAsyncImagePainter
 import com.example.freshcookapp.FreshCookAppRoom
 import com.example.freshcookapp.R
 import com.example.freshcookapp.data.local.AppDatabase
 import com.example.freshcookapp.data.repository.RecipeRepository
 import com.example.freshcookapp.domain.model.Recipe
 import com.example.freshcookapp.ui.component.ScreenContainer
-import com.example.freshcookapp.ui.component.SearchBar
 import com.example.freshcookapp.ui.theme.Cinnabar500
 
 @Composable
@@ -39,25 +37,13 @@ fun Favorite(
     onBackClick: () -> Unit,
     onRecipeClick: (String) -> Unit
 ) {
-    // 1. SETUP DỮ LIỆU THẬT
     val context = LocalContext.current
     val app = context.applicationContext as FreshCookAppRoom
     val db = remember { AppDatabase.getDatabase(app) }
     val repo = remember { RecipeRepository(db) }
     val viewModel = remember { FavoriteViewModel(repo) }
 
-    // Lấy list món ăn từ ViewModel
     val recipes by viewModel.favoriteRecipes.collectAsState()
-
-    // Quản lý tìm kiếm tại chỗ
-    var searchQuery by remember { mutableStateOf("") }
-
-    // Logic lọc tìm kiếm
-    val filteredRecipes = if (searchQuery.isBlank()) {
-        recipes
-    } else {
-        recipes.filter { it.title.contains(searchQuery, ignoreCase = true) }
-    }
 
     ScreenContainer {
         Column(
@@ -65,14 +51,14 @@ fun Favorite(
                 .fillMaxSize()
                 .padding(vertical = 12.dp)
         ) {
-            // --- HEADER ---
+            // HEADER
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBackClick, modifier = Modifier.size(28.dp)) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_back), // Đảm bảo icon này tồn tại
+                        painter = painterResource(R.drawable.ic_back),
                         contentDescription = "Back",
                         tint = Color.Black,
                         modifier = Modifier.size(22.dp)
@@ -86,26 +72,18 @@ fun Favorite(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // --- SEARCH BAR ---
-            SearchBar(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                placeholder = "Tìm kiếm trong yêu thích",
-                onFilterClick = { /* Tính năng filter nâng cao sau này */ },
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // --- LIST ---
-            if (filteredRecipes.isEmpty()) {
+            // LIST
+            if (recipes.isEmpty()) {
                 FavoriteEmptyState()
             } else {
                 FavoriteList(
-                    recipes = filteredRecipes,
-                    onRecipeClick = { recipe ->
-                        onRecipeClick(recipe.id)
+                    recipes = recipes,
+                    onRecipeClick = { recipe -> onRecipeClick(recipe.id) },
+                    // Truyền sự kiện xóa xuống dưới
+                    onRemoveFavorite = { recipeId ->
+                        viewModel.removeFromFavorites(recipeId)
                     }
                 )
             }
@@ -118,17 +96,19 @@ fun Favorite(
 @Composable
 private fun FavoriteList(
     recipes: List<Recipe>,
-    onRecipeClick: (Recipe) -> Unit
+    onRecipeClick: (Recipe) -> Unit,
+    onRemoveFavorite: (String) -> Unit // Callback mới
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(bottom = 20.dp) // Để không bị che item cuối
+        contentPadding = PaddingValues(bottom = 20.dp)
     ) {
         items(recipes) { recipe ->
             FavoriteItemCard(
                 recipe = recipe,
-                onClick = { onRecipeClick(recipe) }
+                onClick = { onRecipeClick(recipe) },
+                onFavoriteClick = { onRemoveFavorite(recipe.id) } // Nối dây sự kiện
             )
         }
     }
@@ -137,70 +117,100 @@ private fun FavoriteList(
 @Composable
 private fun FavoriteItemCard(
     recipe: Recipe,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onFavoriteClick: () -> Unit // Callback mới
 ) {
+    val cardBackgroundColor = Color(0xFFE3E8EF)
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = cardBackgroundColor),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(180.dp)
+                    .height(150.dp)
             ) {
-                // SỬ DỤNG COIL ĐỂ LOAD ẢNH URL
                 Image(
                     painter = rememberAsyncImagePainter(
-                        model = recipe.imageUrl ?: R.drawable.ic_launcher_background // Ảnh mặc định nếu null
+                        model = recipe.imageUrl ?: R.drawable.ic_launcher_background
                     ),
                     contentDescription = recipe.title,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
 
-                // Icon trái tim
-                Icon(
-                    imageVector = Icons.Default.Favorite,
-                    contentDescription = "Favorite",
-                    tint = Cinnabar500, // Dùng màu đỏ của app
+                // --- NÚT TIM CÓ THỂ BẤM ĐƯỢC ---
+                // Dùng IconButton để tạo vùng bấm chuẩn
+                IconButton(
+                    onClick = onFavoriteClick, // Khi bấm sẽ gọi hàm xóa
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(12.dp)
-                )
+                        .padding(8.dp) // Padding ngoài
+                        .size(32.dp)   // Kích thước vùng bấm
+                        .background(Color.White.copy(alpha = 0.7f), androidx.compose.foundation.shape.CircleShape) // Thêm nền trắng mờ cho dễ nhìn (tùy chọn)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Favorite,
+                        contentDescription = "Remove Favorite",
+                        tint = Cinnabar500,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
 
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 10.dp)
+            ) {
                 Text(
                     text = recipe.title,
-                    fontSize = 18.sp,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
+                    color = Color.Black,
                     maxLines = 1
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.Schedule,
-                        contentDescription = "Cook time",
-                        tint = Color.Gray,
-                        modifier = Modifier.size(16.dp)
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Schedule,
+                            contentDescription = "Time",
+                            tint = Color.Gray,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = recipe.time,
+                            color = Color.Gray,
+                            fontSize = 12.sp
+                        )
+                    }
+
+                    Text(
+                        text = recipe.level,
+                        color = Color.Gray,
+                        fontSize = 12.sp
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(recipe.time, color = Color.Gray, fontSize = 14.sp)
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    Text(recipe.level, color = Color.Gray, fontSize = 14.sp)
                 }
             }
         }
     }
 }
 
+// FavoriteEmptyState giữ nguyên như cũ
 @Composable
 private fun FavoriteEmptyState() {
     Column(
@@ -219,7 +229,7 @@ private fun FavoriteEmptyState() {
             color = Color.Gray
         )
         Text(
-            "Hãy tim các món ăn ngon nhé!",
+            "Hãy tìm các món ăn ngon nhé!",
             fontSize = 14.sp,
             color = Color.LightGray
         )

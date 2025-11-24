@@ -9,10 +9,10 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
-class FavoriteViewModel(repository: RecipeRepository) : ViewModel() {
+class FavoriteViewModel(private val repository: RecipeRepository) : ViewModel() {
 
-    // Lấy dữ liệu từ DB và chuyển đổi (Map) sang model UI
     val favoriteRecipes: StateFlow<List<Recipe>> = repository.getFavoriteRecipes()
         .map { entities ->
             entities.map { it.toUiModel() }
@@ -23,21 +23,26 @@ class FavoriteViewModel(repository: RecipeRepository) : ViewModel() {
             initialValue = emptyList()
         )
 
-    // Hàm chuyển đổi từ Entity (Database) -> Recipe (Giao diện)
-    // Lưu ý: Bạn cần kiểm tra lại các trường trong model Recipe của bạn
+    // --- ĐÂY LÀ HÀM BỊ THIẾU GÂY LỖI ---
+    fun removeFromFavorites(recipeId: String) {
+        viewModelScope.launch {
+            repository.toggleFavorite(recipeId, false)
+        }
+    }
+
     private fun RecipeEntity.toUiModel(): Recipe {
         return Recipe(
             id = this.id,
             title = this.name,
             time = "${this.timeCookMinutes} phút",
-            level = "Dễ", // Hoặc lấy từ DB nếu có cột level
-            imageRes = null, // Không dùng ảnh local nữa
-            imageUrl = this.imageUrl, // Dùng ảnh từ link/db
-            author = com.example.freshcookapp.domain.model.Author("1", "Admin", ""), // Fake tạm author
+            level = "Dễ",
+            imageRes = null,
+            imageUrl = this.imageUrl,
             description = this.description ?: "",
-            isFavorite = true, // Vì đang ở màn hình Favorite nên chắc chắn là true
+            author = com.example.freshcookapp.domain.model.Author("1", "Admin", ""),
+            isFavorite = true,
             ingredients = this.ingredients,
-            instructions = emptyList(), // Danh sách này chỉ cần khi vào chi tiết
+            instructions = emptyList(),
             hashtags = emptyList(),
             relatedRecipes = emptyList()
         )
