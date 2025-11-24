@@ -25,13 +25,8 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.toObject
 
-// Giữ lại data class RecipeInfo nếu cần dùng chung
-data class RecipeInfo(
-    val id: String = "",
-    val name: String = "",
-    val imageUrl: String? = null,
-    val timeCookMinutes: Int = 0
-)
+// --- ĐÃ XÓA data class RecipeInfo Ở ĐÂY ĐỂ TRÁNH TRÙNG LẶP ---
+// Nó sẽ tự động dùng RecipeInfo đã khai báo bên file ProfileScreen.kt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

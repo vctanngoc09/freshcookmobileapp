@@ -19,7 +19,7 @@ import com.example.freshcookapp.data.local.entity.*
         NewDishEntity::class,
         SearchHistoryEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

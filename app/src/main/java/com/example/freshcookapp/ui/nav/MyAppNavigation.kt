@@ -19,14 +19,14 @@ import com.example.freshcookapp.ui.screen.account.MyDishes
 import com.example.freshcookapp.ui.screen.account.RecentlyViewedScreen
 import com.example.freshcookapp.ui.screen.account.SettingsScreen
 import com.example.freshcookapp.ui.screen.account.FollowScreen
+// Import màn hình mới
+import com.example.freshcookapp.ui.screen.account.AuthorProfileScreen
 import com.example.freshcookapp.ui.screen.detail.RecipeDetail
 import com.example.freshcookapp.ui.screen.favorites.Favorite
-import com.example.freshcookapp.domain.model.DemoData
 import com.example.freshcookapp.ui.screen.filter.Filter
 import com.example.freshcookapp.ui.screen.newcook.NewCook
 import com.example.freshcookapp.ui.screen.search.Search
 import com.example.freshcookapp.ui.screen.search.SearchResultScreen
-import com.google.android.gms.appsearch.SearchResult
 
 @Composable
 fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifier, startDestination: Destination, onGoogleSignInClick: () -> Unit){
@@ -36,26 +36,25 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
         modifier = modifier
     ) {
         composable<Destination.Splash> { Splash(onGetStartedClicked = {navController.navigate(Destination.Welcome) {
-            popUpTo(Destination.Splash) { inclusive = true } // ✅ xóa Splash khỏi back stack
+            popUpTo(Destination.Splash) { inclusive = true }
         }}) }
+
         composable<Destination.Home> { Home(onFilterClick = {navController.navigate(Destination.Filter)}, onEditProfileClick = { navController.navigate(Destination.EditProfile) }) }
+
         composable<Destination.New> { NewCook(onBackClick = {navController.navigateUp()} ) }
+
         composable<Destination.Favorites> {
             Favorite(
-                // 1. Xử lý nút Back
                 onBackClick = {
                     navController.navigate(Destination.Home) {
                         popUpTo(Destination.Home) { inclusive = true }
                     }
                 },
-                // 2. Xử lý khi bấm vào món ăn (QUAN TRỌNG)
-                // Thay vì truyền navController vào trong, ta xử lý chuyển trang ngay tại đây
                 onRecipeClick = { recipeId ->
                     navController.navigate(Destination.RecipeDetail(recipeId = recipeId))
                 }
             )
         }
-
 
         composable<Destination.RecipeDetail> { backStackEntry ->
             val args = backStackEntry.toRoute<Destination.RecipeDetail>()
@@ -74,6 +73,17 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
                 onMenuClick = { navController.navigate(Destination.Settings) },
                 onFollowerClick = { userId -> navController.navigate(Destination.Follow(userId = userId, type = "followers")) },
                 onFollowingClick = { userId -> navController.navigate(Destination.Follow(userId = userId, type = "following")) }
+            )
+        }
+
+        // --- ROUTE ĐÃ SỬA: XEM PROFILE NGƯỜI KHÁC ---
+        composable("user_profile/{userId}") { backStackEntry ->
+            val userId = backStackEntry.arguments?.getString("userId") ?: ""
+
+            // Gọi màn hình AuthorProfileScreen (đã đổi tên trong file ProfileView.kt)
+            AuthorProfileScreen(
+                userId = userId,
+                onBackClick = { navController.navigateUp() }
             )
         }
 
@@ -99,15 +109,11 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
             )
         }
 
-
-
-
         composable<Destination.Filter> {
             Filter(onBackClick = {navController.navigateUp()}, onApply = {navController.navigate(
                 Destination.Home)} )}
-        
 
-        // Account related screens
+
         composable<Destination.Follow> {backStackEntry ->
             val args = backStackEntry.toRoute<Destination.Follow>()
             FollowScreen(
@@ -140,7 +146,7 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
         composable<Destination.EditProfile> {
             EditProfileScreen(
                 onBackClick = { navController.navigateUp() },
-                onSaveClick = { navController.navigateUp() } // Quay lại sau khi lưu
+                onSaveClick = { navController.navigateUp() }
             )
         }
 
@@ -167,7 +173,7 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
 
         composable<Destination.Register> {
             Register(
-                onRegisterSuccess = { navController.navigate(Destination.Login) }, 
+                onRegisterSuccess = { navController.navigate(Destination.Login) },
                 onBackClick = { navController.navigateUp() },
                 onLoginClick = { navController.navigate(Destination.Login) },
                 onGoogleSignInClick = onGoogleSignInClick

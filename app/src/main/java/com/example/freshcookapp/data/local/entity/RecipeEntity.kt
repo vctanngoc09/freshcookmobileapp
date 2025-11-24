@@ -25,26 +25,29 @@ data class RecipeEntity(
     @ColumnInfo(name = "image_url")
     val imageUrl: String? = null,
 
-    // Lưu danh sách nguyên liệu dạng: "500 g Cánh gà"
+    // Lưu danh sách nguyên liệu
     @ColumnInfo(name = "ingredients")
     val ingredients: List<String> = emptyList(),
 
-    // Lưu danh sách các bước dạng: "Bước 1: Ướp gà..."
+    // Lưu danh sách các bước
     @ColumnInfo(name = "steps")
     val steps: List<String> = emptyList(),
 
     @ColumnInfo(name = "user_id")
     val userId: String = "",
 
+    // --- QUAN TRỌNG: Cột này để lọc món tương tự ---
     @ColumnInfo(name = "category_id")
     val categoryId: String = "",
 
     @ColumnInfo(name = "created_at")
     val createdAt: Long = 0L,
 
-    @ColumnInfo(defaultValue = "0") // Mặc định là 0 (False - chưa yêu thích)
+    // --- Cột trạng thái Yêu thích ---
+    @ColumnInfo(name = "is_favorite", defaultValue = "0")
     val isFavorite: Boolean = false,
 
-    @ColumnInfo(defaultValue = "NULL")
+    // --- Cột thời gian xem gần đây ---
+    @ColumnInfo(name = "last_viewed_time", defaultValue = "NULL")
     val lastViewedTime: Long? = null
 )

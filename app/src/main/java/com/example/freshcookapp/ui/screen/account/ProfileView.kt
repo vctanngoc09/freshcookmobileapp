@@ -27,7 +27,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileViewScreen(
+fun AuthorProfileScreen( // Đã đổi tên cho rõ ràng
     userId: String, // ID của người dùng mà chúng ta đang xem
     onBackClick: () -> Unit
 ) {
@@ -43,7 +43,7 @@ fun ProfileViewScreen(
     var isFollowing by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) }
 
-    // Lắng nghe dữ liệu người dùng được xem trong thời gian thực
+    // Lắng nghe dữ liệu người dùng được xem
     LaunchedEffect(userId) {
         firestore.collection("users").document(userId).addSnapshotListener { snapshot, _ ->
             if (snapshot != null && snapshot.exists()) {
@@ -59,7 +59,7 @@ fun ProfileViewScreen(
         }
     }
 
-    // Lắng nghe trạng thái follow trong thời gian thực
+    // Lắng nghe trạng thái follow
     DisposableEffect(currentUserId, userId) {
         val listener = if (currentUserId != null) {
             firestore.collection("users").document(currentUserId)
@@ -102,12 +102,12 @@ fun ProfileViewScreen(
                     transaction.update(currentUserRef, "followingCount", FieldValue.increment(1))
                     transaction.update(viewedUserRef, "followerCount", FieldValue.increment(1))
                 }
-                !isCurrentlyFollowing // Trả về trạng thái mới để dùng trong onSuccessListener
+                !isCurrentlyFollowing
             }.addOnSuccessListener { nowFollowing ->
                 val message = if (nowFollowing) "Đã theo dõi $username" else "Đã bỏ theo dõi $username"
                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             }.addOnFailureListener {
-                Toast.makeText(context, "Đã xảy ra lỗi", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Đã xảy ra lỗi: ${it.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -115,7 +115,7 @@ fun ProfileViewScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(username) },
+                title = { Text(username, fontSize = 18.sp, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -123,11 +123,12 @@ fun ProfileViewScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
-        }
+        },
+        containerColor = Color.White
     ) { paddingValues ->
         if (isLoading) {
             Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = Cinnabar500)
             }
         } else {
             LazyColumn(
@@ -159,18 +160,18 @@ fun ProfileViewScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        StatItem(count = followerCount.toString(), label = "Followers")
-                        StatItem(count = followingCount.toString(), label = "Following")
+                        AuthorStatItem(count = followerCount.toString(), label = "Followers")
+                        AuthorStatItem(count = followingCount.toString(), label = "Following")
                     }
                     Spacer(modifier = Modifier.height(24.dp))
                 }
 
                 // Follow Button
-                if (currentUserId != userId) { // Ẩn nút nếu đang xem hồ sơ của chính mình
+                if (currentUserId != userId) {
                     item {
                         Button(
                             onClick = onFollowClick,
-                            modifier = Modifier.fillMaxWidth(0.6f),
+                            modifier = Modifier.fillMaxWidth(0.6f).height(48.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (isFollowing) Color.LightGray else Cinnabar500,
                                 contentColor = if (isFollowing) Color.Black else Color.White
@@ -185,9 +186,9 @@ fun ProfileViewScreen(
     }
 }
 
-// StatItem được tùy chỉnh cho màn hình này
+// Đổi tên thành AuthorStatItem để không trùng với StatItem ở file ProfileScreen
 @Composable
-private fun StatItem(count: String, label: String) {
+private fun AuthorStatItem(count: String, label: String) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
