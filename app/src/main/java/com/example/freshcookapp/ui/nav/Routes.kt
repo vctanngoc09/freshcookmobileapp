@@ -78,6 +78,14 @@ sealed class Destination(val route: String) {
     data object Filter: Destination("filter")
 
     @Serializable
+    data class FilteredRecipes(
+        val includedIngredients: List<String>,
+        val excludedIngredients: List<String>,
+        val difficulty: String,
+        val timeCook: Float
+    ) : Destination("filtered_recipes")
+
+    @Serializable
     data class RecipeDetail(
         val recipeId: String?
     ) : Destination("Chi tiết")

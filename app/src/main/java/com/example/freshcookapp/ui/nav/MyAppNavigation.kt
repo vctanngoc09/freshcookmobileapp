@@ -1,11 +1,13 @@
 package com.example.freshcookapp.ui.nav
 
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
+import com.example.freshcookapp.util.FilterStore
 // --- CÁC IMPORT PHẢI ĐẦY ĐỦ NHƯ DƯỚI ---
 import com.example.freshcookapp.ui.screen.auth.ForgotPassword
 import com.example.freshcookapp.ui.screen.auth.Login
@@ -135,7 +137,18 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
         composable<Destination.Filter> {
             Filter(
                 onBackClick = { navController.navigateUp() },
-                onApply = { navController.navigate(Destination.Home) }
+                onApply = { included, excluded, diff, time ->
+                    Log.d("MyAppNav", "Saving filters: included=$included excluded=$excluded diff=$diff time=$time")
+                    // also store in global FilterStore as reliable fallback
+                    FilterStore.setFilters(included, excluded, diff, time)
+                    // store filters in savedStateHandle of current back stack entry (Filter screen)
+                    navController.currentBackStackEntry?.savedStateHandle?.set("filter_included", included)
+                    navController.currentBackStackEntry?.savedStateHandle?.set("filter_excluded", excluded)
+                    navController.currentBackStackEntry?.savedStateHandle?.set("filter_difficulty", diff)
+                    navController.currentBackStackEntry?.savedStateHandle?.set("filter_time", time)
+                    // navigate to the filtered results screen (we will read savedStateHandle there)
+                    navController.navigate(Destination.FilteredRecipes(included, excluded, diff, time))
+                }
             )
         }
 
@@ -217,6 +230,38 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
             ForgotPassword(
                 onBackClick = { navController.navigateUp() },
                 onSendClick = { navController.navigate(Destination.Login) }
+            )
+        }
+
+        composable<Destination.FilteredRecipes> { backStackEntry ->
+            // Try to read filters from the previous back stack entry's savedStateHandle first (more reliable for lists)
+            val prev = navController.previousBackStackEntry
+            val included = prev?.savedStateHandle?.get<List<String>>("filter_included")
+                ?: backStackEntry.toRoute<Destination.FilteredRecipes>().includedIngredients
+            val excluded = prev?.savedStateHandle?.get<List<String>>("filter_excluded")
+                ?: backStackEntry.toRoute<Destination.FilteredRecipes>().excludedIngredients
+            val difficulty = prev?.savedStateHandle?.get<String>("filter_difficulty")
+                ?: backStackEntry.toRoute<Destination.FilteredRecipes>().difficulty
+            val time = prev?.savedStateHandle?.get<Float>("filter_time")
+                ?: backStackEntry.toRoute<Destination.FilteredRecipes>().timeCook
+
+            // If still null/empty, fallback to global FilterStore
+            val finalIncluded = included ?: FilterStore.includedIngredients
+            val finalExcluded = excluded ?: FilterStore.excludedIngredients
+            val finalDifficulty = difficulty ?: FilterStore.difficulty
+            val finalTime = time ?: FilterStore.timeCook
+
+            Log.d("MyAppNav", "Entering FilteredRecipes: included=$finalIncluded excluded=$finalExcluded difficulty=$finalDifficulty time=$finalTime")
+
+            SearchResultScreen(
+                includedIngredients = finalIncluded,
+                excludedIngredients = finalExcluded,
+                difficulty = finalDifficulty,
+                timeCook = finalTime,
+                onBackClick = { navController.navigateUp() },
+                onRecipeClick = { recipeId ->
+                    navController.navigate(Destination.RecipeDetail(recipeId = recipeId))
+                }
             )
         }
     }

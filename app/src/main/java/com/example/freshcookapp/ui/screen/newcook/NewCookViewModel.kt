@@ -2,6 +2,7 @@ package com.example.freshcookapp.ui.screen.newcook
 
 import android.net.Uri
 import android.util.Log
+import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.freshcookapp.data.repository.RecipeRepository
@@ -13,15 +14,20 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.Locale
-import java.util.UUID
 import com.google.firebase.storage.FirebaseStorage
-import com.google.firebase.storage.StorageReference
-import kotlinx.coroutines.tasks.await
+import java.text.Normalizer
 
 
 class NewCookViewModel(
     private val recipeRepository: RecipeRepository
 ) : ViewModel() {
+
+    private fun normalizeText(input: String): String {
+        return Normalizer.normalize(input, Normalizer.Form.NFD)
+            .replace("\\p{M}+".toRegex(), "")
+            .lowercase()
+            .trim()
+    }
 
     /**
      * Hàm public duy nhất UI gọi khi bấm "Lên sóng"
@@ -136,7 +142,7 @@ class NewCookViewModel(
         if (imageUri.isNullOrEmpty()) return ""
 
         return try {
-            val uri = Uri.parse(imageUri)
+            val uri = imageUri.toUri()
             val storage = FirebaseStorage.getInstance()
 
             val ref = storage.reference
@@ -173,8 +179,6 @@ class NewCookViewModel(
         instructions: List<Instruction>
     ) {
         val db = FirebaseFirestore.getInstance()
-        // ⭐ Firestore tự tạo ID
-        val recipeRef = db.collection("recipes").document()
 
         val safeTime = (timeCookMinutes ?: 0)
         val safePeople = (people ?: 1)
@@ -186,6 +190,19 @@ class NewCookViewModel(
         ).format(java.util.Date())
 
         // === Document chính ===
+        // Build normalized searchTokens from title + ingredient names
+        val rawTokens = listOf(name) + ingredients.map { it.name }
+        val normalizedTokens = rawTokens.flatMap { token ->
+            val norm = normalizeText(token)
+            val words = norm.split(Regex("\\s+"))
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+            // include full phrase and individual words
+            listOf(norm) + words
+        }.map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+
         val recipeData = hashMapOf(
             "id" to recipeId,
             "name" to name,
@@ -198,40 +215,43 @@ class NewCookViewModel(
             "likeCount" to 0,           // default 0
             "people" to safePeople,
             "timeCook" to safeTime,
-            "userId" to userId
+            "userId" to userId,
+            "searchTokens" to normalizedTokens
         )
 
-        // 1. Lưu document chính
-        recipeRef.set(recipeData).await()
+         // 1. Lưu document chính
+         // Use the given recipeId for the main document so subcollections and storage paths match
+         val recipeDocRef = db.collection("recipes").document(recipeId)
+         recipeDocRef.set(recipeData).await()
 
-        // 2. Subcollection: recipeIngredients
-        val ingredientsCol = recipeRef.collection("recipeIngredients")
-        ingredients.forEach { ing ->
-            val ingData = hashMapOf(
-                "name" to ing.name,
-                "quantity" to ing.quantity,
-                "unit" to ing.unit,
-                "note" to ing.notes
-            )
-            ingredientsCol.add(ingData).await()
-        }
+         // 2. Subcollection: recipeIngredients
+         val ingredientsCol = recipeDocRef.collection("recipeIngredients")
+         ingredients.forEach { ing ->
+             val ingData = hashMapOf(
+                 "name" to ing.name,
+                 "quantity" to ing.quantity,
+                 "unit" to ing.unit,
+                 "note" to ing.notes
+             )
+             ingredientsCol.add(ingData).await()
+         }
 
-        // 3. Subcollection: instruction
-        // --- Save steps + upload images ---
-        val instructionCol = recipeRef.collection("instruction")
+         // 3. Subcollection: instruction
+         // --- Save steps + upload images ---
+         val instructionCol = recipeDocRef.collection("instruction")
 
-        instructions.forEachIndexed { index, ins ->
+         instructions.forEachIndexed { index, ins ->
 
-            val uploadedStepImageUrl = uploadStepImage(recipeId, index, ins.imageUrl)
+             val uploadedStepImageUrl = uploadStepImage(recipeId, index, ins.imageUrl)
 
-            val insData = hashMapOf(
-                "step" to ins.stepNumber,
-                "description" to ins.description,
-                "imageUrl" to uploadedStepImageUrl   // ảnh từ Storage
-            )
+             val insData = hashMapOf(
+                 "step" to ins.stepNumber,
+                 "description" to ins.description,
+                 "imageUrl" to uploadedStepImageUrl   // ảnh từ Storage
+             )
 
-            instructionCol.add(insData).await()
-        }
+             instructionCol.add(insData).await()
+         }
 
         Log.d("NewCookViewModel", "Đã lưu Firestore với ID: $recipeId")
     }

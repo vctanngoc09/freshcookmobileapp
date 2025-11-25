@@ -19,12 +19,16 @@ import com.example.freshcookapp.ui.component.RecipeCard
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchResultScreen(
-    keyword: String,
+    keyword: String? = null,
+    includedIngredients: List<String> = emptyList(),
+    excludedIngredients: List<String> = emptyList(),
+    difficulty: String = "",
+    timeCook: Float = 0f,
     onBackClick: () -> Unit,
     onRecipeClick: (String) -> Unit
 ) {
     val viewModel: SearchResultViewModel = viewModel(
-        factory = SearchResultViewModelFactory(keyword)
+        factory = SearchResultViewModelFactory(keyword, includedIngredients, excludedIngredients, difficulty, timeCook)
     )
 
     val results by viewModel.results.collectAsState()
@@ -32,7 +36,7 @@ fun SearchResultScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Kết quả cho \"$keyword\"") },
+                title = { Text(if (keyword != null) "Kết quả cho \"$keyword\"" else "Kết quả lọc") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

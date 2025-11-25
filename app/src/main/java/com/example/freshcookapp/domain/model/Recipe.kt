@@ -17,5 +17,8 @@ data class Recipe(
     val hashtags: List<String> = listOf(),
     val ingredients: List<String> = listOf(),
     val instructions: List<InstructionStep> = listOf(),
-    val relatedRecipes: List<RecipePreview> = listOf()
+    val relatedRecipes: List<RecipePreview> = listOf(),
+
+    // Normalized tokens used for searching/filtering (lowercase, no diacritics)
+    val searchTokens: List<String> = listOf()
 )
