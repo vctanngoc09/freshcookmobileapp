@@ -15,10 +15,13 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import com.example.freshcookapp.data.repository.CommentRepository
+import com.example.freshcookapp.domain.model.Comment
 
-class RecipeDetailViewModel(private val repository: RecipeRepository) : ViewModel() {
+class RecipeDetailViewModel(private val repository: RecipeRepository, private val commentRepository: CommentRepository) : ViewModel() {
 
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
@@ -29,60 +32,83 @@ class RecipeDetailViewModel(private val repository: RecipeRepository) : ViewMode
     private val _isFollowingAuthor = MutableStateFlow(false)
     val isFollowingAuthor: StateFlow<Boolean> = _isFollowingAuthor
 
+    private val _comments = MutableStateFlow<List<Comment>>(emptyList())
+    val comments: StateFlow<List<Comment>> = _comments
+
+    private val _commentText = MutableStateFlow("")
+    val commentText: StateFlow<String> = _commentText
+
     fun loadRecipe(recipeId: String) {
         viewModelScope.launch {
-            // 1. Lấy dữ liệu từ Local DB (Room) trước
-            val localEntity = repository.getRecipeById(recipeId)
+            try {
+                // 1. Lấy dữ liệu từ Local DB (Room) trước
+                val localEntity = repository.getRecipeById(recipeId)
 
-            if (localEntity != null) {
-                // Lưu lịch sử xem
-                repository.addToHistory(recipeId)
+                if (localEntity != null) {
+                    // Lưu lịch sử xem
+                    repository.addToHistory(recipeId)
 
-                // 2. LẤY MÓN TƯƠNG TỰ (Fix lỗi mất món tương tự)
-                // Lấy danh sách entity liên quan, convert sang RecipePreview
-                val relatedEntities = repository.getRelatedRecipes(localEntity.categoryId, localEntity.id).first()
-                val relatedList = relatedEntities.map { entity ->
-                    RecipePreview(
-                        id = entity.id,
-                        title = entity.name,
-                        time = "${entity.timeCookMinutes} phút",
-                        author = "", // Preview không cần tác giả chi tiết
-                        imageUrl = entity.imageUrl
+                    // 2. LẤY MÓN TƯƠI NG TƯƠI (Fix lỗi mất món tương tự)
+                    // Lấy danh sách entity liên quan, convert sang RecipePreview
+                    val relatedEntities = repository.getRelatedRecipes(localEntity.categoryId, localEntity.id).first()
+                    val relatedList = relatedEntities.map { entity ->
+                        RecipePreview(
+                            id = entity.id,
+                            title = entity.name,
+                            time = "${entity.timeCookMinutes} phút",
+                            author = "", // Preview không cần tác giả chi tiết
+                            imageUrl = entity.imageUrl
+                        )
+                    }
+
+                    // 3. Tạo UI Model ban đầu (Like count tạm để 0)
+                    var currentRecipe = localEntity.toUiModel(
+                        Author(localEntity.userId, "Đang tải...", null),
+                        relatedList,
+                        0
                     )
-                }
-
-                // 3. Tạo UI Model ban đầu (Like count tạm để 0)
-                var currentRecipe = localEntity.toUiModel(
-                    Author(localEntity.userId, "Đang tải...", null),
-                    relatedList,
-                    0
-                )
-                _recipe.value = currentRecipe
-
-                // 4. Tải thông tin Tác giả từ Firebase
-                fetchAuthorInfo(localEntity.userId) { author ->
-                    currentRecipe = currentRecipe.copy(author = author)
                     _recipe.value = currentRecipe
-                    // Check trạng thái Follow
-                    checkFollowStatus(localEntity.userId)
-                }
 
-                // 5. Lắng nghe số Like Realtime từ Firebase
-                firestore.collection("recipes").document(recipeId)
-                    .addSnapshotListener { snapshot, _ ->
-                        if (snapshot != null && snapshot.exists()) {
-                            val liveLikeCount = snapshot.getLong("likeCount")?.toInt() ?: 0
-                            _recipe.value = _recipe.value?.copy(likeCount = liveLikeCount)
+                    // 4. Tải thông tin Tác giả từ Firebase
+                    fetchAuthorInfo(localEntity.userId) { author ->
+                        currentRecipe = currentRecipe.copy(author = author)
+                        _recipe.value = currentRecipe
+                        // Check trạng thái Follow
+                        checkFollowStatus(localEntity.userId)
+                    }
+
+                    // 5. Lắng nghe số Like Realtime từ Firebase
+                    firestore.collection("recipes").document(recipeId)
+                        .addSnapshotListener { snapshot, _ ->
+                            if (snapshot != null && snapshot.exists()) {
+                                val liveLikeCount = snapshot.getLong("likeCount")?.toInt() ?: 0
+                                _recipe.value = _recipe.value?.copy(likeCount = liveLikeCount)
+                            }
+                        }
+
+                    // 6. Kiểm tra xem mình đã Like món này chưa
+                    checkIfUserLiked(recipeId) { isLiked ->
+                        _recipe.value = _recipe.value?.copy(isFavorite = isLiked)
+                    }
+
+                    // 7. Load comments real-time
+                    viewModelScope.launch {
+                        try {
+                            commentRepository.getCommentsForRecipe(recipeId).collectLatest { comments ->
+                                _comments.value = comments
+                            }
+                        } catch (e: Exception) {
+                            Log.e("RecipeDetailViewModel", "Exception loading comments: ${e.message}")
+                            _comments.value = emptyList()
                         }
                     }
 
-                // 6. Kiểm tra xem mình đã Like món này chưa
-                checkIfUserLiked(recipeId) { isLiked ->
-                    _recipe.value = _recipe.value?.copy(isFavorite = isLiked)
+                } else {
+                    Log.e("Detail", "Không tìm thấy món trong Local DB")
                 }
-
-            } else {
-                Log.e("Detail", "Không tìm thấy món trong Local DB")
+            } catch (e: Exception) {
+                Log.e("RecipeDetailViewModel", "Exception in loadRecipe: ${e.message}")
+                e.printStackTrace()
             }
         }
     }
@@ -238,6 +264,69 @@ class RecipeDetailViewModel(private val repository: RecipeRepository) : ViewMode
             }
     }
 
+    // --- COMMENT FUNCTIONS ---
+    fun updateCommentText(text: String) {
+        _commentText.value = text
+    }
+
+    fun addComment() {
+        val text = _commentText.value.trim()
+        if (text.isEmpty()) return
+
+        val user = auth.currentUser ?: return
+        val recipe = _recipe.value ?: return
+
+        firestore.collection("users").document(user.uid).get()
+            .addOnSuccessListener { doc ->
+                val userName = doc.getString("fullName") ?: user.displayName ?: "User"
+                val comment = Comment(
+                    userId = user.uid,
+                    recipeId = recipe.id,
+                    userName = userName,
+                    text = text
+                )
+                viewModelScope.launch {
+                    try {
+                        val success = commentRepository.addComment(comment)
+                        if (success) {
+                            _commentText.value = ""
+                            // Send notification to recipe author
+                            sendNotification(
+                                receiverId = recipe.author.id,
+                                message = "đã bình luận về món ăn: ${recipe.title}",
+                                recipeId = recipe.id
+                            )
+                        } else {
+                            // Log lỗi nếu add thất bại (có thể hiển thị toast trong UI sau)
+                            Log.e("RecipeDetailViewModel", "Failed to add comment")
+                        }
+                    } catch (e: Exception) {
+                        Log.e("RecipeDetailViewModel", "Exception in addComment: ${e.message}")
+                        // Có thể emit error state hoặc hiển thị toast
+                    }
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("RecipeDetailViewModel", "Error fetching user info: ${e.message}")
+            }
+    }
+
+    fun addSampleComment() {
+        val recipe = _recipe.value ?: return
+        viewModelScope.launch {
+            try {
+                val success = commentRepository.addSampleComment(recipe.id)
+                if (success) {
+                    Log.d("RecipeDetailViewModel", "Sample comment added successfully")
+                } else {
+                    Log.e("RecipeDetailViewModel", "Failed to add sample comment")
+                }
+            } catch (e: Exception) {
+                Log.e("RecipeDetailViewModel", "Exception adding sample comment: ${e.message}")
+            }
+        }
+    }
+
     // --- MAPPER ---
     private fun RecipeEntity.toUiModel(author: Author, related: List<RecipePreview>, likes: Int): Recipe {
         return Recipe(
@@ -250,8 +339,8 @@ class RecipeDetailViewModel(private val repository: RecipeRepository) : ViewMode
             author = author,
             isFavorite = this.isFavorite,
             likeCount = likes,
-            ingredients = this.ingredients,
-            instructions = this.steps.mapIndexed { index, s -> InstructionStep(index + 1, s, null) },
+            ingredients = this.ingredients ?: emptyList(),
+            instructions = this.steps?.mapIndexed { index, s -> InstructionStep(index + 1, s, null) } ?: emptyList(),
             relatedRecipes = related // Đã gán danh sách món tương tự vào đây
         )
     }

@@ -1,6 +1,5 @@
 package com.example.freshcookapp.ui.screen.detail
 
-import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -11,8 +10,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,6 +31,7 @@ import com.example.freshcookapp.FreshCookAppRoom
 import com.example.freshcookapp.R
 import com.example.freshcookapp.data.local.AppDatabase
 import com.example.freshcookapp.data.repository.RecipeRepository
+import com.example.freshcookapp.data.repository.CommentRepository
 import com.example.freshcookapp.domain.model.*
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.google.firebase.auth.FirebaseAuth
@@ -44,7 +45,8 @@ fun RecipeDetail(
     val app = context.applicationContext as FreshCookAppRoom
     val db = remember { AppDatabase.getDatabase(app) }
     val repo = remember { RecipeRepository(db) }
-    val viewModel = remember { RecipeDetailViewModel(repo) }
+    val commentRepo = remember { CommentRepository() }
+    val viewModel = remember { RecipeDetailViewModel(repo, commentRepo) }
 
     LaunchedEffect(recipeId) {
         if (recipeId != null) viewModel.loadRecipe(recipeId)
@@ -61,10 +63,12 @@ fun RecipeDetail(
         RecipeDetailView(
             recipe = recipeToShow!!,
             isFollowingAuthor = isFollowingAuthor,
+            viewModel = viewModel,
             onBackClick = { navController.navigateUp() },
             onFavoriteClick = { viewModel.toggleFavorite() },
             onAuthorClick = { authorId -> navController.navigate("user_profile/$authorId") },
-            onFollowClick = { viewModel.toggleFollowAuthor() }
+            onFollowClick = { viewModel.toggleFollowAuthor() },
+            navController = navController
         )
     }
 }
@@ -73,19 +77,23 @@ fun RecipeDetail(
 private fun RecipeDetailView(
     recipe: Recipe,
     isFollowingAuthor: Boolean,
+    viewModel: RecipeDetailViewModel,
     onBackClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     onAuthorClick: (String) -> Unit,
-    onFollowClick: () -> Unit
+    onFollowClick: () -> Unit,
+    navController: NavHostController
 ) {
     Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
         RecipeDetailContent(
             recipe = recipe,
             isFollowingAuthor = isFollowingAuthor,
+            viewModel = viewModel,
             modifier = Modifier.fillMaxSize(),
             onAuthorClick = onAuthorClick,
             onFavoriteClick = onFavoriteClick,
-            onFollowClick = onFollowClick
+            onFollowClick = onFollowClick,
+            navController = navController
         )
 
         // Gradient nền đen mờ
@@ -121,7 +129,7 @@ private fun RecipeDetailTopBar(
             onClick = onBackClick,
             modifier = Modifier.background(Color.Black.copy(alpha = 0.3f), CircleShape)
         ) {
-            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
         }
 
         IconButton(
@@ -144,7 +152,9 @@ private fun RecipeDetailContent(
     modifier: Modifier = Modifier,
     onAuthorClick: (String) -> Unit,
     onFavoriteClick: () -> Unit,
-    onFollowClick: () -> Unit
+    onFollowClick: () -> Unit,
+    viewModel: RecipeDetailViewModel,
+    navController: NavHostController
 ) {
     LazyColumn(modifier = modifier) {
         // 1. Ảnh bìa
@@ -197,13 +207,13 @@ private fun RecipeDetailContent(
 
         // 7. KHUNG BÌNH LUẬN (ĐÃ KHÔI PHỤC)
         item {
-            CommentSection()
+            CommentSection(viewModel)
         }
 
-        // 8. CÁC MÓN TƯƠNG TỰ (ĐÃ KHÔI PHỤC)
+        // 8. CÁC MÓN TƯƠI NGỰA (ĐÃ KHÔI PHỤC)
         item {
             if (recipe.relatedRecipes.isNotEmpty()) {
-                RelatedRecipesSection(recipes = recipe.relatedRecipes)
+                RelatedRecipesSection(recipes = recipe.relatedRecipes, navController = navController)
             } else {
                 // Nếu không có món tương tự (do DB ít món), ẩn hoặc hiện text
                 // Text("Chưa có món tương tự", modifier = Modifier.padding(16.dp), color = Color.Gray)
@@ -315,7 +325,10 @@ fun AuthorInfoSection(
 
 // --- KHUNG BÌNH LUẬN (UI Only - Chưa có logic Backend) ---
 @Composable
-fun CommentSection() {
+fun CommentSection(viewModel: RecipeDetailViewModel) {
+    val comments by viewModel.comments.collectAsState()
+    val commentText by viewModel.commentText.collectAsState()
+
     Column(modifier = Modifier.padding(16.dp)) {
         Text("Bình luận", fontSize = 18.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
@@ -323,8 +336,8 @@ fun CommentSection() {
         // Input bình luận
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextField(
-                value = "",
-                onValueChange = {},
+                value = commentText,
+                onValueChange = { viewModel.updateCommentText(it) },
                 placeholder = { Text("Viết bình luận...", fontSize = 14.sp) },
                 modifier = Modifier.weight(1f),
                 colors = TextFieldDefaults.colors(
@@ -336,21 +349,63 @@ fun CommentSection() {
                 shape = RoundedCornerShape(12.dp)
             )
             Spacer(Modifier.width(8.dp))
-            IconButton(onClick = {}) {
-                Icon(Icons.Outlined.Send, contentDescription = "Send", tint = Cinnabar500)
+            IconButton(onClick = { viewModel.addComment() }) {
+                Icon(Icons.AutoMirrored.Outlined.Send, contentDescription = "Send", tint = Cinnabar500)
             }
         }
 
         Spacer(Modifier.height(16.dp))
 
-        // Danh sách bình luận giả lập
-        Text("Chưa có bình luận nào. Hãy là người đầu tiên!", color = Color.Gray, fontSize = 14.sp)
+        // Button thêm comment mẫu (chỉ để test)
+        Button(
+            onClick = { viewModel.addSampleComment() },
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)
+        ) {
+            Text("Thêm comment mẫu (test)", fontSize = 12.sp)
+        }
+
+        // Danh sách bình luận
+        if (comments.isEmpty()) {
+            Text("Chưa có bình luận nào. Hãy là người đầu tiên!", color = Color.Gray, fontSize = 14.sp)
+        } else {
+            // Thay LazyColumn (nested) bằng Column để tránh crash khi nested scrollable
+            Column {
+                comments.forEach { comment ->
+                    CommentItem(comment)
+                    Spacer(Modifier.height(8.dp))
+                }
+            }
+        }
     }
 }
 
-// --- MÓN TƯƠNG TỰ ---
 @Composable
-fun RelatedRecipesSection(recipes: List<RecipePreview>) {
+fun CommentItem(comment: Comment) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        // Avatar giả lập
+        Box(
+            modifier = Modifier.size(32.dp).clip(CircleShape).background(Color.Gray),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(comment.userName.firstOrNull()?.toString() ?: "U", color = Color.White, fontWeight = FontWeight.Bold)
+        }
+        Spacer(Modifier.width(8.dp))
+        Column {
+            Text(comment.userName, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text(comment.text, fontSize = 14.sp)
+            Text(
+                text = comment.timestamp?.let { java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault()).format(it) } ?: "",
+                color = Color.Gray,
+                fontSize = 12.sp
+            )
+        }
+    }
+}
+
+// --- MÓN TƯƠI NGỰA ---
+@Composable
+fun RelatedRecipesSection(recipes: List<RecipePreview>, navController: NavHostController) {
     Column(modifier = Modifier.padding(top = 24.dp)) {
         Text(
             "Các món tương tự",
