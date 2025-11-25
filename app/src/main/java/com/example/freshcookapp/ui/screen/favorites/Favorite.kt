@@ -23,6 +23,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel // <-- Cần import này
 // IMPORT COIL ĐỂ LOAD ẢNH NÉT
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
@@ -37,20 +38,35 @@ import com.example.freshcookapp.domain.model.Recipe
 import com.example.freshcookapp.ui.component.ScreenContainer
 import com.example.freshcookapp.ui.theme.Cinnabar500
 
+// Helper function to create the ViewModel with dependencies
+@Composable
+fun rememberFavoriteViewModel(): FavoriteViewModel {
+    val context = LocalContext.current
+    val app = context.applicationContext as FreshCookAppRoom
+    val db = remember { AppDatabase.getDatabase(app) }
+    val repo = remember { RecipeRepository(db) }
+    return remember { FavoriteViewModel(repo) }
+}
+
 @Composable
 fun Favorite(
     onBackClick: () -> Unit,
     onRecipeClick: (String) -> Unit
 ) {
-    val context = LocalContext.current
-    val viewModel = remember {
-        val app = context.applicationContext as FreshCookAppRoom
-        val db = AppDatabase.getDatabase(app)
-        val repo = RecipeRepository(db)
-        FavoriteViewModel(repo)
-    }
+    // 1. Sử dụng helper function để khởi tạo ViewModel một cách ổn định
+    val viewModel = rememberFavoriteViewModel()
 
     val recipes by viewModel.favoriteRecipes.collectAsState()
+
+    // 2. Thêm một State để theo dõi việc đang tải dữ liệu lần đầu
+    var initialLoadComplete by remember { mutableStateOf(false) }
+
+    // Kích hoạt khi recipes thay đổi từ rỗng sang có dữ liệu
+    LaunchedEffect(recipes) {
+        if (recipes.isNotEmpty() || viewModel.favoriteRecipes.value.isEmpty()) {
+            initialLoadComplete = true
+        }
+    }
 
     ScreenContainer {
         Column(
@@ -58,14 +74,14 @@ fun Favorite(
                 .fillMaxSize()
                 .padding(vertical = 12.dp)
         ) {
-            // HEADER
+            // HEADER (Giữ nguyên)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBackClick, modifier = Modifier.size(28.dp)) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_back), // Đảm bảo bạn có icon này
+                        painter = painterResource(R.drawable.ic_back),
                         contentDescription = "Back",
                         tint = Color.Black,
                         modifier = Modifier.size(22.dp)
@@ -82,7 +98,13 @@ fun Favorite(
             Spacer(modifier = Modifier.height(24.dp))
 
             // LIST
-            if (recipes.isEmpty()) {
+            // Thay vì dùng recipes.isEmpty, ta kiểm tra thêm trạng thái tải lần đầu
+            if (recipes.isEmpty() && !initialLoadComplete) {
+                // Hiển thị loading nhẹ hoặc giữ nguyên màn hình cũ
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Cinnabar500)
+                }
+            } else if (recipes.isEmpty()) {
                 FavoriteEmptyState()
             } else {
                 FavoriteList(
@@ -97,6 +119,7 @@ fun Favorite(
     }
 }
 
+// ... (Các Composable còn lại giữ nguyên) ...
 @Composable
 private fun FavoriteList(
     recipes: List<Recipe>,
@@ -138,7 +161,7 @@ private fun FavoriteItemCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(180.dp) // Tăng chiều cao chút để ảnh đẹp hơn
+                    .height(180.dp)
             ) {
                 // --- HIỂN THỊ ẢNH NÉT (High Quality) ---
                 val painter = rememberAsyncImagePainter(

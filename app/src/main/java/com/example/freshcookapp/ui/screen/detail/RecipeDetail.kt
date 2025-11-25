@@ -52,7 +52,6 @@ import com.google.firebase.auth.FirebaseAuth
 fun RecipeDetail(
     recipeId: String?,
     navController: NavHostController,
-    // Thêm callback để chuyển sang màn hình thông báo
     onNotificationClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -68,8 +67,6 @@ fun RecipeDetail(
 
     val recipeToShow by viewModel.recipe.collectAsState()
     val isFollowingAuthor by viewModel.isFollowingAuthor.collectAsState()
-
-    // Lấy trạng thái thông báo từ ViewModel (để hiện chấm đỏ)
     val hasUnreadNotifications by viewModel.hasUnreadNotifications.collectAsState()
 
     var expandedImageUrl by remember { mutableStateOf<String?>(null) }
@@ -82,14 +79,14 @@ fun RecipeDetail(
         RecipeDetailView(
             recipe = recipeToShow!!,
             isFollowingAuthor = isFollowingAuthor,
-            hasUnreadNotifications = hasUnreadNotifications, // Truyền xuống
+            hasUnreadNotifications = hasUnreadNotifications,
             viewModel = viewModel,
             onBackClick = { navController.navigateUp() },
             onFavoriteClick = { viewModel.toggleFavorite() },
             onAuthorClick = { authorId -> navController.navigate("user_profile/$authorId") },
             onFollowClick = { viewModel.toggleFollowAuthor() },
             onImageClick = { url -> expandedImageUrl = url },
-            onNotificationClick = onNotificationClick, // Truyền xuống
+            onNotificationClick = onNotificationClick,
             navController = navController
         )
 
@@ -129,7 +126,6 @@ private fun RecipeDetailView(
             navController = navController
         )
 
-        // Gradient nền đen mờ
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -137,7 +133,6 @@ private fun RecipeDetailView(
                 .background(Brush.verticalGradient(colors = listOf(Color.Black.copy(alpha = 0.4f), Color.Transparent)))
         )
 
-        // TOP BAR NÂNG CẤP
         RecipeDetailTopBar(
             recipeName = recipe.title,
             recipeId = recipe.id,
@@ -262,7 +257,6 @@ private fun RecipeDetailContent(
     navController: NavHostController
 ) {
     LazyColumn(modifier = modifier) {
-        // 1. Ảnh bìa
         item {
             RecipeHeader(
                 recipe = recipe,
@@ -270,13 +264,8 @@ private fun RecipeDetailContent(
             )
         }
 
-        // 2. Thông tin chung
         item { RecipeInfoSection(recipe) }
-
-        // 3. Nguyên liệu
         item { RecipeIngredients(recipe.ingredients) }
-
-        // 4. Cách làm
         item {
             RecipeInstructions(
                 steps = recipe.instructions,
@@ -284,7 +273,6 @@ private fun RecipeDetailContent(
             )
         }
 
-        // 5. Nút Yêu thích
         item {
             Button(
                 onClick = onFavoriteClick,
@@ -310,7 +298,6 @@ private fun RecipeDetailContent(
             }
         }
 
-        // 6. Tác giả
         item {
             AuthorInfoSection(
                 author = recipe.author,
@@ -320,12 +307,10 @@ private fun RecipeDetailContent(
             )
         }
 
-        // 7. Khung Bình luận (Đã xóa nút rác)
         item {
             CommentSection(viewModel)
         }
 
-        // 8. Món tương tự
         item {
             if (recipe.relatedRecipes.isNotEmpty()) {
                 RelatedRecipesSection(recipes = recipe.relatedRecipes, navController = navController)
@@ -354,9 +339,9 @@ private fun RecipeHeader(recipe: Recipe, onImageClick: () -> Unit) {
         contentDescription = null,
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 250.dp, max = 500.dp) // Chiều cao linh hoạt
+            .heightIn(min = 250.dp, max = 500.dp)
             .clickable { onImageClick() },
-        contentScale = ContentScale.FillWidth // Quan trọng: FillWidth để không bị crop
+        contentScale = ContentScale.FillWidth
     )
 }
 
@@ -389,7 +374,7 @@ private fun RecipeIngredients(ingredients: List<String>) {
     }
 }
 
-// --- CẬP NHẬT: ẢNH BƯỚC NẤU FULL WIDTH ---
+// --- CẬP NHẬT ẢNH BƯỚC NẤU THUMBNAIL NHỎ GỌN (Giống ảnh mẫu) ---
 @Composable
 private fun RecipeInstructions(steps: List<InstructionStep>, onImageClick: (String) -> Unit) {
     val context = LocalContext.current
@@ -407,6 +392,7 @@ private fun RecipeInstructions(steps: List<InstructionStep>, onImageClick: (Stri
             Text("Đang cập nhật...", color = Color.Gray)
         } else {
             steps.forEach { step ->
+                // BƯỚC NẤU (Bố cục)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.Top
@@ -439,12 +425,12 @@ private fun RecipeInstructions(steps: List<InstructionStep>, onImageClick: (Stri
 
                         Spacer(Modifier.height(8.dp))
 
-                        // Ảnh bước (FULL CHIỀU CAO - KHÔNG CẮT)
+                        // Ảnh bước (THUMBNAIL NHỎ GỌN)
                         if (!step.imageUrl.isNullOrEmpty()) {
                             val painter = rememberAsyncImagePainter(
                                 model = ImageRequest.Builder(context)
                                     .data(step.imageUrl)
-                                    .size(Size.ORIGINAL) // Lấy ảnh gốc
+                                    .size(Size.ORIGINAL)
                                     .precision(Precision.EXACT)
                                     .crossfade(true)
                                     .build()
@@ -454,12 +440,12 @@ private fun RecipeInstructions(steps: List<InstructionStep>, onImageClick: (Stri
                                 painter = painter,
                                 contentDescription = "Step image",
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .wrapContentHeight() // Chiều cao tự dãn theo ảnh
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .height(110.dp) // Kích thước cố định thumbnail
+                                    .width(140.dp)  // Kích thước cố định thumbnail
+                                    .clip(RoundedCornerShape(12.dp))
                                     .background(Color.LightGray)
                                     .clickable { onImageClick(step.imageUrl) },
-                                contentScale = ContentScale.FillWidth // Dãn hết chiều ngang
+                                contentScale = ContentScale.Crop // Crop để lấp đầy khung nhỏ
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                         } else {
@@ -467,7 +453,7 @@ private fun RecipeInstructions(steps: List<InstructionStep>, onImageClick: (Stri
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(16.dp)) // Khoảng cách giữa các bước
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }

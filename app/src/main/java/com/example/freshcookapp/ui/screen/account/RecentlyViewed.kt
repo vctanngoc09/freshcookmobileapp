@@ -33,7 +33,7 @@ import com.example.freshcookapp.ui.component.SearchBar
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.example.freshcookapp.ui.theme.WorkSans
 
-// 1. Model dữ liệu UI
+// Model dữ liệu UI
 data class ViewedRecipeModel(
     val id: String,
     val title: String,
@@ -46,7 +46,6 @@ data class ViewedRecipeModel(
 @Composable
 fun RecentlyViewedScreen(
     onBackClick: () -> Unit = {},
-    // --- THÊM DÒNG NÀY ĐỂ NHẬN SỰ KIỆN TỪ NAVIGATION ---
     onRecipeClick: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -115,7 +114,6 @@ fun RecentlyViewedScreen(
                             onRemoveClick = {
                                 viewModel.removeFromHistory(item.id)
                             },
-                            // --- TRUYỀN SỰ KIỆN CLICK VÀO ITEM ---
                             onClick = {
                                 onRecipeClick(item.id)
                             }
@@ -161,14 +159,13 @@ fun EmptyHistoryState(modifier: Modifier = Modifier) {
 fun RecentlyViewedItem(
     item: ViewedRecipeModel,
     onRemoveClick: () -> Unit,
-    // --- THÊM THAM SỐ CLICK ---
     onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(80.dp)
-            .clickable { onClick() }, // --- GỌI HÀM CLICK ---
+            .clickable { onClick() },
         verticalAlignment = Alignment.CenterVertically
     ) {
         Image(

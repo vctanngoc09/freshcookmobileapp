@@ -26,6 +26,7 @@ import com.example.freshcookapp.R
 import com.example.freshcookapp.ui.component.ScreenContainer
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.example.freshcookapp.ui.theme.WorkSans
+import com.google.firebase.firestore.PropertyName
 import kotlinx.coroutines.launch
 
 // Class này dùng chung cho cả MyDishes và Profile
@@ -33,7 +34,11 @@ data class RecipeInfo(
     val id: String = "",
     val name: String = "",
     val imageUrl: String? = null,
+
+    // ⭐ FIX LỖI: Ánh xạ từ field 'timeCook' trong Firestore sang timeCookMinutes
+    @get:PropertyName("timeCook")
     val timeCookMinutes: Int = 0,
+
     val userId: String = ""
 )
 
@@ -61,12 +66,12 @@ fun ProfileScreen(
     }
 
     val uiState by viewModel.uiState.collectAsState()
-    // --- KHẮC PHỤC: LẤY TRẠNG THÁI THÔNG BÁO CHƯA ĐỌC ---
     val hasUnreadNotifications by viewModel.hasUnreadNotifications.collectAsState()
 
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
+            // SettingsDrawerContent phải là Composable riêng biệt
             SettingsDrawerContent(
                 onCloseClick = { scope.launch { drawerState.close() } },
                 onEditProfileClick = { scope.launch { drawerState.close() }; onEditProfileClick() },
@@ -89,7 +94,7 @@ fun ProfileScreen(
                     }
                     Text("Tài khoản", fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = WorkSans, color = Cinnabar500)
 
-                    // --- ICON THÔNG BÁO CÓ DẤU CHẤM ĐỎ (BADGE) ---
+                    // ICON THÔNG BÁO CÓ DẤU CHẤM ĐỎ (BADGE)
                     IconButton(onClick = onNotificationClick) {
                         BadgedBox(
                             badge = {
@@ -106,7 +111,6 @@ fun ProfileScreen(
                             )
                         }
                     }
-                    // ---------------------------------------------
                 }
 
                 LazyColumn(contentPadding = PaddingValues(bottom = 16.dp)) {
