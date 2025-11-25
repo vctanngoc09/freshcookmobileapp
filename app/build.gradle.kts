@@ -90,4 +90,6 @@ dependencies {
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("com.google.firebase:firebase-storage-ktx")
 
+    implementation("com.google.firebase:firebase-messaging:23.4.0")
+
 }

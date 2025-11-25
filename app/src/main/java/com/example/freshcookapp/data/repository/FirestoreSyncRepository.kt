@@ -120,12 +120,12 @@ class FirestoreSyncRepository(
             // 3. TẠO VÀ LƯU DANH MỤC (ĐÃ XỬ LÝ XÓA CŨ)
             val categoryEntities = foundCategoriesMap.map { (catKey, imgUrl) ->
                 CategoryEntity(
-                    id = catKey.hashCode().toLong(),
-                    name = capitalizeFirstLetter(catKey), // noodle -> Noodle
-                    imageUrl = imgUrl,
-                    key = catKey
+                    id = catKey,                        // String OK
+                    name = capitalizeFirstLetter(catKey),
+                    imageUrl = imgUrl
                 )
             }
+
 
             if (categoryEntities.isNotEmpty()) {
                 // 🔥Xóa sạch danh mục cũ (rác) trước khi lưu cái mới

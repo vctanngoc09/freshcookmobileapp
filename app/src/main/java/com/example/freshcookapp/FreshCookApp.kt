@@ -12,6 +12,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect // <-- Import này
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -31,18 +32,38 @@ import com.google.firebase.auth.FirebaseAuth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FreshCookApp(auth: FirebaseAuth, googleSignInClient: GoogleSignInClient) {
+fun FreshCookApp(
+    auth: FirebaseAuth,
+    googleSignInClient: GoogleSignInClient,
+    // --- THÊM 2 THAM SỐ NÀY ĐỂ NHẬN DỮ LIỆU TỪ THÔNG BÁO ---
+    deepLinkRecipeId: String? = null,
+    deepLinkUserId: String? = null
+) {
     val navController: NavHostController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
     val context = LocalContext.current
 
+    // Logic xác định màn hình bắt đầu (Giữ nguyên)
     val startDestination = if (auth.currentUser != null) {
         Destination.Home
     } else {
         Destination.Splash
     }
+
+    // --- XỬ LÝ CHUYỂN TRANG KHI BẤM THÔNG BÁO (Deep Link) ---
+    LaunchedEffect(deepLinkRecipeId, deepLinkUserId) {
+        // Chỉ chuyển trang nếu người dùng ĐÃ ĐĂNG NHẬP
+        if (auth.currentUser != null) {
+            if (deepLinkRecipeId != null) {
+                navController.navigate(Destination.RecipeDetail(deepLinkRecipeId))
+            } else if (deepLinkUserId != null) {
+                navController.navigate("user_profile/$deepLinkUserId")
+            }
+        }
+    }
+    // --------------------------------------------------------
 
     val googleSignInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -68,6 +89,7 @@ fun FreshCookApp(auth: FirebaseAuth, googleSignInClient: GoogleSignInClient) {
         }
     }
 
+    // Logic ẩn hiện BottomBar (Giữ nguyên)
     val noBottomBarDestinations = listOf(
         Destination.Splash::class.qualifiedName,
         Destination.Welcome::class.qualifiedName,
@@ -77,7 +99,7 @@ fun FreshCookApp(auth: FirebaseAuth, googleSignInClient: GoogleSignInClient) {
         Destination.Search::class.qualifiedName,
         Destination.Filter::class.qualifiedName,
         Destination.Notification::class.qualifiedName,
-        Destination.Settings::class.qualifiedName,
+        Destination.Settings::class.qualifiedName, // Chú ý: Cái này có thể bỏ nếu dùng Drawer
         Destination.Follow::class.qualifiedName,
         Destination.RecentlyViewed::class.qualifiedName,
         Destination.MyDishes::class.qualifiedName,
@@ -91,7 +113,6 @@ fun FreshCookApp(auth: FirebaseAuth, googleSignInClient: GoogleSignInClient) {
 
     Scaffold(
         containerColor = White,
-        // 1. TẮT TỰ ĐỘNG CĂN CHỈNH (QUAN TRỌNG)
         contentWindowInsets = WindowInsets(0.dp),
 
         bottomBar = {
@@ -102,13 +123,8 @@ fun FreshCookApp(auth: FirebaseAuth, googleSignInClient: GoogleSignInClient) {
     ) { innerPadding ->
 
         val modifier = if (hideBottomBar) {
-            // Nếu ẩn BottomBar (như trang Follow):
-            // Cho phép tràn toàn màn hình, trang Follow sẽ tự lo phần tai thỏ
             Modifier.fillMaxSize()
         } else {
-            // Nếu hiện BottomBar (như trang Home):
-            // Tự tay thêm padding cho BottomBar (innerPadding)
-            // VÀ tự tay thêm padding cho StatusBar (.statusBarsPadding) -> Khắc phục lỗi che chữ
             Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
