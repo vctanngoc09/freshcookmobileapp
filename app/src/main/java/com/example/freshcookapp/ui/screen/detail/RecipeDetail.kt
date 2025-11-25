@@ -356,14 +356,6 @@ fun CommentSection(viewModel: RecipeDetailViewModel) {
 
         Spacer(Modifier.height(16.dp))
 
-        // Button thêm comment mẫu (chỉ để test)
-        Button(
-            onClick = { viewModel.addSampleComment() },
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)
-        ) {
-            Text("Thêm comment mẫu (test)", fontSize = 12.sp)
-        }
 
         // Danh sách bình luận
         if (comments.isEmpty()) {

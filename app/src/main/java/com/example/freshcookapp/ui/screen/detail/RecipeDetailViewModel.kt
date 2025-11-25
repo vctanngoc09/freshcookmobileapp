@@ -327,6 +327,44 @@ class RecipeDetailViewModel(private val repository: RecipeRepository, private va
         }
     }
 
+    // --- New: xóa comment theo commentId ---
+    fun deleteComment(commentId: String) {
+        val recipe = _recipe.value ?: return
+        viewModelScope.launch {
+            try {
+                val success = commentRepository.deleteComment(recipe.id, commentId)
+                if (success) {
+                    Log.d("RecipeDetailViewModel", "Deleted comment $commentId successfully")
+                } else {
+                    Log.e("RecipeDetailViewModel", "Failed to delete comment $commentId")
+                }
+            } catch (e: Exception) {
+                Log.e("RecipeDetailViewModel", "Exception deleting comment: ${e.message}")
+            }
+        }
+    }
+
+    // --- New: xóa tất cả comment mẫu (userId == "sampleUserId" hoặc text chứa "mẫu") ---
+    fun deleteSampleComments() {
+        val recipe = _recipe.value ?: return
+        viewModelScope.launch {
+            try {
+                val list = _comments.value
+                var deleted = 0
+                for (c in list) {
+                    val isSample = c.userId == "sampleUserId" || c.text.contains("mẫu", ignoreCase = true)
+                    if (isSample) {
+                        val ok = commentRepository.deleteComment(recipe.id, c.id)
+                        if (ok) deleted++
+                    }
+                }
+                Log.d("RecipeDetailViewModel", "Deleted $deleted sample comments for recipe ${recipe.id}")
+            } catch (e: Exception) {
+                Log.e("RecipeDetailViewModel", "Exception in deleteSampleComments: ${e.message}")
+            }
+        }
+    }
+
     // --- MAPPER ---
     private fun RecipeEntity.toUiModel(author: Author, related: List<RecipePreview>, likes: Int): Recipe {
         return Recipe(
