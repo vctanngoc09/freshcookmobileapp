@@ -87,4 +87,19 @@ class CommentRepository {
             false
         }
     }
+
+    // --- New: xóa comment theo recipeId và commentId ---
+    suspend fun deleteComment(recipeId: String, commentId: String): Boolean {
+        return try {
+            firestore.collection("recipes").document(recipeId)
+                .collection("comments")
+                .document(commentId)
+                .delete()
+                .await()
+            true
+        } catch (e: Exception) {
+            Log.e("CommentRepository", "Error deleting comment: ${e.message}")
+            false
+        }
+    }
 }
