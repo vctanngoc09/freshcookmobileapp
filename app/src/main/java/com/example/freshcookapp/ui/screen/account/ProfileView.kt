@@ -2,8 +2,10 @@ package com.example.freshcookapp.ui.screen.account
 
 import android.widget.Toast
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -16,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
@@ -24,42 +27,70 @@ import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
+import com.google.firebase.firestore.ktx.toObject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AuthorProfileScreen( // Đã đổi tên cho rõ ràng
-    userId: String, // ID của người dùng mà chúng ta đang xem
-    onBackClick: () -> Unit
+fun AuthorProfileScreen(
+    userId: String,
+    onBackClick: () -> Unit,
+    // --- THÊM THAM SỐ NÀY ĐỂ BẤM VÀO MÓN ---
+    onRecipeClick: (String) -> Unit
 ) {
     val context = LocalContext.current
     val firestore = FirebaseFirestore.getInstance()
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
 
-    var fullName by remember { mutableStateOf("...") }
+    // Dữ liệu hiển thị
+    var fullName by remember { mutableStateOf("Đang tải...") } // Mặc định hiển thị đang tải
     var username by remember { mutableStateOf("") }
     var photoUrl by remember { mutableStateOf<String?>(null) }
-    var followerCount by remember { mutableStateOf(0L) }
-    var followingCount by remember { mutableStateOf(0L) }
+
+    var followerCount by remember { mutableIntStateOf(0) }
+    var followingCount by remember { mutableIntStateOf(0) }
+    var recipeCount by remember { mutableIntStateOf(0) }
+
     var isFollowing by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) }
+    var authorRecipes by remember { mutableStateOf<List<RecipeInfo>>(emptyList()) }
 
-    // Lắng nghe dữ liệu người dùng được xem
+    // 1. LẤY THÔNG TIN USER (Tên, Ảnh...)
     LaunchedEffect(userId) {
         firestore.collection("users").document(userId).addSnapshotListener { snapshot, _ ->
             if (snapshot != null && snapshot.exists()) {
-                fullName = snapshot.getString("fullName") ?: ""
+                // Ưu tiên hiển thị FullName, nếu không có thì lấy Username
+                fullName = snapshot.getString("fullName") ?: "Người dùng"
                 username = snapshot.getString("username") ?: ""
                 photoUrl = snapshot.getString("photoUrl")
-                followerCount = snapshot.getLong("followerCount") ?: 0L
-                followingCount = snapshot.getLong("followingCount") ?: 0L
-                isLoading = false
-            } else {
                 isLoading = false
             }
         }
     }
 
-    // Lắng nghe trạng thái follow
+    // 2. TỰ ĐẾM SỐ LIỆU & LẤY DANH SÁCH MÓN
+    LaunchedEffect(userId) {
+        // Đếm Follower
+        firestore.collection("users").document(userId).collection("followers")
+            .addSnapshotListener { s, _ -> if (s != null) followerCount = s.size() }
+
+        // Đếm Following
+        firestore.collection("users").document(userId).collection("following")
+            .addSnapshotListener { s, _ -> if (s != null) followingCount = s.size() }
+
+        // Lấy danh sách Món ăn
+        firestore.collection("recipes").whereEqualTo("userId", userId)
+            .addSnapshotListener { s, _ ->
+                if (s != null) {
+                    recipeCount = s.size()
+                    authorRecipes = s.documents.mapNotNull { doc ->
+                        doc.toObject<RecipeInfo>()?.copy(id = doc.id)
+                    }
+                }
+            }
+    }
+
+    // 3. CHECK FOLLOW
     DisposableEffect(currentUserId, userId) {
         val listener = if (currentUserId != null) {
             firestore.collection("users").document(currentUserId)
@@ -67,47 +98,31 @@ fun AuthorProfileScreen( // Đã đổi tên cho rõ ràng
                 .addSnapshotListener { document, _ ->
                     isFollowing = document != null && document.exists()
                 }
-        } else {
-            null
-        }
-        onDispose {
-            listener?.remove()
-        }
+        } else { null }
+        onDispose { listener?.remove() }
     }
 
+    // 4. LOGIC FOLLOW
     val onFollowClick: () -> Unit = {
         if (currentUserId == null) {
-            Toast.makeText(context, "Bạn cần đăng nhập để thực hiện", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Bạn cần đăng nhập", Toast.LENGTH_SHORT).show()
         } else if (currentUserId == userId) {
-            Toast.makeText(context, "Bạn không thể tự theo dõi chính mình", Toast.LENGTH_SHORT).show()
+            // Không follow chính mình
         } else {
             val currentUserRef = firestore.collection("users").document(currentUserId)
             val viewedUserRef = firestore.collection("users").document(userId)
-            val followingSubCollection = currentUserRef.collection("following").document(userId)
-            val followerSubCollection = viewedUserRef.collection("followers").document(currentUserId)
+            val followingRef = currentUserRef.collection("following").document(userId)
+            val followerRef = viewedUserRef.collection("followers").document(currentUserId)
 
             firestore.runTransaction { transaction ->
-                val isCurrentlyFollowing = transaction.get(followingSubCollection).exists()
-
+                val isCurrentlyFollowing = transaction.get(followingRef).exists()
                 if (isCurrentlyFollowing) {
-                    // --- Bỏ theo dõi ---
-                    transaction.delete(followingSubCollection)
-                    transaction.delete(followerSubCollection)
-                    transaction.update(currentUserRef, "followingCount", FieldValue.increment(-1))
-                    transaction.update(viewedUserRef, "followerCount", FieldValue.increment(-1))
+                    transaction.delete(followingRef)
+                    transaction.delete(followerRef)
                 } else {
-                    // --- Theo dõi ---
-                    transaction.set(followingSubCollection, mapOf("timestamp" to FieldValue.serverTimestamp()))
-                    transaction.set(followerSubCollection, mapOf("timestamp" to FieldValue.serverTimestamp()))
-                    transaction.update(currentUserRef, "followingCount", FieldValue.increment(1))
-                    transaction.update(viewedUserRef, "followerCount", FieldValue.increment(1))
+                    transaction.set(followingRef, mapOf("timestamp" to FieldValue.serverTimestamp()))
+                    transaction.set(followerRef, mapOf("timestamp" to FieldValue.serverTimestamp()))
                 }
-                !isCurrentlyFollowing
-            }.addOnSuccessListener { nowFollowing ->
-                val message = if (nowFollowing) "Đã theo dõi $username" else "Đã bỏ theo dõi $username"
-                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-            }.addOnFailureListener {
-                Toast.makeText(context, "Đã xảy ra lỗi: ${it.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -115,7 +130,16 @@ fun AuthorProfileScreen( // Đã đổi tên cho rõ ràng
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(username, fontSize = 18.sp, fontWeight = FontWeight.Bold) },
+                // --- HIỂN THỊ TÊN NGƯỜI DÙNG Ở ĐÂY ---
+                title = {
+                    Text(
+                        text = fullName, // Hiển thị Họ tên đầy đủ
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -135,15 +159,13 @@ fun AuthorProfileScreen( // Đã đổi tên cho rõ ràng
                 modifier = Modifier.fillMaxSize().padding(paddingValues),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Profile Header
+                // --- INFO ---
                 item {
                     Spacer(modifier = Modifier.height(24.dp))
                     Image(
                         painter = rememberAsyncImagePainter(model = photoUrl ?: R.drawable.avatar1),
                         contentDescription = "Profile Image",
-                        modifier = Modifier
-                            .size(120.dp)
-                            .clip(CircleShape),
+                        modifier = Modifier.size(120.dp).clip(CircleShape),
                         contentScale = ContentScale.Crop
                     )
                     Spacer(modifier = Modifier.height(16.dp))
@@ -154,19 +176,20 @@ fun AuthorProfileScreen( // Đã đổi tên cho rõ ràng
                     Spacer(modifier = Modifier.height(24.dp))
                 }
 
-                // Stats
+                // --- STATS ---
                 item {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         AuthorStatItem(count = followerCount.toString(), label = "Followers")
+                        AuthorStatItem(count = recipeCount.toString(), label = "Món ăn")
                         AuthorStatItem(count = followingCount.toString(), label = "Following")
                     }
                     Spacer(modifier = Modifier.height(24.dp))
                 }
 
-                // Follow Button
+                // --- BUTTON ---
                 if (currentUserId != userId) {
                     item {
                         Button(
@@ -179,6 +202,25 @@ fun AuthorProfileScreen( // Đã đổi tên cho rõ ràng
                         ) {
                             Text(if (isFollowing) "Đang theo dõi" else "Theo dõi")
                         }
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Divider(thickness = 8.dp, color = Color(0xFFF5F5F5))
+                    }
+                }
+
+                // --- LIST MÓN ĂN ---
+                if (authorRecipes.isEmpty()) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
+                            Text("Người dùng này chưa đăng món nào.", color = Color.Gray)
+                        }
+                    }
+                } else {
+                    items(authorRecipes) { recipe ->
+                        AuthorDishItem(
+                            recipe = recipe,
+                            // --- KẾT NỐI SỰ KIỆN CLICK ---
+                            onClick = { onRecipeClick(recipe.id) }
+                        )
                     }
                 }
             }
@@ -186,23 +228,40 @@ fun AuthorProfileScreen( // Đã đổi tên cho rõ ràng
     }
 }
 
-// Đổi tên thành AuthorStatItem để không trùng với StatItem ở file ProfileScreen
+// Component món ăn: Thêm sự kiện onClick
+@Composable
+fun AuthorDishItem(recipe: RecipeInfo, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .height(100.dp)
+            .clickable(onClick = onClick), // --- CLICKABLE Ở ĐÂY ---
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+            Image(
+                painter = rememberAsyncImagePainter(model = recipe.imageUrl ?: R.drawable.img_food1),
+                contentDescription = null,
+                modifier = Modifier.size(100.dp),
+                contentScale = ContentScale.Crop
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(recipe.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("${recipe.timeCookMinutes} phút", color = Color.Gray, fontSize = 14.sp)
+            }
+        }
+    }
+}
+
 @Composable
 private fun AuthorStatItem(count: String, label: String) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = count,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black
-        )
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(text = count, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
         Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = label,
-            fontSize = 14.sp,
-            color = Color.Gray
-        )
+        Text(text = label, fontSize = 14.sp, color = Color.Gray)
     }
 }

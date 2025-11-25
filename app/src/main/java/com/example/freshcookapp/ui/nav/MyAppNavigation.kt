@@ -96,11 +96,18 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
             )
         }
 
+        // --- XEM PROFILE NGƯỜI KHÁC ---
         composable("user_profile/{userId}") { backStackEntry ->
             val userId = backStackEntry.arguments?.getString("userId") ?: ""
+
             AuthorProfileScreen(
                 userId = userId,
-                onBackClick = { navController.navigateUp() }
+                onBackClick = { navController.navigateUp() },
+
+                // --- THÊM DÒNG NÀY ĐỂ CHUYỂN TRANG ---
+                onRecipeClick = { recipeId ->
+                    navController.navigate(Destination.RecipeDetail(recipeId = recipeId))
+                }
             )
         }
 
