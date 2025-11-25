@@ -27,17 +27,7 @@ import com.example.freshcookapp.R
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.example.freshcookapp.ui.theme.WorkSans
 
-// Cập nhật Model: Thêm recipeId để biết bấm vào đi đâu
-data class NotificationModel(
-    val id: String,
-    val userId: String, // ID người gửi
-    val userName: String,
-    val userAvatar: String?,
-    val message: String,
-    val time: String,
-    val isRead: Boolean = false,
-    val recipeId: String? = null // Null nếu là thông báo Follow
-)
+// LƯU Ý: KHÔNG ĐỊNH NGHĨA LẠI NotificationModel Ở ĐÂY
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,9 +35,13 @@ fun NotificationScreen(
     onBackClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    // KẾT NỐI VIEWMODEL
     val viewModel: NotificationViewModel = viewModel()
     val notifications by viewModel.notifications.collectAsState()
+
+    // --- FIX: GỌI HÀM MARK AS READ KHI MÀN HÌNH TẢI XONG ---
+    LaunchedEffect(Unit) {
+        viewModel.markAllAsRead()
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -89,7 +83,6 @@ fun NotificationScreen(
     }
 }
 
-// Giữ nguyên EmptyNotificationState ...
 @Composable
 fun EmptyNotificationState(modifier: Modifier = Modifier) {
     Column(
@@ -128,10 +121,8 @@ fun NotificationItem(notification: NotificationModel) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(if (notification.isRead) Color.White else Color(0xFFFFF9F9)) // Màu nền nhạt nếu chưa đọc
-            .clickable {
-                // Xử lý click sau này (Ví dụ: Navigate tới RecipeDetail)
-            }
+            .background(if (notification.isRead) Color.White else Color(0xFFFFF9F9))
+            .clickable { /* Handle click */ }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.Center
     ) {
@@ -149,7 +140,6 @@ fun NotificationItem(notification: NotificationModel) {
             Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                // Tên người gửi và nội dung
                 Text(
                     text = notification.userName,
                     fontSize = 14.sp,
@@ -166,9 +156,8 @@ fun NotificationItem(notification: NotificationModel) {
                     maxLines = 2
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                // Thời gian
                 Text(
-                    text = notification.time,
+                    text = notification.time, // <-- ĐÃ SỬA: Dùng tên trường đúng là 'time'
                     fontSize = 11.sp,
                     fontFamily = WorkSans,
                     color = Color.Gray

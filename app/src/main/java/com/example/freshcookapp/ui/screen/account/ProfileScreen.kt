@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -25,8 +26,9 @@ import com.example.freshcookapp.R
 import com.example.freshcookapp.ui.component.ScreenContainer
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.example.freshcookapp.ui.theme.WorkSans
-import kotlinx.coroutines.launch // Import coroutines
+import kotlinx.coroutines.launch
 
+// Class này dùng chung cho cả MyDishes và Profile
 data class RecipeInfo(
     val id: String = "",
     val name: String = "",
@@ -35,6 +37,7 @@ data class RecipeInfo(
     val userId: String = ""
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     userId: String? = null,
@@ -43,18 +46,13 @@ fun ProfileScreen(
     onRecentlyViewedClick: () -> Unit = {},
     onEditProfileClick: () -> Unit = {},
     onRecipeClick: (String) -> Unit = {},
-    // onMenuClick không cần navigate nữa, xử lý nội bộ ở đây
-    // NHƯNG để tương thích code cũ, ta vẫn giữ tham số này (dù không dùng để navigate Settings nữa)
     onMenuClick: () -> Unit = {},
     onFollowerClick: (String) -> Unit = {},
     onFollowingClick: (String) -> Unit = {},
-    // Thêm callback Logout để truyền xuống SettingsDrawer
     onLogoutClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val viewModel: ProfileViewModel = viewModel()
-
-    // --- 1. KHAI BÁO TRẠNG THÁI DRAWER ---
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
@@ -63,36 +61,21 @@ fun ProfileScreen(
     }
 
     val uiState by viewModel.uiState.collectAsState()
+    // --- KHẮC PHỤC: LẤY TRẠNG THÁI THÔNG BÁO CHƯA ĐỌC ---
+    val hasUnreadNotifications by viewModel.hasUnreadNotifications.collectAsState()
 
-    // --- 2. BỌC TOÀN BỘ TRONG ModalNavigationDrawer ---
     ModalNavigationDrawer(
         drawerState = drawerState,
-        // NỘI DUNG CỦA MENU HAMBURGER (GỌI COMPONENT MỚI)
         drawerContent = {
             SettingsDrawerContent(
-                onCloseClick = {
-                    scope.launch { drawerState.close() }
-                },
-                onEditProfileClick = {
-                    scope.launch { drawerState.close() }
-                    onEditProfileClick()
-                },
-                onRecentlyViewedClick = {
-                    scope.launch { drawerState.close() }
-                    onRecentlyViewedClick()
-                },
-                onMyDishesClick = {
-                    scope.launch { drawerState.close() }
-                    onMyDishesClick()
-                },
-                onLogoutClick = {
-                    scope.launch { drawerState.close() }
-                    onLogoutClick()
-                }
+                onCloseClick = { scope.launch { drawerState.close() } },
+                onEditProfileClick = { scope.launch { drawerState.close() }; onEditProfileClick() },
+                onRecentlyViewedClick = { scope.launch { drawerState.close() }; onRecentlyViewedClick() },
+                onMyDishesClick = { scope.launch { drawerState.close() }; onMyDishesClick() },
+                onLogoutClick = { scope.launch { drawerState.close() }; onLogoutClick() }
             )
         }
     ) {
-        // NỘI DUNG CHÍNH CỦA TRANG PROFILE
         ScreenContainer {
             Column(modifier = modifier.fillMaxSize().background(Color.White)) {
                 // HEADER
@@ -101,22 +84,33 @@ fun ProfileScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // --- 3. SỬA NÚT MENU: KHI BẤM THÌ MỞ DRAWER ---
-                    IconButton(onClick = {
-                        scope.launch { drawerState.open() }
-                    }) {
+                    IconButton(onClick = { scope.launch { drawerState.open() } }) {
                         Icon(Icons.Default.Menu, "Menu", tint = Cinnabar500)
                     }
-
                     Text("Tài khoản", fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = WorkSans, color = Cinnabar500)
 
+                    // --- ICON THÔNG BÁO CÓ DẤU CHẤM ĐỎ (BADGE) ---
                     IconButton(onClick = onNotificationClick) {
-                        Icon(Icons.Default.Notifications, "Notifications", tint = Cinnabar500)
+                        BadgedBox(
+                            badge = {
+                                if (hasUnreadNotifications) {
+                                    Badge(containerColor = Color.Red, modifier = Modifier.size(8.dp))
+                                }
+                            }
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_notifications),
+                                contentDescription = "Notifications",
+                                tint = Cinnabar500,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
                     }
+                    // ---------------------------------------------
                 }
 
                 LazyColumn(contentPadding = PaddingValues(bottom = 16.dp)) {
-                    // AVATAR & INFO (Giữ nguyên)
+                    // AVATAR & INFO
                     item {
                         Column(
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 24.dp),
@@ -135,7 +129,7 @@ fun ProfileScreen(
                         }
                     }
 
-                    // THỐNG KÊ (Giữ nguyên)
+                    // THỐNG KÊ (STATS)
                     item {
                         Row(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Cinnabar500).padding(vertical = 16.dp),
@@ -150,7 +144,7 @@ fun ProfileScreen(
                         }
                     }
 
-                    // BUTTONS (Giữ nguyên)
+                    // BUTTONS
                     item {
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
