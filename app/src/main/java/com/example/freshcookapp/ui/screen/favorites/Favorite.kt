@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -15,7 +16,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -23,7 +23,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+// IMPORT COIL ĐỂ LOAD ẢNH NÉT
 import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
+import coil.size.Size
+import coil.size.Precision
+// Import Resources
 import com.example.freshcookapp.FreshCookAppRoom
 import com.example.freshcookapp.R
 import com.example.freshcookapp.data.local.AppDatabase
@@ -38,10 +43,12 @@ fun Favorite(
     onRecipeClick: (String) -> Unit
 ) {
     val context = LocalContext.current
-    val app = context.applicationContext as FreshCookAppRoom
-    val db = remember { AppDatabase.getDatabase(app) }
-    val repo = remember { RecipeRepository(db) }
-    val viewModel = remember { FavoriteViewModel(repo) }
+    val viewModel = remember {
+        val app = context.applicationContext as FreshCookAppRoom
+        val db = AppDatabase.getDatabase(app)
+        val repo = RecipeRepository(db)
+        FavoriteViewModel(repo)
+    }
 
     val recipes by viewModel.favoriteRecipes.collectAsState()
 
@@ -58,7 +65,7 @@ fun Favorite(
             ) {
                 IconButton(onClick = onBackClick, modifier = Modifier.size(28.dp)) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_back),
+                        painter = painterResource(R.drawable.ic_back), // Đảm bảo bạn có icon này
                         contentDescription = "Back",
                         tint = Color.Black,
                         modifier = Modifier.size(22.dp)
@@ -81,7 +88,6 @@ fun Favorite(
                 FavoriteList(
                     recipes = recipes,
                     onRecipeClick = { recipe -> onRecipeClick(recipe.id) },
-                    // Truyền sự kiện xóa xuống dưới
                     onRemoveFavorite = { recipeId ->
                         viewModel.removeFromFavorites(recipeId)
                     }
@@ -91,13 +97,11 @@ fun Favorite(
     }
 }
 
-// ===================== COMPONENT PHỤ =====================
-
 @Composable
 private fun FavoriteList(
     recipes: List<Recipe>,
     onRecipeClick: (Recipe) -> Unit,
-    onRemoveFavorite: (String) -> Unit // Callback mới
+    onRemoveFavorite: (String) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -108,7 +112,7 @@ private fun FavoriteList(
             FavoriteItemCard(
                 recipe = recipe,
                 onClick = { onRecipeClick(recipe) },
-                onFavoriteClick = { onRemoveFavorite(recipe.id) } // Nối dây sự kiện
+                onFavoriteClick = { onRemoveFavorite(recipe.id) }
             )
         }
     }
@@ -118,7 +122,7 @@ private fun FavoriteList(
 private fun FavoriteItemCard(
     recipe: Recipe,
     onClick: () -> Unit,
-    onFavoriteClick: () -> Unit // Callback mới
+    onFavoriteClick: () -> Unit
 ) {
     val cardBackgroundColor = Color(0xFFE3E8EF)
 
@@ -134,26 +138,33 @@ private fun FavoriteItemCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(150.dp)
+                    .height(180.dp) // Tăng chiều cao chút để ảnh đẹp hơn
             ) {
-                Image(
-                    painter = rememberAsyncImagePainter(
-                        model = recipe.imageUrl ?: R.drawable.ic_launcher_background
-                    ),
-                    contentDescription = recipe.title,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
+                // --- HIỂN THỊ ẢNH NÉT (High Quality) ---
+                val painter = rememberAsyncImagePainter(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(recipe.imageUrl ?: R.drawable.ic_launcher_background)
+                        .size(Size.ORIGINAL)
+                        .precision(Precision.EXACT)
+                        .crossfade(true)
+                        .build()
                 )
 
-                // --- NÚT TIM CÓ THỂ BẤM ĐƯỢC ---
-                // Dùng IconButton để tạo vùng bấm chuẩn
+                Image(
+                    painter = painter,
+                    contentDescription = recipe.title,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop // Crop cho list là chuẩn đẹp
+                )
+
+                // Nút Tim
                 IconButton(
-                    onClick = onFavoriteClick, // Khi bấm sẽ gọi hàm xóa
+                    onClick = onFavoriteClick,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(8.dp) // Padding ngoài
-                        .size(32.dp)   // Kích thước vùng bấm
-                        .background(Color.White.copy(alpha = 0.7f), androidx.compose.foundation.shape.CircleShape) // Thêm nền trắng mờ cho dễ nhìn (tùy chọn)
+                        .padding(8.dp)
+                        .size(32.dp)
+                        .background(Color.White.copy(alpha = 0.7f), CircleShape)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Favorite,
@@ -210,7 +221,6 @@ private fun FavoriteItemCard(
     }
 }
 
-// FavoriteEmptyState giữ nguyên như cũ
 @Composable
 private fun FavoriteEmptyState() {
     Column(

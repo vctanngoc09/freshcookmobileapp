@@ -70,7 +70,13 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
             val args = backStackEntry.toRoute<Destination.RecipeDetail>()
             RecipeDetail(
                 recipeId = args.recipeId,
-                navController = navController
+                navController = navController,
+
+                // --- THÊM DÒNG NÀY ĐỂ NÚT THÔNG BÁO HOẠT ĐỘNG ---
+                onNotificationClick = {
+                    navController.navigate(Destination.Notification)
+                }
+                // ------------------------------------------------
             )
         }
 
