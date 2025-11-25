@@ -187,7 +187,6 @@ class NewCookViewModel(
 
         // === Document chính ===
         val recipeData = hashMapOf(
-            "id" to recipeId,
             "name" to name,
             "description" to description,
             "categoryId" to categoryId,

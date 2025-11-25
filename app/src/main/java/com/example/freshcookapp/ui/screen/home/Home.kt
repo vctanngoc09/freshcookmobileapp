@@ -40,12 +40,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.example.freshcookapp.FreshCookAppRoom
 import com.example.freshcookapp.R
 import com.example.freshcookapp.data.local.AppDatabase
 import com.example.freshcookapp.data.repository.RecipeRepository
-// KHÔNG CÒN IMPORT DemoData NỮA
 import com.example.freshcookapp.ui.component.NewDishItem
 import com.example.freshcookapp.ui.component.RecipeCard
 import com.example.freshcookapp.ui.component.RecommendedRecipeCard
@@ -54,38 +54,38 @@ import com.example.freshcookapp.ui.component.SearchBar
 import com.example.freshcookapp.ui.component.SectionHeader
 import com.example.freshcookapp.ui.component.TrendingCategoryItem
 import com.example.freshcookapp.ui.theme.Cinnabar500
+import com.example.freshcookapp.ui.screen.home.HomeViewModel.Companion.Factory
+
 
 @Composable
 fun Home(onFilterClick: () -> Unit, onEditProfileClick: () -> Unit) {
-    ScreenContainer {
 
-        var searchText by remember { mutableStateOf("") }
+    ScreenContainer {
 
         val context = LocalContext.current
         val app = context.applicationContext as FreshCookAppRoom
-
-
         val db = remember { AppDatabase.getDatabase(app) }
-        val repo = remember { RecipeRepository(db) } // Dùng Repo
-        val categoryDao = remember { db.categoryDao() }
-        val viewModel = remember { HomeViewModel(repo, categoryDao) }
 
-        val recipes by viewModel.recipes.collectAsState()
+        val viewModel: HomeViewModel = viewModel(
+            factory = HomeViewModel.Companion.Factory(
+                recipeRepo = RecipeRepository(db),
+                categoryDao = db.categoryDao()
+            )
+
+        )
+
         val categories by viewModel.categories.collectAsState()
-        val recommendedRecipes by viewModel.recommendedRecipes.collectAsState()
-
-        // Dữ liệu này giờ là List<Recipe> chứ không phải List<NewDishEntity> nữa
-        val newDishes by viewModel.newDishes.collectAsState()
-
         val userName by viewModel.userName.collectAsState()
         val userPhotoUrl by viewModel.userPhotoUrl.collectAsState()
 
+        var searchText by remember { mutableStateOf("") }
+
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize(),
+            modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 60.dp)
         ) {
 
+            // -------- HEADER --------
             item {
                 Row(
                     modifier = Modifier
@@ -94,18 +94,22 @@ fun Home(onFilterClick: () -> Unit, onEditProfileClick: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.clickable { onEditProfileClick() }) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable { onEditProfileClick() }
+                    ) {
                         Image(
                             painter = rememberAsyncImagePainter(userPhotoUrl ?: R.drawable.avatar1),
-                            contentDescription = "Avatar",
+                            contentDescription = null,
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(CircleShape)
                                 .border(1.5.dp, Cinnabar500, CircleShape),
                             contentScale = ContentScale.Crop
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Spacer(Modifier.width(8.dp))
+
                         Text(
                             text = "Hi, ${userName ?: "User"}",
                             style = MaterialTheme.typography.bodyLarge,
@@ -114,20 +118,16 @@ fun Home(onFilterClick: () -> Unit, onEditProfileClick: () -> Unit) {
                         )
                     }
 
-                    IconButton(
-                        onClick = { /* Notification click */ },
-                        modifier = Modifier.size(26.dp)
-                    ) {
+                    IconButton(onClick = {}) {
                         Icon(
                             painter = painterResource(R.drawable.ic_notifications),
-                            contentDescription = "Notifications",
-                            tint = Cinnabar500,
-                            modifier = Modifier.size(22.dp),
+                            contentDescription = null,
+                            tint = Cinnabar500
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(Modifier.height(8.dp))
 
                 Text(
                     text = "Hôm nay bạn muốn\nnấu món gì?",
@@ -136,40 +136,39 @@ fun Home(onFilterClick: () -> Unit, onEditProfileClick: () -> Unit) {
                     fontWeight = FontWeight.SemiBold
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(Modifier.height(12.dp))
 
                 SearchBar(
                     value = searchText,
                     onValueChange = { searchText = it },
                     placeholder = "Tìm món ăn...",
                     onFilterClick = onFilterClick,
-                    modifier = Modifier
-                        .fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth()
                 )
-
             }
 
+            // -------- CATEGORY GRID --------
             item {
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(Modifier.height(16.dp))
+
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Từ khóa thịnh hành",
+                        text = "Danh mục món ăn",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        text = "Cập nhật 04:28",
+                        text = "Cập nhật hôm nay",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.Gray
                     )
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(Modifier.height(12.dp))
 
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
@@ -181,67 +180,11 @@ fun Home(onFilterClick: () -> Unit, onEditProfileClick: () -> Unit) {
                     userScrollEnabled = false
                 ) {
                     items(categories) { category ->
-                        TrendingCategoryItem(category = category) {
-                        }
+                        TrendingCategoryItem(category = category) {}
                     }
                 }
-                Spacer(modifier = Modifier.height(20.dp))
-            }
 
-            item {
-                SectionHeader(title = "Xu hướng")
-                Spacer(modifier = Modifier.height(8.dp))
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(recipes) { recipe ->
-                        RecipeCard(
-                            imageUrl = recipe.imageUrl,
-                            title = recipe.title,
-                            time = recipe.time,
-                            level = recipe.level,
-                            isFavorite = recipe.isFavorite,
-                            onFavoriteClick = {}
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(20.dp))
-            }
-
-            item {
-                SectionHeader(title = "Gợi ý cho bạn")
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-            items(recommendedRecipes) { recipe ->
-                RecommendedRecipeCard(
-                    recipe = recipe,
-                    onRemoveClick = { /* TODO */ }
-                )
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(20.dp))
-                SectionHeader(title = "Món mới lên sóng gần đây")
-                Spacer(modifier = Modifier.height(8.dp))
-
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(newDishes) { dish ->
-                        // Dùng RecipeCard thay vì NewDishItem
-                        // Vì 'dish' bây giờ là Recipe object, giống hệt ở trên
-                        RecipeCard(
-                            imageUrl = dish.imageUrl,
-                            title = dish.title,
-                            time = dish.time,
-                            level = dish.level,
-                            isFavorite = dish.isFavorite,
-                            onFavoriteClick = {},
-                            // modifier = Modifier.width(160.dp)
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(Modifier.height(20.dp))
             }
         }
     }
