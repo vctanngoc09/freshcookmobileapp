@@ -53,7 +53,12 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
                 onCategoryRecipes = { id, name ->
                     navController.navigate(Destination.CategoryRecipes(id, name))
                 },
-                onRecipeDetail = {id -> navController.navigate(Destination.RecipeDetail(id))}
+                onRecipeDetail = {id -> navController.navigate(Destination.RecipeDetail(id))},
+                onSearchDetail = { keyword ->
+                    navController.navigate(Destination.Search(keyword))
+                },
+                onNotificationClick = { navController.navigate(Destination.Notification) }
+
             )
         }
 
@@ -125,8 +130,11 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
             )
         }
 
-        composable<Destination.Search> {
+        composable<Destination.Search> { backStackEntry ->
+            val args = backStackEntry.toRoute<Destination.Search>()
+
             Search(
+                keyword = args.keyword,     // 🔥 TRUYỀN KEYWORD VÀO ĐÂY
                 onBackClick = { navController.popBackStack() },
                 onFilterClick = { navController.navigate(Destination.Filter) },
                 onSuggestionClick = { keyword ->
@@ -134,6 +142,7 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
                 }
             )
         }
+
 
         composable<Destination.SearchResult> { backStackEntry ->
             val args = backStackEntry.toRoute<Destination.SearchResult>()

@@ -28,6 +28,7 @@ import com.example.freshcookapp.ui.theme.White
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Search(
+    keyword: String? = null,
     onBackClick: () -> Unit,
     onFilterClick: () -> Unit,
     // Callback này sẽ trả về TÊN món ăn (String) khi bấm vào
@@ -40,6 +41,11 @@ fun Search(
     )
 
     val searchText by viewModel.query.collectAsState()
+    LaunchedEffect(keyword) {
+        if (keyword != null) {
+            viewModel.onQueryChange(keyword)   // 🔥 set chữ từ Home
+        }
+    }
     val suggestions by viewModel.suggestions.collectAsState()
 
     Scaffold(

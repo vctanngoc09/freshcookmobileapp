@@ -45,6 +45,11 @@ class SearchRepository(
         return historyDao.getSearchHistory()
     }
 
+    // 🔥 THÊM HÀM NÀY
+    fun getAllHistory(): Flow<List<SearchHistoryEntity>> {
+        return historyDao.getAllHistory()
+    }
+
     // Lưu từ khóa vào lịch sử
     suspend fun saveSearchQuery(query: String) {
         // Chỉ lưu nếu từ khóa không rỗng

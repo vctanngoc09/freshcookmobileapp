@@ -108,4 +108,9 @@ interface RecipeDao {
         authorAvatar: String
     )
 
+
+    @Query("SELECT * FROM recipes WHERE name LIKE '%' || :keyword || '%' LIMIT 10")
+    fun searchByName(keyword: String): List<RecipeEntity>
+
+
 }

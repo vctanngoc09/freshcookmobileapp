@@ -20,4 +20,8 @@ interface SearchHistoryDao {
     // Xóa tất cả lịch sử
     @Query("DELETE FROM search_history")
     suspend fun clearAll()
+
+    @Query("SELECT * FROM search_history ORDER BY timestamp DESC LIMIT 10")
+    fun getAllHistory(): Flow<List<SearchHistoryEntity>>
+
 }

@@ -72,7 +72,7 @@ sealed class Destination(val route: String) {
     ): Destination("follow")
 
     @Serializable
-    data object Search: Destination("Tìm kiếm")
+    data class Search(val keyword: String? = null): Destination("Tìm kiếm")
 
     @Serializable
     data object Filter: Destination("filter")
@@ -127,7 +127,7 @@ sealed class BottomNavigation(
         Icons.Filled.Search,
         Icons.Outlined.Search,
         0,
-        Destination.Search
+        Destination.Search()
     )
 
     data object Profile : BottomNavigation("Tài khoản",

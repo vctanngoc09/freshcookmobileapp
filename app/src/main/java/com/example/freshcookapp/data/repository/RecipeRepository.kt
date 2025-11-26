@@ -83,6 +83,11 @@ class RecipeRepository(private val db: AppDatabase) {
 
     fun getTrendingRecipes() = db.recipeDao().getTrendingRecipes()
 
+    fun searchByNameLocal(keyword: String): List<RecipeEntity> {
+        return db.recipeDao().searchByName(keyword)
+    }
+
+
     // --- HÀM TẠO MÓN ---
     suspend fun saveRecipe(
         name: String,

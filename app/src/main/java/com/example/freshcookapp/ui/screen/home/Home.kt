@@ -3,7 +3,9 @@ package com.example.freshcookapp.ui.screen.home
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,10 +23,14 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.ripple.rememberRipple
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -54,13 +60,21 @@ import com.example.freshcookapp.ui.component.RecommendedRecipeCard
 import com.example.freshcookapp.ui.component.ScreenContainer
 import com.example.freshcookapp.ui.component.SearchBar
 import com.example.freshcookapp.ui.component.SectionHeader
+import com.example.freshcookapp.ui.component.SuggestKeywordCard
 import com.example.freshcookapp.ui.component.TrendingCategoryItem
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.example.freshcookapp.ui.screen.home.HomeViewModel.Companion.Factory
 
 
 @Composable
-fun Home(onFilterClick: () -> Unit, onEditProfileClick: () -> Unit, onCategoryRecipes: (String, String) -> Unit, onRecipeDetail: (String) -> Unit) {
+fun Home(
+    onFilterClick: () -> Unit,
+    onEditProfileClick: () -> Unit,
+    onCategoryRecipes: (String, String) -> Unit,
+    onRecipeDetail: (String) -> Unit,
+    onSearchDetail: (String) -> Unit,
+    onNotificationClick: () -> Unit = {},
+) {
 
     ScreenContainer {
 
@@ -68,22 +82,29 @@ fun Home(onFilterClick: () -> Unit, onEditProfileClick: () -> Unit, onCategoryRe
         val app = context.applicationContext as FreshCookAppRoom
         val db = remember { AppDatabase.getDatabase(app) }
 
-        // ⭐ Sync Home nhanh
-        LaunchedEffect(true) {
-            FirestoreHomeSync(db.recipeDao()).start()
-        }
+
 
         val viewModel: HomeViewModel = viewModel(
             factory = HomeViewModel.Companion.Factory(
                 recipeRepo = RecipeRepository(db),
-                categoryDao = db.categoryDao()
+                categoryDao = db.categoryDao(),
+                db = db
             )
-
         )
+
+        // ⭐ Sync Home nhanh
+        LaunchedEffect(true) {
+            FirestoreHomeSync(db.recipeDao()).start()
+            viewModel.startNotificationListener()
+        }
 
         val categories by viewModel.categories.collectAsState()
         val userName by viewModel.userName.collectAsState()
         val userPhotoUrl by viewModel.userPhotoUrl.collectAsState()
+        val suggestions by viewModel.suggestedSearch.collectAsState()
+        var didNavigate by remember { mutableStateOf(false) }
+        val hasUnreadNotifications by viewModel.hasUnreadNotifications.collectAsState()
+
 
         var searchText by remember { mutableStateOf("") }
 
@@ -125,13 +146,40 @@ fun Home(onFilterClick: () -> Unit, onEditProfileClick: () -> Unit, onCategoryRe
                         )
                     }
 
-                    IconButton(onClick = {}) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_notifications),
-                            contentDescription = null,
-                            tint = Cinnabar500
-                        )
+
+                    Box(
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clip(CircleShape)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = ripple(
+                                    bounded = true,
+                                    radius = 16.dp   // ripple nhỏ lại
+                                ),
+                                onClick = onNotificationClick
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        BadgedBox(
+                            badge = {
+                                if (hasUnreadNotifications) {
+                                    Badge(
+                                        containerColor = Color.Red,
+                                        modifier = Modifier.size(8.dp)
+                                    )
+                                }
+                            }
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_notifications),
+                                contentDescription = "Notifications",
+                                tint = Cinnabar500,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
                     }
+
                 }
 
                 Spacer(Modifier.height(8.dp))
@@ -147,11 +195,19 @@ fun Home(onFilterClick: () -> Unit, onEditProfileClick: () -> Unit, onCategoryRe
 
                 SearchBar(
                     value = searchText,
-                    onValueChange = { searchText = it },
+                    onValueChange = { newValue ->
+                        searchText = newValue
+
+                        // Khi user bắt đầu gõ chữ — chuyển qua SearchScreen
+                        if (newValue.isNotEmpty()) {
+                            onSearchDetail(newValue)   // vẫn dùng callback
+                        }
+                    },
                     placeholder = "Tìm món ăn...",
                     onFilterClick = onFilterClick,
                     modifier = Modifier.fillMaxWidth()
                 )
+
             }
 
             // -------- CATEGORY GRID --------
@@ -228,6 +284,30 @@ fun Home(onFilterClick: () -> Unit, onEditProfileClick: () -> Unit, onCategoryRe
 
                 Spacer(modifier = Modifier.height(20.dp))
             }
+            // ====== GỢI Ý CHO BẠN ======
+
+            if (suggestions.isNotEmpty()) {
+
+                item {
+                    SectionHeader(title = "Tìm kiếm gần đây")
+                    Spacer(Modifier.height(8.dp))
+                }
+
+                // Hiển thị từng từ khóa đã tìm
+                items(suggestions) { item ->
+                    SuggestKeywordCard(
+                        keyword = item.keyword,
+                        time = item.timestamp,
+                        imageUrl = item.imageUrl,
+                        onClick = { onSearchDetail(item.keyword) }
+                    )
+                    Spacer(Modifier.height(10.dp))
+                }
+
+                item { Spacer(Modifier.height(20.dp)) }
+            }
+
+
 
             // ======== MỚI LÊN SÓNG GẦN ĐÂY ========
             item {
