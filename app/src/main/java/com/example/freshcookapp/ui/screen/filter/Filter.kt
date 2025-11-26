@@ -25,13 +25,14 @@ import com.example.freshcookapp.ui.theme.*
 @Composable
 fun Filter(
     onBackClick: () -> Unit = {},
-    onApply: () -> Unit = {}
+    onApply: (List<String>, List<String>, String, Float) -> Unit = { _, _, _, _ -> }
 ) {
-    var includedIngredients by remember { mutableStateOf(listOf("hành", "ớt", "xả")) }
-    var excludedIngredients by remember { mutableStateOf(listOf("ớt")) }
+    var includedIngredients by remember { mutableStateOf(emptyList<String>()) }
+    var excludedIngredients by remember { mutableStateOf(emptyList<String>()) }
     var difficulty by remember { mutableStateOf("Dễ") }
     var timeCook by remember { mutableStateOf(5f) }
-    var test by remember { mutableStateOf("") }
+    var includedInput by remember { mutableStateOf("") }
+    var excludedInput by remember { mutableStateOf("") }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -83,11 +84,29 @@ fun Filter(
                 )
                 Spacer(Modifier.height(8.dp))
 
-                CustomTextField(
-                    value = "",
-                    onValueChange = {},
-                    placeholder = "Gõ vào tên các nguyên liệu..."
-                )
+                Row(
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    CustomTextField(
+                        value = includedInput,
+                        onValueChange = { includedInput = it },
+                        placeholder = "Gõ vào tên các nguyên liệu...",
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (includedInput.isNotBlank()) {
+                        Spacer(Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                includedIngredients = includedIngredients + includedInput.trim()
+                                includedInput = ""
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Cinnabar500),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("Thêm", color = Color.White)
+                        }
+                    }
+                }
                 Spacer(Modifier.height(10.dp))
 
                 FlowRow(
@@ -105,17 +124,35 @@ fun Filter(
             /** ==== NGUYÊN LIỆU DỊ ỨNG ==== */
             item {
                 Text(
-                    "Hiển thị các nguyên liệu dị ứng:",
+                    "Loại trừ nguyên liệu:",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(Modifier.height(8.dp))
 
-                CustomTextField(
-                    value = test,
-                    onValueChange = { test = it },
-                    placeholder = "Gõ vào tên các nguyên liệu..."
-                )
+                Row(
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    CustomTextField(
+                        value = excludedInput,
+                        onValueChange = { excludedInput = it },
+                        placeholder = "Gõ vào tên các nguyên liệu...",
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (excludedInput.isNotBlank()) {
+                        Spacer(Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                excludedIngredients = excludedIngredients + excludedInput.trim()
+                                excludedInput = ""
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Cinnabar500),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("Thêm", color = Color.White)
+                        }
+                    }
+                }
                 Spacer(Modifier.height(10.dp))
 
                 FlowRow(
@@ -188,6 +225,8 @@ fun Filter(
                         onClick = {
                             includedIngredients = emptyList()
                             excludedIngredients = emptyList()
+                            includedInput = ""
+                            excludedInput = ""
                             difficulty = "Dễ"
                             timeCook = 5f
                         },
@@ -199,7 +238,7 @@ fun Filter(
                     }
 
                     Button(
-                        onClick = onApply,
+                        onClick = { onApply(includedIngredients, excludedIngredients, difficulty, timeCook) },
                         colors = ButtonDefaults.buttonColors(containerColor = Cinnabar800),
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.weight(1f)

@@ -2,6 +2,7 @@ package com.example.freshcookapp.ui.screen.newcook
 
 import android.net.Uri
 import android.util.Log
+import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.freshcookapp.data.repository.RecipeRepository
@@ -9,19 +10,25 @@ import com.example.freshcookapp.domain.model.Ingredient
 import com.example.freshcookapp.domain.model.Instruction
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.Locale
-import java.util.UUID
 import com.google.firebase.storage.FirebaseStorage
-import com.google.firebase.storage.StorageReference
-import kotlinx.coroutines.tasks.await
+import java.text.Normalizer
 
 
 class NewCookViewModel(
     private val recipeRepository: RecipeRepository
 ) : ViewModel() {
+
+    private fun normalizeText(input: String): String {
+        return Normalizer.normalize(input, Normalizer.Form.NFD)
+            .replace("\\p{M}+".toRegex(), "")
+            .lowercase()
+            .trim()
+    }
 
     /**
      * Hàm public duy nhất UI gọi khi bấm "Lên sóng"
@@ -42,12 +49,12 @@ class NewCookViewModel(
     ) {
         viewModelScope.launch {
             try {
-                // 1. Lấy userId hiện tại (fallback "admin")
                 val currentUserId =
                     FirebaseAuth.getInstance().currentUser?.uid ?: "admin"
 
-                val recipeRef = FirebaseFirestore.getInstance().collection("recipes").document()
-                val recipeId = recipeRef.id
+                // 1. TẠO ID DUY NHẤT VÀ DÙNG NÓ CHO CẢ DỰ ÁN (Storage/Room/Firestore)
+                val recipeId = FirebaseFirestore.getInstance().collection("recipes").document().id
+
 
                 // 3. Upload ảnh đại diện (nếu có) lên Firebase Storage
                 val imageUrl = uploadRecipeImageIfNeeded(recipeId, imageUri)
@@ -60,7 +67,7 @@ class NewCookViewModel(
                     else -> "medium"
                 }
 
-                // 5. CategoryId: tạm thời fix "soup" giống mẫu bạn đưa
+                // 5. CategoryId
                 val finalCategoryId = categoryId ?: "other"
 
                 // 6. Lưu local Room (cho offline / home list)
@@ -75,21 +82,13 @@ class NewCookViewModel(
                     ingredients = ingredients,
                     instructions = instructions
                 )
-
                 // 7. Lưu lên Firestore đúng cấu trúc
                 saveRecipeToFirestore(
-                    recipeId = recipeId,
-                    name = name,
-                    description = description,
-                    timeCook = timeCook,
-                    people = people,
-                    imageUrl = imageUrl,
-                    userId = currentUserId,
-                    categoryId = finalCategoryId,
-                    hashtags = hashtags,
-                    difficulty = difficulty,
-                    ingredients = ingredients,
-                    instructions = instructions
+                    recipeId = recipeId, // Dùng ID đã tạo
+                    name = name, description = description, timeCook = timeCook,
+                    people = people, imageUrl = imageUrl, userId = currentUserId,
+                    categoryId = finalCategoryId, hashtags = hashtags, difficulty = difficulty,
+                    ingredients = ingredients, instructions = instructions
                 )
 
                 onSuccess()
@@ -102,8 +101,6 @@ class NewCookViewModel(
 
     /**
      * Upload ảnh đại diện (nếu có) lên Storage:
-     * path: recpies_img/{recipeId}.jpg
-     * Trả về downloadUrl hoặc "" nếu không có ảnh.
      */
     private suspend fun uploadRecipeImageIfNeeded(
         recipeId: String,
@@ -114,7 +111,6 @@ class NewCookViewModel(
         return try {
             val storage = FirebaseStorage.getInstance()
 
-            // 📌 Upload vào folder riêng của món
             val ref = storage.reference
                 .child("recpies_img/$recipeId/main.jpg")
 
@@ -127,7 +123,7 @@ class NewCookViewModel(
         }
     }
 
-    //    hàm thêm ảnh từng bước của món ăn vào đúng chuẩn như này recpies_img/{recipeId}/steps/step_{index}.jpg
+    //    hàm thêm ảnh từng bước của món ăn vào đúng chuẩn
     private suspend fun uploadStepImage(
         recipeId: String,
         stepIndex: Int,
@@ -136,7 +132,7 @@ class NewCookViewModel(
         if (imageUri.isNullOrEmpty()) return ""
 
         return try {
-            val uri = Uri.parse(imageUri)
+            val uri = imageUri.toUri()
             val storage = FirebaseStorage.getInstance()
 
             val ref = storage.reference
@@ -153,10 +149,7 @@ class NewCookViewModel(
 
 
     /**
-     * Lưu recipe vào Firestore với:
-     *  - Document chính: recipes/{recipeId}
-     *  - Subcollection: recipeIngredients
-     *  - Subcollection: instruction
+     * Lưu recipe vào Firestore
      */
     private suspend fun saveRecipeToFirestore(
         recipeId: String,
@@ -173,20 +166,32 @@ class NewCookViewModel(
         instructions: List<Instruction>
     ) {
         val db = FirebaseFirestore.getInstance()
-        // ⭐ Firestore tự tạo ID
-        val recipeRef = db.collection("recipes").document()
+
+        // --- FIX LỖI: Dùng ID đã tạo sẵn để SET document ID ---
+        val recipeDocRef = db.collection("recipes").document(recipeId)
 
         val safeTime = (timeCook ?: 0)
         val safePeople = (people ?: 1)
 
-        // "2025-11-15T00:00:00" format
         val createdAt = SimpleDateFormat(
             "yyyy-MM-dd'T'HH:mm:ss",
             Locale.getDefault()
         ).format(java.util.Date())
 
+        val rawTokens = listOf(name) + ingredients.map { it.name }
+        val normalizedTokens = rawTokens.flatMap { token ->
+            val norm = normalizeText(token)
+            val words = norm.split(Regex("\\s+"))
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+            listOf(norm) + words
+        }.map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+
         // === Document chính ===
         val recipeData = hashMapOf(
+            "id" to recipeId, // Lưu ID vào trong data luôn cho tiện query
             "name" to name,
             "description" to description,
             "categoryId" to categoryId,
@@ -194,17 +199,18 @@ class NewCookViewModel(
             "difficulty" to difficulty,
             "hashtagId" to hashtags,
             "imageUrl" to imageUrl,
-            "likeCount" to 0,           // default 0
+            "likeCount" to 0,
             "people" to safePeople,
             "timeCook" to safeTime,
-            "userId" to userId
+            "userId" to userId,
+            "searchTokens" to normalizedTokens
         )
 
-        // 1. Lưu document chính
-        recipeRef.set(recipeData).await()
+        // 1. Lưu document chính vào ID đã tạo (Sử dụng set)
+        recipeDocRef.set(recipeData).await()
 
         // 2. Subcollection: recipeIngredients
-        val ingredientsCol = recipeRef.collection("recipeIngredients")
+        val ingredientsCol = recipeDocRef.collection("recipeIngredients")
         ingredients.forEach { ing ->
             val ingData = hashMapOf(
                 "name" to ing.name,
@@ -216,8 +222,7 @@ class NewCookViewModel(
         }
 
         // 3. Subcollection: instruction
-        // --- Save steps + upload images ---
-        val instructionCol = recipeRef.collection("instruction")
+        val instructionCol = recipeDocRef.collection("instruction")
 
         instructions.forEachIndexed { index, ins ->
 
@@ -226,7 +231,7 @@ class NewCookViewModel(
             val insData = hashMapOf(
                 "step" to ins.stepNumber,
                 "description" to ins.description,
-                "imageUrl" to uploadedStepImageUrl   // ảnh từ Storage
+                "imageUrl" to uploadedStepImageUrl
             )
 
             instructionCol.add(insData).await()
