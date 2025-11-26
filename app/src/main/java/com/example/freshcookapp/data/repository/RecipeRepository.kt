@@ -103,4 +103,10 @@ class RecipeRepository(private val db: AppDatabase) {
         )
         db.recipeDao().insert(recipeEntity)
     }
+
+    // --- HÀM MỚI CHO LOGOUT ---
+    suspend fun clearLocalUserData() {
+        db.recipeDao().clearAllFavorites()
+        db.recipeDao().clearHistory()
+    }
 }
