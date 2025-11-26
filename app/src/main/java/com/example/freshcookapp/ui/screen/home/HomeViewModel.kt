@@ -40,6 +40,10 @@ class HomeViewModel(
 //            emptyList()
 //        )
 
+    val trendingRecipes = recipeRepo.getTrendingRecipes()
+        .map { list -> list.map { it.toRecipe() } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     // ==== NEW DISHES ====
     val newDishes = recipeRepo.getNewDishes()
         .map { list -> list.map { it.toRecipe() } }
@@ -48,6 +52,65 @@ class HomeViewModel(
             SharingStarted.WhileSubscribed(5000),
             emptyList()
         )
+
+    fun toggleFavorite(recipeId: String) {
+        val user = FirebaseAuth.getInstance().currentUser ?: return
+        val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+
+        viewModelScope.launch {
+
+            // Lấy danh sách trending cập nhật hiện tại
+            val list = trendingRecipes.value.toMutableList()
+            val index = list.indexOfFirst { it.id == recipeId }
+            if (index == -1) return@launch
+
+            val recipe = list[index]
+
+            val newStatus = !recipe.isFavorite
+            val newCount = if (newStatus) recipe.likeCount + 1 else recipe.likeCount - 1
+
+            // ⭐ OPTIMISTIC UPDATE: đổi UI ngay lập tức
+            list[index] = recipe.copy(
+                isFavorite = newStatus,
+                likeCount = newCount
+            )
+
+            // cập nhật xuống Room để stateIn refresh UI
+            recipeRepo.updateFavoriteLocal(recipeId, newStatus, newCount)
+
+            // Firestore references
+            val recipeRef = firestore.collection("recipes").document(recipeId)
+            val userFavRef = firestore.collection("users")
+                .document(user.uid)
+                .collection("favorites")
+                .document(recipeId)
+
+            // ⭐ Transaction Firestore
+            firestore.runTransaction { tx ->
+                val snap = tx.get(userFavRef)
+                if (snap.exists()) {
+                    tx.delete(userFavRef)
+                    tx.update(recipeRef, "likeCount", com.google.firebase.firestore.FieldValue.increment(-1))
+                    false
+                } else {
+                    tx.set(
+                        userFavRef,
+                        mapOf(
+                            "addedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
+                            "recipeId" to recipeId
+                        )
+                    )
+                    tx.update(recipeRef, "likeCount", com.google.firebase.firestore.FieldValue.increment(1))
+                    true
+                }
+            }.addOnSuccessListener { isLiked ->
+                // ⭐ lưu local Room thật sự
+                viewModelScope.launch {
+                    recipeRepo.toggleFavorite(recipeId, isLiked)
+                }
+            }
+        }
+    }
 
     // ==== USER INFO ====
     private val _userName = MutableStateFlow<String?>(null)

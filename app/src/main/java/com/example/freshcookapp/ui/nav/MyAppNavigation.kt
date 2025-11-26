@@ -6,6 +6,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navigation
 import androidx.navigation.toRoute
 import com.example.freshcookapp.util.FilterStore
 // --- CÁC IMPORT PHẢI ĐẦY ĐỦ NHƯ DƯỚI ---
@@ -51,8 +52,8 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
                 onEditProfileClick = { navController.navigate(Destination.EditProfile) },
                 onCategoryRecipes = { id, name ->
                     navController.navigate(Destination.CategoryRecipes(id, name))
-                }
-
+                },
+                onRecipeDetail = {id -> navController.navigate(Destination.RecipeDetail(id))}
             )
         }
 

@@ -64,4 +64,18 @@ interface RecipeDao {
     // --- SỬA LỖI: categoryId -> category_id ---
     @Query("SELECT * FROM recipes WHERE category_id = :categoryId AND id != :currentId LIMIT 5")
     fun getRelatedRecipes(categoryId: String, currentId: String): Flow<List<RecipeEntity>>
+
+    @Query("SELECT * FROM recipes ORDER BY like_count DESC LIMIT 10")
+    fun getTrendingRecipes(): Flow<List<RecipeEntity>>
+
+    @Query("""
+    UPDATE recipes 
+    SET is_favorite = :isFavorite, like_count = :likeCount
+    WHERE id = :recipeId
+""")
+    suspend fun updateFavoriteLocal(
+        recipeId: String,
+        isFavorite: Boolean,
+        likeCount: Int
+    )
 }

@@ -33,6 +33,20 @@ class RecipeRepository(private val db: AppDatabase) {
         return db.recipeDao().updateFavoriteStatus(recipeId, isFavorite)
     }
 
+    // ⭐ Cập nhật nhanh trong Room để UI đổi ngay
+    suspend fun updateFavoriteLocal(
+        recipeId: String,
+        isFavorite: Boolean,
+        likeCount: Int
+    ) {
+        db.recipeDao().updateFavoriteLocal(
+            recipeId = recipeId,
+            isFavorite = isFavorite,
+            likeCount = likeCount
+        )
+    }
+
+
     // Gọi hàm này khi vào xem chi tiết (Lịch sử)
     suspend fun addToHistory(recipeId: String) {
         db.recipeDao().updateLastViewed(recipeId, System.currentTimeMillis())
@@ -57,6 +71,8 @@ class RecipeRepository(private val db: AppDatabase) {
     fun getRelatedRecipes(categoryId: String, currentId: String): Flow<List<RecipeEntity>> {
         return db.recipeDao().getRelatedRecipes(categoryId, currentId)
     }
+
+    fun getTrendingRecipes() = db.recipeDao().getTrendingRecipes()
 
     // --- HÀM TẠO MÓN ---
     suspend fun saveRecipe(

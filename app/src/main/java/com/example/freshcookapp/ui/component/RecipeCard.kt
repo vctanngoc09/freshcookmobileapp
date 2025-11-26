@@ -1,5 +1,7 @@
 package com.example.freshcookapp.ui.component
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,10 +27,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -40,7 +44,7 @@ import coil.compose.AsyncImage
 
 @Composable
 fun RecipeCard(
-    imageUrl: String?,   // đổi imageRes → imageUrl
+    imageUrl: String?,
     name: String,
     timeCook: Int,
     difficulty: String?,
@@ -48,6 +52,14 @@ fun RecipeCard(
     onFavoriteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+
+    // ⭐ Animation cho nút tim
+    val scale by animateFloatAsState(
+        targetValue = if (isFavorite) 1.2f else 1f,
+        animationSpec = tween(durationMillis = 200),
+        label = ""
+    )
+
     Box(
         modifier = modifier
             .width(160.dp)
@@ -55,12 +67,14 @@ fun RecipeCard(
             .border(1.dp, Color(0x22000000), RoundedCornerShape(16.dp))
     ) {
         Column {
-            // Ảnh món ăn + nút tim
+
+            // ====== ẢNH MÓN ĂN ======
             Box(
                 modifier = Modifier
                     .height(115.dp)
                     .fillMaxWidth()
             ) {
+
                 AsyncImage(
                     model = imageUrl ?: "",
                     contentDescription = name,
@@ -70,12 +84,17 @@ fun RecipeCard(
                         .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
                 )
 
+                // ====== NÚT TIM ANIMATION ======
                 IconButton(
                     onClick = onFavoriteClick,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(8.dp)
-                        .size(24.dp)
+                        .size(28.dp)
+                        .graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                        }
                         .background(
                             color = Color.White.copy(alpha = 0.8f),
                             shape = CircleShape
@@ -84,19 +103,20 @@ fun RecipeCard(
                     Icon(
                         imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                         contentDescription = "Favorite",
-                        tint = Cinnabar500,
+                        tint = if (isFavorite) Cinnabar500 else Color.Gray,
                         modifier = Modifier.size(20.dp)
                     )
                 }
             }
 
-            // Thông tin món ăn
+            // ====== THÔNG TIN MÓN ĂN ======
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Cinnabar50)
                     .padding(8.dp)
             ) {
+
                 Text(
                     text = name,
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
@@ -111,6 +131,7 @@ fun RecipeCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier.fillMaxWidth()
                 ) {
+
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = Icons.Outlined.AccessTime,
@@ -120,11 +141,12 @@ fun RecipeCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = timeCook.toString(),
+                            text = "$timeCook phút",
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.Gray
                         )
                     }
+
                     Text(
                         text = difficulty.orEmpty(),
                         style = MaterialTheme.typography.bodySmall,

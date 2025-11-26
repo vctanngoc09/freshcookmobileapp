@@ -59,6 +59,10 @@ data class RecipeEntity(
     val authorName: String = "",
 
     @ColumnInfo(name = "author_avatar")
-    val authorAvatar: String = ""
+    val authorAvatar: String = "",
 
-)
+    @ColumnInfo(name = "like_count")
+    val likeCount: Int = 0,
+
+
+    )

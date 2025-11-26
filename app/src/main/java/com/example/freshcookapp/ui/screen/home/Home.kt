@@ -58,7 +58,7 @@ import com.example.freshcookapp.ui.screen.home.HomeViewModel.Companion.Factory
 
 
 @Composable
-fun Home(onFilterClick: () -> Unit, onEditProfileClick: () -> Unit, onCategoryRecipes: (String, String) -> Unit) {
+fun Home(onFilterClick: () -> Unit, onEditProfileClick: () -> Unit, onCategoryRecipes: (String, String) -> Unit, onRecipeDetail: (String) -> Unit) {
 
     ScreenContainer {
 
@@ -191,6 +191,37 @@ fun Home(onFilterClick: () -> Unit, onEditProfileClick: () -> Unit, onCategoryRe
 
                 Spacer(Modifier.height(20.dp))
             }
+
+            // ======== XU HƯỚNG ========
+            item {
+                val trending by viewModel.trendingRecipes.collectAsState()
+
+                SectionHeader(title = "Xu hướng")
+                Spacer(modifier = Modifier.height(8.dp))
+
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(trending) { recipe ->
+
+                        RecipeCard(
+                            imageUrl = recipe.imageUrl,
+                            name = recipe.name,
+                            timeCook = recipe.timeCook,
+                            difficulty = recipe.difficulty ?: "Dễ",
+                            isFavorite = recipe.isFavorite,
+
+                            onFavoriteClick = {
+                                viewModel.toggleFavorite(recipe.id)
+                            },
+                            modifier = Modifier.clickable {
+                                onRecipeDetail(recipe.id)
+                            }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+            }
+
         }
     }
 }

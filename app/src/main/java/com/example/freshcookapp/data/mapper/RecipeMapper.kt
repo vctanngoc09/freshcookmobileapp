@@ -24,7 +24,7 @@ fun RecipeEntity.toRecipe(): Recipe {
         people = this.people,
 
         isFavorite = this.isFavorite,
-        likeCount = 0, // Firestore không có → để 0 hoặc thêm nếu bạn muốn
+        likeCount = this.likeCount,
 
         author = authorObj,
         authorName = this.authorName,
