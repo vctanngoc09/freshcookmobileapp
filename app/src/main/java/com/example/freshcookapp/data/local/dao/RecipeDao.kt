@@ -27,11 +27,8 @@ interface RecipeDao {
     }
 
     // Các hàm lấy danh sách hiển thị (Đã đúng tên cột category_id)
-    @Query("SELECT * FROM recipes WHERE category_id = 'soup'")
-    fun getRecommendedRecipes(): Flow<List<RecipeEntity>>
-
-    @Query("SELECT * FROM recipes WHERE category_id != 'soup'")
-    fun getTrendingRecipes(): Flow<List<RecipeEntity>>
+    @Query("SELECT * FROM recipes WHERE category_id = :categoryId")
+    fun getRecipesByCategory(categoryId: String): Flow<List<RecipeEntity>>
 
     @Query("SELECT * FROM recipes ORDER BY created_at DESC LIMIT 10")
     fun getNewDishes(): Flow<List<RecipeEntity>>

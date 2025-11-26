@@ -81,6 +81,13 @@ sealed class Destination(val route: String) {
     data class RecipeDetail(
         val recipeId: String?
     ) : Destination("Chi tiết")
+
+    @Serializable
+    data class CategoryRecipes(
+        val categoryId: String,
+        val categoryName: String
+    ) : Destination("category_recipes")
+
 }
 sealed class BottomNavigation(
     val label: String,

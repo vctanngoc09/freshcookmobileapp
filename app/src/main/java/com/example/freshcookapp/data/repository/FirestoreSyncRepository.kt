@@ -20,47 +20,44 @@ class FirestoreSyncRepository(
 
     suspend fun syncRecipes() {
         try {
-            // 1. Lấy toàn bộ món ăn từ bảng "recipes"
+
+            // 1️⃣ TẢI DANH MỤC TỪ FIRESTORE (CHỈ LÀM 1 LẦN)
+            val categorySnapshot = firestore.collection("categories").get().await()
+
+            val categoryEntities = categorySnapshot.documents.map { doc ->
+                CategoryEntity(
+                    id = doc.id,
+                    name = doc.getString("name") ?: "Danh mục",
+                    imageUrl = doc.getString("imageUrl") ?: ""  // ảnh mặc định
+                )
+            }
+
+            // Lưu danh mục vào Room
+            categoryDao.deleteAll()
+            categoryDao.insertAll(categoryEntities)
+
+
+
+            // 2️⃣ TẢI RECIPES TỪ FIRESTORE
             val snapshot = firestore.collection("recipes")
-                .orderBy("createdAt", Query.Direction.DESCENDING) // Sắp xếp ngày tạo giảm dần (mới nhất lên đầu)
-                .limit(100) // Chỉ lấy đúng 100 cái
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .limit(100)
                 .get()
                 .await()
 
             val recipeList = mutableListOf<RecipeEntity>()
 
-            // Map để lưu danh mục tự động tìm thấy: (Mã danh mục -> Link ảnh đại diện)
-            val foundCategoriesMap = mutableMapOf<String, String>()
-
             for (doc in snapshot.documents) {
                 try {
-                    // --- LẤY THÔNG TIN CƠ BẢN ---
                     val name = doc.getString("name") ?: "Món chưa đặt tên"
                     val time = doc.getLong("timeCook")?.toInt() ?: 15
                     val imageUrl = doc.getString("imageUrl") ?: ""
                     val description = doc.getString("description") ?: ""
                     val userId = doc.getString("userId") ?: "admin"
-
-                    // Lấy categoryId (ví dụ: "noodle", "soup")
                     val catId = doc.getString("categoryId") ?: "other"
 
-                    // 🔥 LOGIC: Tự động lấy ảnh món ăn làm ảnh danh mục
-                    if (catId.isNotEmpty()) {
-                        // Nếu danh mục này chưa có trong Map, hoặc chưa có ảnh
-                        if (!foundCategoriesMap.containsKey(catId) || foundCategoriesMap[catId].isNullOrEmpty()) {
-                            if (imageUrl.isNotEmpty()) {
-                                foundCategoriesMap[catId] = imageUrl
-                            } else {
-                                // Nếu chưa có ảnh thì tạm lưu key, giá trị rỗng
-                                if (!foundCategoriesMap.containsKey(catId)) {
-                                    foundCategoriesMap[catId] = ""
-                                }
-                            }
-                        }
-                    }
-
                     val difficultyRaw = doc.getString("difficulty") ?: "medium"
-                    val level = when (difficultyRaw.lowercase()) {
+                    val difficulty = when (difficultyRaw.lowercase()) {
                         "easy" -> "Dễ"
                         "medium" -> "Trung bình"
                         "hard" -> "Khó"
@@ -69,41 +66,58 @@ class FirestoreSyncRepository(
 
                     val createdAtString = doc.getString("createdAt")
                     val createdAt = parseDateToLong(createdAtString)
+                    val people = doc.getLong("people")?.toInt() ?: 1
 
-                    // --- LẤY SUB-COLLECTION: NGUYÊN LIỆU ---
+
+
+                    // Sub-collection ingredients
                     val ingSnapshot = doc.reference.collection("recipeIngredients").get().await()
-                    val ingredientsList = ingSnapshot.documents.map { ingDoc ->
-                        val iName = ingDoc.getString("name") ?: ""
-                        val iQty = ingDoc.getString("quantity") ?: ""
-                        val iUnit = ingDoc.getString("unit") ?: ""
+                    val ingredientsList = ingSnapshot.documents.map {
+                        val iName = it.getString("name") ?: ""
+                        val iQty = it.getString("quantity") ?: ""
+                        val iUnit = it.getString("unit") ?: ""
                         "$iQty $iUnit $iName".trim()
                     }
 
-                    // --- LẤY SUB-COLLECTION: CÁCH LÀM ---
+                    // Sub-collection instruction
                     val stepSnapshot = doc.reference.collection("instruction")
                         .orderBy("step")
                         .get().await()
 
-                    val stepsList = stepSnapshot.documents.map { stepDoc ->
-                        val sStep = stepDoc.getLong("step") ?: 0
-                        val sDesc = stepDoc.getString("description") ?: ""
-                        "Bước $sStep: $sDesc"
+                    val stepsList = stepSnapshot.documents.map {
+                        val step = it.getLong("step") ?: 0
+                        val desc = it.getString("description") ?: ""
+                        "Bước $step: $desc"
                     }
 
-                    // Tạo Entity Món Ăn
+                    // Lấy thông tin tác giả
+                    val userSnap = firestore.collection("users")
+                        .document(userId)
+                        .get()
+                        .await()
+
+                    val authorName = userSnap.getString("name") ?: "Người dùng"
+                    val authorAvatar = userSnap.getString("photoUrl") ?: ""
+
+
                     val entity = RecipeEntity(
                         id = doc.id,
                         name = name,
                         description = description,
-                        timeCookMinutes = time,
+                        timeCook = time,
                         imageUrl = imageUrl,
-                        level = level,
+                        difficulty = difficulty,
                         ingredients = ingredientsList,
                         steps = stepsList,
+                        people = people,
                         userId = userId,
                         categoryId = catId,
-                        createdAt = createdAt
+                        createdAt = createdAt,
+                        authorName = authorName,
+                        authorAvatar = authorAvatar
                     )
+
+
                     recipeList.add(entity)
 
                 } catch (e: Exception) {
@@ -111,28 +125,22 @@ class FirestoreSyncRepository(
                 }
             }
 
-            // 2. LƯU MÓN ĂN VÀO ROOM
+
+
+            // 3️⃣ LƯU RECIPES
             if (recipeList.isNotEmpty()) {
                 recipeDao.refreshRecipes(recipeList)
-                Log.d("FirestoreSync", "Đã tải xong ${recipeList.size} món ăn")
-            }
-
-            // 3. TẠO VÀ LƯU DANH MỤC (ĐÃ XỬ LÝ XÓA CŨ)
-            val categoryEntities = foundCategoriesMap.map { (catKey, imgUrl) ->
-                CategoryEntity(
-                    id = catKey,                        // String OK
-                    name = capitalizeFirstLetter(catKey),
-                    imageUrl = imgUrl
-                )
             }
 
 
-            if (categoryEntities.isNotEmpty()) {
-                // 🔥Xóa sạch danh mục cũ (rác) trước khi lưu cái mới
-                categoryDao.deleteAll()
-
-                categoryDao.insertAll(categoryEntities)
-                Log.d("FirestoreSync", "Đã cập nhật ${categoryEntities.size} danh mục (Đã xóa rác cũ)")
+            // 4️⃣ CẬP NHẬT ẢNH DANH MỤC (NẾU CHƯA CÓ)
+            recipeList.forEach { recipe ->
+                if (recipe.imageUrl?.isNotEmpty() == true) {
+                    val category = categoryEntities.find { it.id == recipe.categoryId }
+                    if (category != null && category.imageUrl.isNullOrEmpty()) {
+                        categoryDao.updateImage(recipe.categoryId, recipe.imageUrl!!)
+                    }
+                }
             }
 
         } catch (e: Exception) {
@@ -140,15 +148,17 @@ class FirestoreSyncRepository(
         }
     }
 
+
     private fun parseDateToLong(dateString: String?): Long {
         if (dateString.isNullOrEmpty()) return System.currentTimeMillis()
         return try {
-            val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
-            format.parse(dateString)?.time ?: System.currentTimeMillis()
+            val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+            sdf.parse(dateString)?.time ?: System.currentTimeMillis()
         } catch (e: Exception) {
             System.currentTimeMillis()
         }
     }
+
 
     private fun capitalizeFirstLetter(input: String): String {
         return if (input.isNotEmpty()) {

@@ -58,7 +58,7 @@ import com.example.freshcookapp.ui.screen.home.HomeViewModel.Companion.Factory
 
 
 @Composable
-fun Home(onFilterClick: () -> Unit, onEditProfileClick: () -> Unit) {
+fun Home(onFilterClick: () -> Unit, onEditProfileClick: () -> Unit, onCategoryRecipes: (String, String) -> Unit) {
 
     ScreenContainer {
 
@@ -180,7 +180,12 @@ fun Home(onFilterClick: () -> Unit, onEditProfileClick: () -> Unit) {
                     userScrollEnabled = false
                 ) {
                     items(categories) { category ->
-                        TrendingCategoryItem(category = category) {}
+                        TrendingCategoryItem(
+                            category = category,
+                            onClick = {
+                                onCategoryRecipes(category.id, category.name)
+                            }
+                        )
                     }
                 }
 

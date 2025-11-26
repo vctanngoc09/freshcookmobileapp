@@ -176,7 +176,7 @@ fun NewCook(onBackClick: () -> Unit) {
                                 viewModel.saveRecipe(
                                     name = recipeName,
                                     description = description,
-                                    timeCookMinutes = parsedMinutes,
+                                    timeCook = parsedMinutes,
                                     people = parsePeople(people) ?: 1,
                                     imageUri = recipeImageUri,
                                     hashtags = hashtagList.toList(),

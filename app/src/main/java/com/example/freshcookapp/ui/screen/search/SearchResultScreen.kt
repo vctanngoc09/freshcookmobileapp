@@ -50,9 +50,9 @@ fun SearchResultScreen(
             items(results) { recipe ->
                 RecipeCard(
                     imageUrl = recipe.imageUrl,
-                    title = recipe.title,
-                    time = recipe.time,
-                    level = recipe.level,
+                    name = recipe.name,
+                    timeCook = recipe.timeCook,
+                    difficulty = recipe.difficulty,
                     isFavorite = false,
                     onFavoriteClick = {},
                     modifier = Modifier

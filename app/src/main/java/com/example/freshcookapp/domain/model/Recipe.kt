@@ -2,18 +2,23 @@ package com.example.freshcookapp.domain.model
 
 data class Recipe(
     val id: String,
-    val title: String,
-    val imageRes: Int? = null,
+
+    // Dùng đúng field UI
+    val name: String,
     val imageUrl: String? = null,
-    val time: String,
-    val level: String,
+    val timeCook: Int = 0,
+    val difficulty: String? = "Trung bình",
+
     val description: String = "",
 
-    // --- QUAN TRỌNG: TRẠNG THÁI VÀ SỐ LƯỢNG ---
-    val isFavorite: Boolean = false, // Tôi có thích không? (Để tô đỏ tim)
-    val likeCount: Int = 0,          // Có bao nhiêu người thích? (Để hiện số)
+    val isFavorite: Boolean = false,
+    val likeCount: Int = 0,
+    val people: Int = 1,
+
 
     val author: Author,
+    val authorName: String = "",
+    val authorAvatar: String = "",
     val hashtags: List<String> = listOf(),
     val ingredients: List<String> = listOf(),
     val instructions: List<InstructionStep> = listOf(),

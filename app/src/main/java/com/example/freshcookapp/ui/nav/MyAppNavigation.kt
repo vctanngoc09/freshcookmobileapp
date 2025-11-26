@@ -23,6 +23,7 @@ import com.example.freshcookapp.ui.screen.account.AuthorProfileScreen
 import com.example.freshcookapp.ui.screen.detail.RecipeDetail
 import com.example.freshcookapp.ui.screen.favorites.Favorite
 import com.example.freshcookapp.ui.screen.filter.Filter
+import com.example.freshcookapp.ui.screen.home.CategoryRecipesScreen
 import com.example.freshcookapp.ui.screen.newcook.NewCook
 import com.example.freshcookapp.ui.screen.search.Search
 import com.example.freshcookapp.ui.screen.search.SearchResultScreen
@@ -45,7 +46,11 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
         composable<Destination.Home> {
             Home(
                 onFilterClick = { navController.navigate(Destination.Filter) },
-                onEditProfileClick = { navController.navigate(Destination.EditProfile) }
+                onEditProfileClick = { navController.navigate(Destination.EditProfile) },
+                onCategoryRecipes = { id, name ->
+                    navController.navigate(Destination.CategoryRecipes(id, name))
+                }
+
             )
         }
 
@@ -225,5 +230,16 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
                 onSendClick = { navController.navigate(Destination.Login) }
             )
         }
+
+        composable<Destination.CategoryRecipes> { backStackEntry ->
+            val args = backStackEntry.toRoute<Destination.CategoryRecipes>()
+
+            CategoryRecipesScreen(
+                navController = navController,
+                categoryId = args.categoryId,
+                categoryName = args.categoryName
+            )
+        }
+
     }
 }

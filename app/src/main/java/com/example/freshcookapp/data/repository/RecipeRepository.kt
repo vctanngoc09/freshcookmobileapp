@@ -10,13 +10,15 @@ import java.util.UUID
 class RecipeRepository(private val db: AppDatabase) {
 
     // --- CÁC HÀM LẤY DATA TRANG HOME ---
-    fun getTrendingRecipes() = db.recipeDao().getTrendingRecipes()
-    fun getRecommendedRecipes() = db.recipeDao().getRecommendedRecipes()
     fun getNewDishes() = db.recipeDao().getNewDishes()
+
+    fun getRecipesByCategory(categoryId: String) =
+        db.recipeDao().getRecipesByCategory(categoryId)
+
 
     // --- CÁC HÀM MỚI THÊM (CHO FAVORITE & DETAIL) ---
 
-    // 1. Lấy chi tiết một món ăn bằng ID
+    // 1. Lấy chi tiết một món ăn bằng IDz
     suspend fun getRecipeById(id: String): RecipeEntity? {
         return db.recipeDao().getRecipeById(id)
     }
@@ -60,7 +62,7 @@ class RecipeRepository(private val db: AppDatabase) {
     suspend fun saveRecipe(
         name: String,
         description: String,
-        timeCookMinutes: Int?,
+        timeCook: Int?,
         people: Int?,
         imageUrl: String?,
         userId: String,
@@ -75,7 +77,7 @@ class RecipeRepository(private val db: AppDatabase) {
             id = UUID.randomUUID().toString(),
             name = name,
             description = description,
-            timeCookMinutes = timeCookMinutes ?: 0,
+            timeCook = timeCook ?: 0,
             imageUrl = imageUrl,
             userId = userId,
             categoryId = categoryId,

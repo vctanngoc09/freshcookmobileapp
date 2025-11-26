@@ -16,14 +16,18 @@ data class RecipeEntity(
     @ColumnInfo(name = "description")
     val description: String? = null,
 
-    @ColumnInfo(name = "time_cook_minutes")
-    val timeCookMinutes: Int = 0,
+    @ColumnInfo(name = "time_cook")
+    val timeCook: Int = 0,
 
-    @ColumnInfo(name = "level")
-    val level: String? = "Trung bình",
+    @ColumnInfo(name = "difficulty")
+    val difficulty: String? = "Trung bình",
 
     @ColumnInfo(name = "image_url")
     val imageUrl: String? = null,
+
+    @ColumnInfo(name = "people")
+    val people: Int = 1,
+
 
     // Lưu danh sách nguyên liệu
     @ColumnInfo(name = "ingredients")
@@ -49,5 +53,12 @@ data class RecipeEntity(
 
     // --- Cột thời gian xem gần đây ---
     @ColumnInfo(name = "last_viewed_time", defaultValue = "NULL")
-    val lastViewedTime: Long? = null
+    val lastViewedTime: Long? = null,
+
+    @ColumnInfo(name = "author_name")
+    val authorName: String = "",
+
+    @ColumnInfo(name = "author_avatar")
+    val authorAvatar: String = ""
+
 )

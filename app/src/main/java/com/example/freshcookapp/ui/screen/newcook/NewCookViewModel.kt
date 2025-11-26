@@ -29,7 +29,7 @@ class NewCookViewModel(
     fun saveRecipe(
         name: String,
         description: String,
-        timeCookMinutes: Int?,               // phút
+        timeCook: Int?,               // phút
         people: Int?,                        // số người ăn
         imageUri: Uri?,                      // ảnh đại diện món ăn (có thể null)
         hashtags: List<String>,              // list hashtag người dùng nhập
@@ -67,7 +67,7 @@ class NewCookViewModel(
                 recipeRepository.saveRecipe(
                     name = name,
                     description = description,
-                    timeCookMinutes = timeCookMinutes,
+                    timeCook = timeCook,
                     people = people,
                     imageUrl = imageUrl,
                     userId = currentUserId,
@@ -81,7 +81,7 @@ class NewCookViewModel(
                     recipeId = recipeId,
                     name = name,
                     description = description,
-                    timeCookMinutes = timeCookMinutes,
+                    timeCook = timeCook,
                     people = people,
                     imageUrl = imageUrl,
                     userId = currentUserId,
@@ -162,7 +162,7 @@ class NewCookViewModel(
         recipeId: String,
         name: String,
         description: String,
-        timeCookMinutes: Int?,
+        timeCook: Int?,
         people: Int?,
         imageUrl: String,
         userId: String,
@@ -176,7 +176,7 @@ class NewCookViewModel(
         // ⭐ Firestore tự tạo ID
         val recipeRef = db.collection("recipes").document()
 
-        val safeTime = (timeCookMinutes ?: 0)
+        val safeTime = (timeCook ?: 0)
         val safePeople = (people ?: 1)
 
         // "2025-11-15T00:00:00" format

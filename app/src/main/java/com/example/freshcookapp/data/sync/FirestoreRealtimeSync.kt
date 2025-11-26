@@ -44,7 +44,7 @@ class FirestoreRealtimeSync(
                             val catId = doc.getString("categoryId") ?: "general"
 
                             val difficultyRaw = doc.getString("difficulty") ?: "medium"
-                            val level = when (difficultyRaw.lowercase()) {
+                            val difficulty = when (difficultyRaw.lowercase()) {
                                 "easy" -> "Dễ"
                                 "medium" -> "Trung bình"
                                 "hard" -> "Khó"
@@ -72,19 +72,38 @@ class FirestoreRealtimeSync(
                             }
 
                             // 4. Tạo Entity đầy đủ
+                            // Lấy thông tin tác giả từ users/{userId}
+                            val userSnap = firestore.collection("users")
+                                .document(userId)
+                                .get()
+                                .await()
+
+                            val authorName = userSnap.getString("name") ?: "Ẩn danh"
+                            val authorAvatar = userSnap.getString("photoUrl") ?: ""
+
+                            // Lấy số phần ăn
+                            val people = doc.getLong("people")?.toInt() ?: 1
+
                             val entity = RecipeEntity(
                                 id = doc.id,
                                 name = name,
                                 description = description,
-                                timeCookMinutes = time,
+                                timeCook = time,
                                 imageUrl = imageUrl,
-                                level = level,
-                                ingredients = ingredientsList, // Có đủ nguyên liệu
-                                steps = stepsList,             // Có đủ các bước
+                                difficulty = difficulty,
+                                ingredients = ingredientsList,
+                                steps = stepsList,
+
+                                // ⭐ THÊM CÁC FIELD BỊ MẤT
+                                people = people,
                                 userId = userId,
+                                authorName = authorName,
+                                authorAvatar = authorAvatar,
+
                                 categoryId = catId,
                                 createdAt = createdAt
                             )
+
                             listEntities.add(entity)
 
                         } catch (err: Exception) {

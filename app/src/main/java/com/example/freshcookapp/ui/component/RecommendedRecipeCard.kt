@@ -28,7 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.example.freshcookapp.domain.model.Recipe // <-- Import model
+import com.example.freshcookapp.domain.model.Recipe
 import com.example.freshcookapp.ui.theme.Cinnabar50
 import com.example.freshcookapp.ui.theme.Cinnabar500
 
@@ -49,7 +49,7 @@ fun RecommendedRecipeCard(
         // Ảnh món ăn
         AsyncImage(
             model = recipe.imageUrl,
-            contentDescription = recipe.title,
+            contentDescription = recipe.name,
             modifier = Modifier
                 .size(68.dp)
                 .clip(RoundedCornerShape(12.dp)),
@@ -65,7 +65,7 @@ fun RecommendedRecipeCard(
             Text(
 
                 buildAnnotatedString {
-                    val titleParts = recipe.title.split(" ")
+                    val titleParts = recipe.name.split(" ")
                     withStyle(
                         style = SpanStyle(
                             color = Cinnabar500,
@@ -96,14 +96,14 @@ fun RecommendedRecipeCard(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = recipe.time,
+                    text = recipe.timeCook.toString(),
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )
 
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    text = recipe.level,
+                    text = recipe.difficulty.orEmpty(),
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )

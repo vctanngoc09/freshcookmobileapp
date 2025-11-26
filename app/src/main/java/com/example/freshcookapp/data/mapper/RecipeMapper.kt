@@ -6,25 +6,36 @@ import com.example.freshcookapp.domain.model.Author
 import com.example.freshcookapp.domain.model.InstructionStep
 
 fun RecipeEntity.toRecipe(): Recipe {
+    val authorObj = Author(
+        id = this.userId,
+        name = this.authorName,
+        avatarUrl = this.authorAvatar
+    )
     return Recipe(
         id = this.id,
-        title = this.name,
+        name = this.name,
         imageUrl = this.imageUrl,
-        imageRes = null,
-        time = "${this.timeCookMinutes} phút",
-        level = this.level ?: "Trung bình",
-        ingredients = this.ingredients, // Đã format sẵn bên Sync: "500 g Cánh gà"
+
+        // UI dùng trực tiếp number → không string "45 phút"
+        timeCook = this.timeCook,
+        difficulty = this.difficulty ?: "Trung bình",
+
+        description = this.description ?: "",
+        people = this.people,
+
+        isFavorite = this.isFavorite,
+        likeCount = 0, // Firestore không có → để 0 hoặc thêm nếu bạn muốn
+
+        author = authorObj,
+        authorName = this.authorName,
+        authorAvatar = this.authorAvatar,
+
+        ingredients = this.ingredients,
         instructions = this.steps.mapIndexed { index, content ->
-            // Content đã có dạng "Bước 1: Ướp gà", ta chỉ cần hiển thị
             InstructionStep(
                 stepNumber = index + 1,
-                description = content.substringAfter(": ").trim(), // Lấy phần nội dung sau dấu :
-                imageUrl = null
+                description = content.substringAfter(": ").trim()
             )
-        },
-        isFavorite = false,
-        author = Author("Admin", ""), // Có thể sửa sau nếu load User
-        hashtags = emptyList(),
-        relatedRecipes = emptyList()
+        }
     )
 }

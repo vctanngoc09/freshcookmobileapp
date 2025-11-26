@@ -32,13 +32,13 @@ class HomeViewModel(
         )
 
     // ==== RECOMMENDED RECIPES ====
-    val recommendedRecipes = recipeRepo.getRecommendedRecipes()
-        .map { list -> list.map { it.toRecipe() } }
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5000),
-            emptyList()
-        )
+//    val recommendedRecipes = recipeRepo.getRecommendedRecipes()
+//        .map { list -> list.map { it.toRecipe() } }
+//        .stateIn(
+//            viewModelScope,
+//            SharingStarted.WhileSubscribed(5000),
+//            emptyList()
+//        )
 
     // ==== NEW DISHES ====
     val newDishes = recipeRepo.getNewDishes()

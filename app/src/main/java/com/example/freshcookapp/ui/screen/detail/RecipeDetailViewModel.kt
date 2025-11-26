@@ -73,7 +73,7 @@ class RecipeDetailViewModel(private val repository: RecipeRepository, private va
                         RecipePreview(
                             id = entity.id,
                             title = entity.name,
-                            time = "${entity.timeCookMinutes} phút",
+                            time = "${entity.timeCook} phút",
                             author = "",
                             imageUrl = entity.imageUrl
                         )
@@ -179,7 +179,7 @@ class RecipeDetailViewModel(private val repository: RecipeRepository, private va
             }
         }.addOnSuccessListener { isLiked ->
             viewModelScope.launch { repository.toggleFavorite(currentRecipe.id, isLiked) }
-            if (isLiked) sendNotification(currentRecipe.author.id, "đã yêu thích món ăn: ${currentRecipe.title}", currentRecipe.id)
+            if (isLiked) sendNotification(currentRecipe.author.id, "đã yêu thích món ăn: ${currentRecipe.name}", currentRecipe.id)
         }
     }
 
@@ -247,7 +247,7 @@ class RecipeDetailViewModel(private val repository: RecipeRepository, private va
             viewModelScope.launch {
                 if (commentRepository.addComment(comment)) {
                     _commentText.value = ""
-                    sendNotification(recipe.author.id, "đã bình luận: ${recipe.title}", recipe.id)
+                    sendNotification(recipe.author.id, "đã bình luận: ${recipe.name}", recipe.id)
                 }
             }
         }
@@ -264,9 +264,9 @@ class RecipeDetailViewModel(private val repository: RecipeRepository, private va
     private fun RecipeEntity.toUiModel(author: Author, related: List<RecipePreview>, likes: Int): Recipe {
         return Recipe(
             id = this.id,
-            title = this.name,
-            time = "${this.timeCookMinutes} phút",
-            level = this.level ?: "Trung bình",
+            name = this.name,
+            timeCook = this.timeCook,
+            difficulty = this.difficulty ?: "Trung bình",
             imageUrl = this.imageUrl,
             description = this.description ?: "",
             author = author,

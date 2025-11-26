@@ -41,9 +41,9 @@ import coil.compose.AsyncImage
 @Composable
 fun RecipeCard(
     imageUrl: String?,   // đổi imageRes → imageUrl
-    title: String,
-    time: String,
-    level: String,
+    name: String,
+    timeCook: Int,
+    difficulty: String?,
     isFavorite: Boolean,
     onFavoriteClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -63,7 +63,7 @@ fun RecipeCard(
             ) {
                 AsyncImage(
                     model = imageUrl ?: "",
-                    contentDescription = title,
+                    contentDescription = name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxSize()
@@ -98,7 +98,7 @@ fun RecipeCard(
                     .padding(8.dp)
             ) {
                 Text(
-                    text = title,
+                    text = name,
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -120,13 +120,13 @@ fun RecipeCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = time,
+                            text = timeCook.toString(),
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.Gray
                         )
                     }
                     Text(
-                        text = level,
+                        text = difficulty.orEmpty(),
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.Gray
                     )

@@ -39,14 +39,14 @@ class SearchResultViewModel(
                 val list = snapshot.documents.mapNotNull { doc ->
                     val name = doc.getString("name") ?: return@mapNotNull null
                     val imageUrl = doc.getString("imageUrl")
-                    val time = doc.getLong("timeCook")?.toInt() ?: 0
+                    val time = doc.getLong("timeCookMinutes")?.toInt() ?: 0
 
                     Recipe(
                         id = doc.id,
-                        title = name,
+                        name = name,
                         imageUrl = imageUrl,
-                        time = "$time phút",
-                        level = "Dễ",
+                        timeCook = time,
+                        difficulty = "Dễ",
                         author = Author("Ẩn danh", "")
                     )
                 }

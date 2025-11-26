@@ -152,7 +152,7 @@ private fun FavoriteItemCard(
 
                 Image(
                     painter = painter,
-                    contentDescription = recipe.title,
+                    contentDescription = recipe.name,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop // Crop cho list là chuẩn đẹp
                 )
@@ -181,7 +181,7 @@ private fun FavoriteItemCard(
                     .padding(horizontal = 12.dp, vertical = 10.dp)
             ) {
                 Text(
-                    text = recipe.title,
+                    text = recipe.name,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.Black,
@@ -204,14 +204,14 @@ private fun FavoriteItemCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = recipe.time,
+                            recipe.timeCook.toString(),
                             color = Color.Gray,
                             fontSize = 12.sp
                         )
                     }
 
                     Text(
-                        text = recipe.level,
+                        text = recipe.difficulty.toString(),
                         color = Color.Gray,
                         fontSize = 12.sp
                     )

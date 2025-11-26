@@ -139,7 +139,7 @@ private fun RecipeDetailView(
 
         // TOP BAR NÂNG CẤP
         RecipeDetailTopBar(
-            recipeName = recipe.title,
+            recipeName = recipe.name,
             recipeId = recipe.id,
             isFavorite = recipe.isFavorite,
             hasUnreadNotifications = hasUnreadNotifications,
@@ -363,7 +363,7 @@ private fun RecipeHeader(recipe: Recipe, onImageClick: () -> Unit) {
 @Composable
 private fun RecipeInfoSection(recipe: Recipe) {
     Column(modifier = Modifier.padding(16.dp)) {
-        Text(recipe.title, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Text(recipe.name, fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
         if (recipe.description.isNotBlank()) {
             Text(recipe.description, fontSize = 14.sp, color = Color.Gray)
@@ -372,9 +372,9 @@ private fun RecipeInfoSection(recipe: Recipe) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.Schedule, null, tint = Color.Gray, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(4.dp))
-            Text(recipe.time, color = Color.Gray)
+            Text("${recipe.timeCook} phút", color = Color.Gray)
             Spacer(Modifier.width(16.dp))
-            Text("Độ khó: ${recipe.level}", color = Color.Gray, fontSize = 14.sp)
+            Text("Độ khó: ${recipe.difficulty}", color = Color.Gray, fontSize = 14.sp)
         }
     }
 }

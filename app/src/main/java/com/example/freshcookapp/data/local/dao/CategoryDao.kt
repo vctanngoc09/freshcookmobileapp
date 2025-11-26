@@ -20,6 +20,10 @@ interface CategoryDao {
     @Query("DELETE FROM categories")
     suspend fun deleteAll()
 
+    @Query("UPDATE categories SET image_url = :imageUrl WHERE id = :categoryId")
+    suspend fun updateImage(categoryId: String, imageUrl: String)
+
+
     suspend fun refreshCategories(categories: List<CategoryEntity>) {
         deleteAll()
         insertAll(categories)
