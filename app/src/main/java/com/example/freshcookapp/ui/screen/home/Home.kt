@@ -26,6 +26,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,6 +47,7 @@ import com.example.freshcookapp.FreshCookAppRoom
 import com.example.freshcookapp.R
 import com.example.freshcookapp.data.local.AppDatabase
 import com.example.freshcookapp.data.repository.RecipeRepository
+import com.example.freshcookapp.data.sync.FirestoreHomeSync
 import com.example.freshcookapp.ui.component.NewDishItem
 import com.example.freshcookapp.ui.component.RecipeCard
 import com.example.freshcookapp.ui.component.RecommendedRecipeCard
@@ -65,6 +67,11 @@ fun Home(onFilterClick: () -> Unit, onEditProfileClick: () -> Unit, onCategoryRe
         val context = LocalContext.current
         val app = context.applicationContext as FreshCookAppRoom
         val db = remember { AppDatabase.getDatabase(app) }
+
+        // ⭐ Sync Home nhanh
+        LaunchedEffect(true) {
+            FirestoreHomeSync(db.recipeDao()).start()
+        }
 
         val viewModel: HomeViewModel = viewModel(
             factory = HomeViewModel.Companion.Factory(
@@ -221,6 +228,36 @@ fun Home(onFilterClick: () -> Unit, onEditProfileClick: () -> Unit, onCategoryRe
 
                 Spacer(modifier = Modifier.height(20.dp))
             }
+
+            // ======== MỚI LÊN SÓNG GẦN ĐÂY ========
+            item {
+                val newDishes by viewModel.newDishes.collectAsState()
+
+                SectionHeader(title = "Món mới lên sóng gần đây")
+                Spacer(modifier = Modifier.height(8.dp))
+
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(newDishes) { recipe ->
+                        RecipeCard(
+                            imageUrl = recipe.imageUrl,
+                            name = recipe.name,
+                            timeCook = recipe.timeCook,
+                            difficulty = recipe.difficulty ?: "Dễ",
+                            isFavorite = recipe.isFavorite,
+
+                            onFavoriteClick = {
+                                viewModel.toggleFavorite(recipe.id)
+                            },
+                            modifier = Modifier.clickable {
+                                onRecipeDetail(recipe.id)
+                            }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+            }
+
 
         }
     }

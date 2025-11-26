@@ -89,4 +89,23 @@ interface RecipeDao {
 
     @Query("UPDATE recipes SET last_viewed_time = NULL WHERE last_viewed_time IS NOT NULL")
     suspend fun clearHistory()
+
+    @Query("""
+    UPDATE recipes SET 
+        ingredients = :ingredients,
+        steps = :steps,
+        description = :description,
+        author_name = :authorName,
+        author_avatar = :authorAvatar
+    WHERE id = :id
+""")
+    suspend fun updateDetailPart(
+        id: String,
+        ingredients: List<String>,
+        steps: List<String>,
+        description: String,
+        authorName: String,
+        authorAvatar: String
+    )
+
 }
