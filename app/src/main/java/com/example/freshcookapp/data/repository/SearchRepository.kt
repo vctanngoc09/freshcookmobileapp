@@ -4,6 +4,7 @@ import com.example.freshcookapp.data.local.dao.RecipeDao
 import com.example.freshcookapp.data.local.dao.SearchHistoryDao
 import com.example.freshcookapp.data.local.entity.RecipeEntity
 import com.example.freshcookapp.data.local.entity.SearchHistoryEntity
+import com.example.freshcookapp.util.TextUtils
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -17,7 +18,18 @@ class SearchRepository(
     // Trả về danh sách tên món ăn (dùng cho gợi ý khi đang gõ)
     fun suggestNames(keyword: String): Flow<List<String>> {
         return recipeDao.searchRecipes(keyword).map { list ->
-            list.map { recipe -> recipe.name }
+            // Nếu DB chứa nhiều món cùng tên (hoặc khác dấu/Viết hoa), loại bỏ trùng
+            // Nhưng giữ nguyên thứ tự xuất hiện (first occurrence wins)
+            val seen = linkedSetOf<String>()
+            val out = mutableListOf<String>()
+            for (recipe in list) {
+                val name = recipe.name.trim()
+                val key = TextUtils.normalizeKey(name)
+                if (seen.add(key)) {
+                    out.add(name)
+                }
+            }
+            out
         }
     }
 
