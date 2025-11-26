@@ -97,18 +97,41 @@ fun RecentlyViewedScreen(
                     .padding(innerPadding)
                     .background(Color.White)
             ) {
+                // Search state for filtering history
+                var query by remember { mutableStateOf("") }
+
                 SearchBar(
-                    value = "",
-                    onValueChange = {},
+                    value = query,
+                    onValueChange = { query = it },
                     placeholder = "Tìm trong lịch sử...",
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
+
+                // Compute filtered list based on query (case-insensitive)
+                val filteredList = remember(viewedList, query) {
+                    if (query.isBlank()) viewedList
+                    else viewedList.filter { item ->
+                        item.title.contains(query, ignoreCase = true) ||
+                                item.authorName.contains(query, ignoreCase = true)
+                    }
+                }
+
+                if (filteredList.isEmpty()) {
+                    // Show a small empty state when search returns no results
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Không tìm thấy kết quả",
+                            color = Color.Gray,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
 
                 LazyColumn(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(viewedList) { item ->
+                    items(filteredList) { item ->
                         RecentlyViewedItem(
                             item = item,
                             onRemoveClick = {
