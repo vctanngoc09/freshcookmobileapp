@@ -166,10 +166,18 @@ fun ProfileScreen(
                             Button(
                                 onClick = onMyDishesClick,
                                 modifier = Modifier.weight(1f).height(48.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Cinnabar500),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Cinnabar500,
+                                    contentColor = Color.White // <--- SỬA LỖI: Chữ màu Trắng
+                                ),
                                 shape = RoundedCornerShape(28.dp)
                             ) {
-                                Text("Món của tôi", fontSize = 15.sp, fontFamily = WorkSans, fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    "Món của tôi",
+                                    fontSize = 15.sp,
+                                    fontFamily = WorkSans,
+                                    fontWeight = FontWeight.SemiBold
+                                )
                             }
                         }
                     }

@@ -224,6 +224,7 @@ fun MyDishItem(
                     text = recipe.name,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
+                    color = Color.Black,
                     maxLines = 2
                 )
                 Spacer(Modifier.height(4.dp))
