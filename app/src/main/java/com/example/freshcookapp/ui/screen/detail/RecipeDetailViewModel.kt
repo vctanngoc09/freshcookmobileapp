@@ -82,9 +82,22 @@ class RecipeDetailViewModel(private val repository: RecipeRepository, private va
                     var currentRecipe = localEntity.toUiModel(
                         Author(localEntity.userId, "Đang tải...", null),
                         relatedList,
-                        0
+                        localEntity.likeCount
                     )
                     _recipe.value = currentRecipe
+
+                    // Observe local Room changes for this recipe so Detail updates when Home changes favorite/like
+                    viewModelScope.launch {
+                        repository.getRecipeFlow(recipeId).collect { updatedEntity ->
+                            if (updatedEntity != null) {
+                                // Only update favorite flag and likeCount from local DB to avoid overwriting author/instructions
+                                _recipe.value = _recipe.value?.copy(
+                                    isFavorite = updatedEntity.isFavorite,
+                                    likeCount = updatedEntity.likeCount
+                                ) ?: updatedEntity.toUiModel(Author(updatedEntity.userId, "Đang tải...", null), relatedList, updatedEntity.likeCount)
+                            }
+                        }
+                    }
 
                     fetchAuthorInfo(localEntity.userId) { author ->
                         currentRecipe = currentRecipe.copy(author = author)
@@ -178,7 +191,10 @@ class RecipeDetailViewModel(private val repository: RecipeRepository, private va
                 true
             }
         }.addOnSuccessListener { isLiked ->
-            viewModelScope.launch { repository.toggleFavorite(currentRecipe.id, isLiked) }
+            viewModelScope.launch {
+                // Pass newCount so repository updates like_count in Room as well
+                repository.toggleFavorite(currentRecipe.id, isLiked, newCount)
+            }
             if (isLiked) sendNotification(currentRecipe.author.id, "đã yêu thích món ăn: ${currentRecipe.name}", currentRecipe.id)
         }
     }

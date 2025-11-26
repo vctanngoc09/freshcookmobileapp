@@ -23,14 +23,23 @@ class RecipeRepository(private val db: AppDatabase) {
         return db.recipeDao().getRecipeById(id)
     }
 
+    // Live flow for a single recipe
+    fun getRecipeFlow(id: String) = db.recipeDao().getRecipeByIdFlow(id)
+
     // 2. Lấy danh sách các món đã thả tim
     fun getFavoriteRecipes(): Flow<List<RecipeEntity>> {
         return db.recipeDao().getFavoriteRecipes()
     }
 
     // 3. Cập nhật trạng thái yêu thích
-    suspend fun toggleFavorite(recipeId: String, isFavorite: Boolean): Int {
-        return db.recipeDao().updateFavoriteStatus(recipeId, isFavorite)
+    // If likeCount is provided, update both is_favorite and like_count locally (used for optimistic updates);
+    // otherwise only update the favorite flag.
+    suspend fun toggleFavorite(recipeId: String, isFavorite: Boolean, likeCount: Int? = null) {
+        if (likeCount != null) {
+            db.recipeDao().updateFavoriteLocal(recipeId, isFavorite, likeCount)
+        } else {
+            db.recipeDao().updateFavoriteStatus(recipeId, isFavorite)
+        }
     }
 
     // ⭐ Cập nhật nhanh trong Room để UI đổi ngay

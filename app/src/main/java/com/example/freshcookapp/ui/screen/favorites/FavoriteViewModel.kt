@@ -46,12 +46,13 @@ class FavoriteViewModel(private val repository: RecipeRepository) : ViewModel() 
                     if (favoriteIds.isNotEmpty()) {
                         withContext(Dispatchers.IO) {
                             favoriteIds.forEach { recipeId ->
-                                // Thử cập nhật trong Room trước
-                                val rowsUpdated = repository.toggleFavorite(recipeId, true)
-
-                                // NẾU update thất bại (rowsUpdated == 0) -> Nghĩa là máy chưa có món này
-                                // -> Phải tải chi tiết món đó từ Firestore về lưu vào máy
-                                if (rowsUpdated == 0) {
+                                // Nếu đã có bản ghi trong Room thì chỉ cần đánh dấu is_favorite = true
+                                val local = repository.getRecipeById(recipeId)
+                                if (local != null) {
+                                    // Chỉ update flag (không thay đổi likeCount tại bước sync này)
+                                    repository.toggleFavorite(recipeId, true)
+                                } else {
+                                    // Nếu chưa có trong local -> tải chi tiết từ Firestore rồi lưu (đã set isFavorite = true khi lưu)
                                     fetchAndSaveRecipeFromFirestore(recipeId)
                                 }
                             }

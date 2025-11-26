@@ -84,6 +84,20 @@ class FirestoreRealtimeSync(
                             // Lấy số phần ăn
                             val people = doc.getLong("people")?.toInt() ?: 1
 
+                            // --- IMPORTANT: preserve local favorite/like values ---
+                            // Nếu đã có bản ghi trong Room, giữ trạng thái isFavorite và likeCount của local
+                            val existingLocal = try {
+                                recipeDao.getRecipeById(doc.id)
+                            } catch (_: Exception) {
+                                null
+                            }
+
+                            // Prefer likeCount from Firestore if present, otherwise keep local, otherwise 0
+                            val likeCountFromDoc = doc.getLong("likeCount")?.toInt()
+                            val finalLikeCount = likeCountFromDoc ?: existingLocal?.likeCount ?: 0
+
+                            val finalIsFavorite = existingLocal?.isFavorite ?: false
+
                             val entity = RecipeEntity(
                                 id = doc.id,
                                 name = name,
@@ -94,20 +108,24 @@ class FirestoreRealtimeSync(
                                 ingredients = ingredientsList,
                                 steps = stepsList,
 
-                                // ⭐ THÊM CÁC FIELD BỊ MẤT
+                                // ⭐ giữ các field quan trọng
                                 people = people,
                                 userId = userId,
                                 authorName = authorName,
                                 authorAvatar = authorAvatar,
 
                                 categoryId = catId,
-                                createdAt = createdAt
+                                createdAt = createdAt,
+
+                                // preserve values
+                                isFavorite = finalIsFavorite,
+                                likeCount = finalLikeCount
                             )
 
                             listEntities.add(entity)
 
-                        } catch (err: Exception) {
-                            Log.e("RealtimeSync", "Lỗi parse document: ${doc.id}", err)
+                        } catch (ex: Exception) {
+                            Log.e("RealtimeSync", "Lỗi parse document: ${doc.id}", ex)
                         }
                     }
 
@@ -126,7 +144,7 @@ class FirestoreRealtimeSync(
         return try {
             val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
             format.parse(dateString)?.time ?: System.currentTimeMillis()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             System.currentTimeMillis()
         }
     }

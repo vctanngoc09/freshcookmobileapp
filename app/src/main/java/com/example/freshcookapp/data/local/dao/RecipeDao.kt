@@ -44,6 +44,11 @@ interface RecipeDao {
     @Query("SELECT * FROM recipes WHERE id = :id")
     suspend fun getRecipeById(id: String): RecipeEntity?
 
+    // Live flow for a single recipe so screens can observe updates from Room
+    @Query("SELECT * FROM recipes WHERE id = :id")
+    fun getRecipeByIdFlow(id: String): kotlinx.coroutines.flow.Flow<RecipeEntity?>
+
+
     // --- SỬA Lỗi: isFavorite -> is_favorite ---
     @Query("SELECT * FROM recipes WHERE is_favorite = 1")
     fun getFavoriteRecipes(): Flow<List<RecipeEntity>>

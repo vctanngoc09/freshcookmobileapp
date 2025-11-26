@@ -106,7 +106,8 @@ class HomeViewModel(
             }.addOnSuccessListener { isLiked ->
                 // ⭐ lưu local Room thật sự
                 viewModelScope.launch {
-                    recipeRepo.toggleFavorite(recipeId, isLiked)
+                    // Provide the optimistic newCount so Room also updates like_count
+                    recipeRepo.toggleFavorite(recipeId, isLiked, newCount)
                 }
             }
         }
