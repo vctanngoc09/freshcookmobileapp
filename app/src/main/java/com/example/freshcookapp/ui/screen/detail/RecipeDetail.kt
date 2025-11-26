@@ -47,6 +47,7 @@ import com.example.freshcookapp.data.repository.CommentRepository
 import com.example.freshcookapp.domain.model.*
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.google.firebase.auth.FirebaseAuth
+import com.example.freshcookapp.ui.nav.Destination
 
 @Composable
 fun RecipeDetail(
@@ -645,6 +646,7 @@ fun CommentItem(comment: Comment, isOwner: Boolean, onDelete: () -> Unit) {
 @Composable
 fun RelatedRecipesSection(recipes: List<RecipePreview>, navController: NavHostController) {
     val defaultImage = R.drawable.ic_launcher_background
+    val ctx = LocalContext.current
 
     Column(modifier = Modifier.padding(top = 24.dp)) {
         Text(
@@ -661,7 +663,13 @@ fun RelatedRecipesSection(recipes: List<RecipePreview>, navController: NavHostCo
             items(recipes) { item ->
                 Card(
                     modifier = Modifier.width(160.dp).height(200.dp).clickable {
-                        navController.navigate("recipe_detail/${item.id}")
+                        // Điều hướng phải dùng Destination.RecipeDetail(...) (consistent với MyAppNavigation)
+                        if (item.id.isNotBlank()) {
+                            navController.navigate(Destination.RecipeDetail(recipeId = item.id))
+                        } else {
+                            // bảo vệ: nếu id rỗng thì không điều hướng (tránh crash)
+                            Toast.makeText(ctx, "Món ăn không hợp lệ", Toast.LENGTH_SHORT).show()
+                        }
                     },
                     shape = RoundedCornerShape(16.dp),
                     elevation = CardDefaults.cardElevation(4.dp)
