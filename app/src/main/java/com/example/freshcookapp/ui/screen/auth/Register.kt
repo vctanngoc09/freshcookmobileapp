@@ -3,18 +3,7 @@ package com.example.freshcookapp.ui.screen.auth
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
@@ -23,11 +12,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -66,17 +51,17 @@ fun Register(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .imePadding()
-                .navigationBarsPadding(),
+                .statusBarsPadding() // FIX LỖI: Đẩy nội dung xuống khỏi tai thỏ
+                .imePadding(),      // Đẩy nội dung lên khi bàn phím hiện
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top
+            contentPadding = PaddingValues(bottom = 24.dp)
         ) {
             item {
-                Spacer(modifier = Modifier.height(24.dp))
-
+                // HEADER
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .padding(vertical = 12.dp)
                 ) {
                     IconButton(
                         onClick = onBackClick,
@@ -90,115 +75,49 @@ fun Register(
                     }
 
                     Text(
-                        text = "Create Account",
+                        text = "Tạo tài khoản",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = Cinnabar500,
-                        textAlign = TextAlign.Center,
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                Text(
-                    text = "Họ và tên",
-                    modifier = Modifier.fillMaxWidth(),
-                    color = Black
-                )
-                CustomTextField(
-                    value = fullName,
-                    onValueChange = { fullName = it },
-                    placeholder = "Nhập họ và tên"
-                )
+                // FORM INPUTS
+                InputField(label = "Họ và tên", value = fullName, onValueChange = { fullName = it }, placeholder = "Nhập họ và tên")
+                InputField(label = "Số điện thoại", value = phone, onValueChange = { phone = it }, placeholder = "Nhập số điện thoại")
+                InputField(label = "Email", value = email, onValueChange = { email = it }, placeholder = "example@gmail.com")
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = "Số điện thoại",
-                    modifier = Modifier.fillMaxWidth(),
-                    color = Black
-                )
-                CustomTextField(
-                    value = phone,
-                    onValueChange = { phone = it },
-                    placeholder = "Nhập số điện thoại"
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = "Email",
-                    modifier = Modifier.fillMaxWidth(),
-                    color = Black
-                )
-                CustomTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    placeholder = "example@gmail.com"
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = "Mật khẩu",
-                    modifier = Modifier.fillMaxWidth(),
-                    color = Black
-                )
-                CustomTextField(
+                // MẬT KHẨU
+                PasswordField(
+                    label = "Mật khẩu",
                     value = password,
                     onValueChange = { password = it },
-                    placeholder = "••••••",
-                    visualTransformation =
-                        if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = {
-                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                            Icon(
-                                imageVector = if (passwordVisible)
-                                    Icons.Filled.VisibilityOff
-                                else
-                                    Icons.Filled.Visibility,
-                                contentDescription = "Toggle password"
-                            )
-                        }
-                    }
+                    isVisible = passwordVisible,
+                    onToggleVisibility = { passwordVisible = !passwordVisible }
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = "Nhập lại mật khẩu",
-                    modifier = Modifier.fillMaxWidth(),
-                    color = Black
-                )
-                CustomTextField(
+                // XÁC NHẬN MẬT KHẨU
+                PasswordField(
+                    label = "Nhập lại mật khẩu",
                     value = confirmPassword,
                     onValueChange = { confirmPassword = it },
-                    placeholder = "••••••",
-                    visualTransformation =
-                        if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = {
-                        IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
-                            Icon(
-                                imageVector = if (confirmPasswordVisible)
-                                    Icons.Filled.VisibilityOff
-                                else
-                                    Icons.Filled.Visibility,
-                                contentDescription = "Toggle password"
-                            )
-                        }
-                    }
+                    isVisible = confirmPasswordVisible,
+                    onToggleVisibility = { confirmPasswordVisible = !confirmPasswordVisible }
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(32.dp))
 
+                // NÚT ĐĂNG KÝ
                 PrimaryButton(
                     text = "Tạo tài khoản",
                     onClick = {
                         if (password == confirmPassword) {
                             val username = email.split("@").firstOrNull() ?: email
-
-                            createUserWithEmailAndPassword(email = email,
+                            createUserWithEmailAndPassword(
+                                email = email,
                                 password = password,
                                 fullName = fullName,
                                 username = username,
@@ -208,7 +127,7 @@ fun Register(
                                     Toast.makeText(context, "Đăng ký thành công!", Toast.LENGTH_SHORT).show()
                                     onRegisterSuccess()
                                 } else {
-                                    Toast.makeText(context, "Đăng ký thất bại: ${message ?: "Lỗi không xác định"}", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Đăng ký thất bại: $message", Toast.LENGTH_SHORT).show()
                                 }
                             }
                         } else {
@@ -217,36 +136,64 @@ fun Register(
                     }
                 )
 
-                Spacer(modifier = Modifier.height(18.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-                Text(text = "Hoặc")
+                Text(text = "Hoặc", color = androidx.compose.ui.graphics.Color.Gray)
 
-                Spacer(modifier = Modifier.height(18.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
+                IconButton(
+                    onClick = onGoogleSignInClick,
+                    modifier = Modifier.size(50.dp)
                 ) {
-                    IconButton(onClick = onGoogleSignInClick) {
-                        Image(painterResource(R.drawable.ic_google_logo), contentDescription = "Google")
-                    }
+                    Image(painterResource(R.drawable.ic_google_logo), contentDescription = "Google", modifier = Modifier.fillMaxSize())
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(32.dp))
 
-                Row {
-                    Text(text = "Đã có tài khoản?")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = "Đã có tài khoản?", color = androidx.compose.ui.graphics.Color.Gray)
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        "Đăng nhập",
+                        text = "Đăng nhập",
                         color = Cinnabar500,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.clickable(onClick = onLoginClick)
                     )
                 }
-
-                Spacer(modifier = Modifier.height(40.dp))
             }
         }
+    }
+}
+
+// Component phụ để code gọn hơn
+@Composable
+fun InputField(label: String, value: String, onValueChange: (String) -> Unit, placeholder: String) {
+    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+        Text(text = label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = Black)
+        Spacer(modifier = Modifier.height(8.dp))
+        CustomTextField(value = value, onValueChange = onValueChange, placeholder = placeholder)
+    }
+}
+
+@Composable
+fun PasswordField(label: String, value: String, onValueChange: (String) -> Unit, isVisible: Boolean, onToggleVisibility: () -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+        Text(text = label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = Black)
+        Spacer(modifier = Modifier.height(8.dp))
+        CustomTextField(
+            value = value,
+            onValueChange = onValueChange,
+            placeholder = "••••••",
+            visualTransformation = if (isVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            trailingIcon = {
+                IconButton(onClick = onToggleVisibility) {
+                    Icon(
+                        imageVector = if (isVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                        contentDescription = "Toggle password"
+                    )
+                }
+            }
+        )
     }
 }

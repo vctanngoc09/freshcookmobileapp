@@ -44,14 +44,14 @@ interface RecipeDao {
     @Query("SELECT * FROM recipes WHERE id = :id")
     suspend fun getRecipeById(id: String): RecipeEntity?
 
-    // --- SỬA LỖI: isFavorite -> is_favorite ---
+    // --- SỬA Lỗi: isFavorite -> is_favorite ---
     @Query("SELECT * FROM recipes WHERE is_favorite = 1")
     fun getFavoriteRecipes(): Flow<List<RecipeEntity>>
 
     @Query("UPDATE recipes SET is_favorite = :isFavorite WHERE id = :id")
     suspend fun updateFavoriteStatus(id: String, isFavorite: Boolean): Int
 
-    // --- SỬA LỖI: lastViewedTime -> last_viewed_time ---
+    // --- SỬA Lỗi: lastViewedTime -> last_viewed_time ---
     @Query("SELECT * FROM recipes WHERE last_viewed_time IS NOT NULL ORDER BY last_viewed_time DESC")
     fun getRecentlyViewedRecipes(): Flow<List<RecipeEntity>>
 
@@ -61,7 +61,14 @@ interface RecipeDao {
     @Query("UPDATE recipes SET last_viewed_time = NULL WHERE id = :id")
     suspend fun removeFromHistory(id: String)
 
-    // --- SỬA LỖI: categoryId -> category_id ---
+    // --- SỬA Lỗi: categoryId -> category_id ---
     @Query("SELECT * FROM recipes WHERE category_id = :categoryId AND id != :currentId LIMIT 5")
     fun getRelatedRecipes(categoryId: String, currentId: String): Flow<List<RecipeEntity>>
+
+    // --- HÀM MỚI CHO LOGOUT ---
+    @Query("UPDATE recipes SET is_favorite = 0 WHERE is_favorite = 1")
+    suspend fun clearAllFavorites()
+
+    @Query("UPDATE recipes SET last_viewed_time = NULL WHERE last_viewed_time IS NOT NULL")
+    suspend fun clearHistory()
 }
