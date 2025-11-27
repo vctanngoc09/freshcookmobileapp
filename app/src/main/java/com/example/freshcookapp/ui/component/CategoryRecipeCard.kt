@@ -108,10 +108,10 @@ fun CategoryRecipeCard(
                         modifier = Modifier.size(15.dp)
                     )
                     Spacer(Modifier.width(4.dp))
-                    Text("${recipe.people} phần ăn", color = Color.Gray, fontSize = 12.sp)
+                    Text("${recipe.people} người", color = Color.Gray, fontSize = 12.sp)
                 }
 
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.weight(1f))
 
 
                 // ===== AUTHOR WITH REAL AVATAR =====
