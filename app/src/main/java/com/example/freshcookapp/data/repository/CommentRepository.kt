@@ -54,6 +54,7 @@ class CommentRepository {
                 "userId" to comment.userId,
                 "recipeId" to comment.recipeId,
                 "userName" to comment.userName,
+                "userAvatar" to comment.userAvatar,
                 "text" to comment.text,
                 "timestamp" to FieldValue.serverTimestamp()
             )

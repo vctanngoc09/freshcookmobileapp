@@ -10,6 +10,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox // 🔥 Import
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState // 🔥 Import
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,13 +31,16 @@ import com.example.freshcookapp.FreshCookAppRoom
 import com.example.freshcookapp.R
 import com.example.freshcookapp.data.local.AppDatabase
 import com.example.freshcookapp.data.repository.RecipeRepository
+import com.example.freshcookapp.ui.component.ProfileSkeleton
 import com.example.freshcookapp.ui.component.ScreenContainer
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.example.freshcookapp.ui.theme.WorkSans
+// Import hàm shimmerEffect từ file Home hoặc component chung
+import com.example.freshcookapp.ui.screen.home.shimmerEffect
 import com.google.firebase.firestore.PropertyName
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// Class này dùng chung cho cả MyDishes và Profile
 data class RecipeInfo(
     val id: String = "",
     val name: String = "",
@@ -57,14 +62,13 @@ fun ProfileScreen(
     onMenuClick: () -> Unit = {},
     onFollowerClick: (String) -> Unit = {},
     onFollowingClick: (String) -> Unit = {},
-    onLogoutClick: () -> Unit = {}, // Callback này chỉ chạy KHI đã dọn dẹp xong DB
+    onLogoutClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val viewModel: ProfileViewModel = viewModel()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    // --- PHẦN MỚI THÊM: KHỞI TẠO SettingsViewModel ĐỂ LOGOUT ---
     val context = LocalContext.current
     val app = context.applicationContext as FreshCookAppRoom
     val db = remember { AppDatabase.getDatabase(app) }
@@ -78,7 +82,6 @@ fun ProfileScreen(
             }
         }
     )
-    // -----------------------------------------------------------
 
     LaunchedEffect(userId) {
         viewModel.loadProfile(userId)
@@ -86,6 +89,10 @@ fun ProfileScreen(
 
     val uiState by viewModel.uiState.collectAsState()
     val hasUnreadNotifications by viewModel.hasUnreadNotifications.collectAsState()
+
+    // --- CẤU HÌNH TRẠNG THÁI REFRESH ---
+    var isRefreshing by remember { mutableStateOf(false) }
+    val refreshState = rememberPullToRefreshState()
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -95,14 +102,10 @@ fun ProfileScreen(
                 onEditProfileClick = { scope.launch { drawerState.close() }; onEditProfileClick() },
                 onRecentlyViewedClick = { scope.launch { drawerState.close() }; onRecentlyViewedClick() },
                 onMyDishesClick = { scope.launch { drawerState.close() }; onMyDishesClick() },
-
-                // ⭐ SỬA LOGIC LOGOUT TẠI ĐÂY ⭐
                 onLogoutClick = {
                     scope.launch {
-                        drawerState.close() // 1. Đóng menu
-                        // 2. Gọi ViewModel để xóa dữ liệu Room & Firebase
+                        drawerState.close()
                         settingsViewModel.logout {
-                            // 3. Sau khi xóa xong mới chuyển màn hình
                             onLogoutClick()
                         }
                     }
@@ -112,7 +115,7 @@ fun ProfileScreen(
     ) {
         ScreenContainer {
             Column(modifier = modifier.fillMaxSize().background(Color.White)) {
-                // HEADER
+                // HEADER (Giữ nguyên vị trí, không bị kéo theo refresh)
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -123,7 +126,6 @@ fun ProfileScreen(
                     }
                     Text("Tài khoản", fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = WorkSans, color = Cinnabar500)
 
-                    // ICON THÔNG BÁO
                     IconButton(onClick = onNotificationClick) {
                         BadgedBox(
                             badge = {
@@ -142,71 +144,97 @@ fun ProfileScreen(
                     }
                 }
 
-                LazyColumn(contentPadding = PaddingValues(bottom = 16.dp)) {
-                    // AVATAR & INFO
-                    item {
-                        Column(
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Image(
-                                painter = rememberAsyncImagePainter(model = uiState.photoUrl ?: R.drawable.avatar1),
-                                contentDescription = "Profile",
-                                modifier = Modifier.size(140.dp).clip(CircleShape).clickable { onEditProfileClick() },
-                                contentScale = ContentScale.Crop
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(uiState.fullName, fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = WorkSans, color = Color.Black)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            if (uiState.username.isNotBlank()) Text("@${uiState.username}", fontSize = 14.sp, fontFamily = WorkSans, color = Color.Gray)
+                // 🔥 BỌC PHẦN NỘI DUNG CHÍNH TRONG PULL TO REFRESH 🔥
+                PullToRefreshBox(
+                    isRefreshing = isRefreshing,
+                    state = refreshState,
+                    onRefresh = {
+                        isRefreshing = true
+                        scope.launch {
+                            // Gọi hàm load lại dữ liệu
+                            viewModel.loadProfile(userId)
+                            delay(1000) // Delay giả lập để thấy hiệu ứng xoay
+                            isRefreshing = false
                         }
-                    }
-
-                    // THỐNG KÊ (STATS)
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Cinnabar500).padding(vertical = 16.dp),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            StatItem(count = uiState.followerCount.toString(), label = "Follower", onClick = { onFollowerClick(uiState.uid) })
-                            Divider(modifier = Modifier.width(1.dp).height(40.dp), color = Color.White.copy(alpha = 0.5f))
-                            StatItem(count = uiState.recipeCount.toString(), label = "Món", onClick = onMyDishesClick)
-                            Divider(modifier = Modifier.width(1.dp).height(40.dp), color = Color.White.copy(alpha = 0.5f))
-                            StatItem(count = uiState.followingCount.toString(), label = "Following", onClick = { onFollowingClick(uiState.uid) })
-                        }
-                    }
-
-                    // BUTTONS
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = onRecentlyViewedClick,
-                                modifier = Modifier.weight(1f).height(48.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Cinnabar500),
-                                border = androidx.compose.foundation.BorderStroke(2.dp, Cinnabar500),
-                                shape = RoundedCornerShape(28.dp)
-                            ) {
-                                Text("Xem gần đây", fontSize = 15.sp, fontFamily = WorkSans, fontWeight = FontWeight.SemiBold)
+                    },
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    LazyColumn(
+                        contentPadding = PaddingValues(bottom = 16.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        // LOGIC HIỂN THỊ SKELETON KHI TÊN CHƯA LOAD XONG
+                        if (uiState.fullName == "Đang tải...") {
+                            item {
+                                ProfileSkeleton()
                             }
-                            Button(
-                                onClick = onMyDishesClick,
-                                modifier = Modifier.weight(1f).height(48.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Cinnabar500,
-                                    contentColor = Color.White
-                                ),
-                                shape = RoundedCornerShape(28.dp)
-                            ) {
-                                Text(
-                                    "Món của tôi",
-                                    fontSize = 15.sp,
-                                    fontFamily = WorkSans,
-                                    fontWeight = FontWeight.SemiBold
-                                )
+                        } else {
+                            // AVATAR & INFO
+                            item {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Image(
+                                        painter = rememberAsyncImagePainter(model = uiState.photoUrl ?: R.drawable.avatar1),
+                                        contentDescription = "Profile",
+                                        modifier = Modifier.size(140.dp).clip(CircleShape).clickable { onEditProfileClick() },
+                                        contentScale = ContentScale.Crop
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(uiState.fullName, fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = WorkSans, color = Color.Black)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    if (uiState.username.isNotBlank()) Text("@${uiState.username}", fontSize = 14.sp, fontFamily = WorkSans, color = Color.Gray)
+                                }
+                            }
+
+                            // THỐNG KÊ (STATS)
+                            item {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Cinnabar500).padding(vertical = 16.dp),
+                                    horizontalArrangement = Arrangement.SpaceEvenly,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    StatItem(count = uiState.followerCount.toString(), label = "Follower", onClick = { onFollowerClick(uiState.uid) })
+                                    Divider(modifier = Modifier.width(1.dp).height(40.dp), color = Color.White.copy(alpha = 0.5f))
+                                    StatItem(count = uiState.recipeCount.toString(), label = "Món", onClick = onMyDishesClick)
+                                    Divider(modifier = Modifier.width(1.dp).height(40.dp), color = Color.White.copy(alpha = 0.5f))
+                                    StatItem(count = uiState.followingCount.toString(), label = "Following", onClick = { onFollowingClick(uiState.uid) })
+                                }
+                            }
+
+                            // BUTTONS
+                            item {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = onRecentlyViewedClick,
+                                        modifier = Modifier.weight(1f).height(48.dp),
+                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Cinnabar500),
+                                        border = androidx.compose.foundation.BorderStroke(2.dp, Cinnabar500),
+                                        shape = RoundedCornerShape(28.dp)
+                                    ) {
+                                        Text("Xem gần đây", fontSize = 15.sp, fontFamily = WorkSans, fontWeight = FontWeight.SemiBold)
+                                    }
+                                    Button(
+                                        onClick = onMyDishesClick,
+                                        modifier = Modifier.weight(1f).height(48.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Cinnabar500,
+                                            contentColor = Color.White
+                                        ),
+                                        shape = RoundedCornerShape(28.dp)
+                                    ) {
+                                        Text(
+                                            "Món của tôi",
+                                            fontSize = 15.sp,
+                                            fontFamily = WorkSans,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

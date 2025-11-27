@@ -8,7 +8,9 @@ data class Comment(
     val userId: String = "",
     val recipeId: String = "",
     val userName: String = "",
+    val userAvatar: String? = null,
     val text: String = "",
     @ServerTimestamp
-    var timestamp: Date? = null
+    var timestamp: Date? = null,
+    val likedBy: List<String> = emptyList()
 )

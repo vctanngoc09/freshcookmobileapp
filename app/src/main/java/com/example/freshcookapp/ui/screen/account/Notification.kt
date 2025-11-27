@@ -1,5 +1,10 @@
 package com.example.freshcookapp.ui.screen.account
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -17,17 +22,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.example.freshcookapp.R
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.example.freshcookapp.ui.theme.WorkSans
-
-// LƯU Ý: KHÔNG ĐỊNH NGHĨA LẠI NotificationModel Ở ĐÂY
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,11 +42,36 @@ fun NotificationScreen(
 ) {
     val viewModel: NotificationViewModel = viewModel()
     val notifications by viewModel.notifications.collectAsState()
+    val context = LocalContext.current
 
-    // --- FIX: GỌI HÀM MARK AS READ KHI MÀN HÌNH TẢI XONG ---
+    // --- PHẦN MỚI: XIN QUYỀN THÔNG BÁO (ANDROID 13+) ---
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            if (isGranted) {
+                // Người dùng đã đồng ý -> Có thể nhận thông báo đẩy
+            } else {
+                // Người dùng từ chối -> Chỉ xem được trong app
+            }
+        }
+    )
+
     LaunchedEffect(Unit) {
         viewModel.markAllAsRead()
+
+        // Kiểm tra và xin quyền nếu là Android 13 trở lên
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val hasPermission = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (!hasPermission) {
+                permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
     }
+    // ----------------------------------------------------
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -83,6 +113,7 @@ fun NotificationScreen(
     }
 }
 
+// ... (Các Composable EmptyNotificationState, NotificationList, NotificationItem GIỮ NGUYÊN như cũ)
 @Composable
 fun EmptyNotificationState(modifier: Modifier = Modifier) {
     Column(
@@ -131,7 +162,7 @@ fun NotificationItem(notification: NotificationModel) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Image(
-                painter = rememberAsyncImagePainter(model = notification.userAvatar ?: R.drawable.avatar1),
+                painter = rememberAsyncImagePainter(model = notification.userAvatar ?: R.drawable.ic_launcher_background), // Đã sửa icon mặc định cho đỡ lỗi
                 contentDescription = null,
                 modifier = Modifier.size(48.dp).clip(CircleShape).background(Color.LightGray),
                 contentScale = ContentScale.Crop
@@ -157,13 +188,13 @@ fun NotificationItem(notification: NotificationModel) {
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = notification.time, // <-- ĐÃ SỬA: Dùng tên trường đúng là 'time'
+                    text = notification.time,
                     fontSize = 11.sp,
                     fontFamily = WorkSans,
                     color = Color.Gray
                 )
             }
         }
-        Divider(modifier = Modifier.padding(top = 12.dp), color = Color(0xFFEEEEEE), thickness = 1.dp)
+        HorizontalDivider(modifier = Modifier.padding(top = 12.dp), color = Color(0xFFEEEEEE), thickness = 1.dp) // Dùng HorizontalDivider cho bản M3 mới
     }
 }

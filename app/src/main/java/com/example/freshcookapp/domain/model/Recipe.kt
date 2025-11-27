@@ -13,6 +13,7 @@ data class Recipe(
 
     val isFavorite: Boolean = false,
     val likeCount: Int = 0,
+    val createdAt: Long = System.currentTimeMillis(),
     val people: Int = 1,
 
 

@@ -18,6 +18,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox // 🔥 Import mới
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState // 🔥 Import mới
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,6 +37,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
@@ -46,9 +51,13 @@ import com.example.freshcookapp.data.local.AppDatabase
 import com.example.freshcookapp.data.repository.RecipeRepository
 import com.example.freshcookapp.data.repository.CommentRepository
 import com.example.freshcookapp.domain.model.*
+// Đảm bảo bạn đã tạo file RecipeDetailSkeleton trong ui/component
+import com.example.freshcookapp.ui.component.RecipeDetailSkeleton
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.google.firebase.auth.FirebaseAuth
 import com.example.freshcookapp.ui.nav.Destination
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun RecipeDetail(
@@ -61,9 +70,15 @@ fun RecipeDetail(
     val db = remember { AppDatabase.getDatabase(app) }
     val repo = remember { RecipeRepository(db) }
     val commentRepo = remember { CommentRepository() }
-    // Lưu ý: Đảm bảo ViewModel được khởi tạo đúng cách (dùng Factory nếu cần thiết như ở Favorite)
-    // Ở đây mình giữ nguyên cách bạn viết nếu nó đang chạy ổn
-    val viewModel = remember { RecipeDetailViewModel(repo, commentRepo) }
+
+    val viewModel: RecipeDetailViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return RecipeDetailViewModel(repo, commentRepo) as T
+            }
+        }
+    )
 
     LaunchedEffect(recipeId) {
         if (recipeId != null) viewModel.loadRecipe(recipeId)
@@ -75,11 +90,11 @@ fun RecipeDetail(
 
     var expandedImageUrl by remember { mutableStateOf<String?>(null) }
 
+    // 1. Nếu chưa có dữ liệu -> Hiện Skeleton
     if (recipeToShow == null) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(color = Cinnabar500)
-        }
+        RecipeDetailSkeleton()
     } else {
+        // 2. Có dữ liệu -> Hiện nội dung (Đã tích hợp Pull to Refresh bên trong)
         RecipeDetailView(
             recipe = recipeToShow!!,
             isFollowingAuthor = isFollowingAuthor,
@@ -103,6 +118,7 @@ fun RecipeDetail(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RecipeDetailView(
     recipe: Recipe,
@@ -117,21 +133,43 @@ private fun RecipeDetailView(
     onNotificationClick: () -> Unit,
     navController: NavHostController
 ) {
-    // Dùng MaterialTheme.colorScheme.background để chuẩn dark mode sau này
-    Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
-        RecipeDetailContent(
-            recipe = recipe,
-            isFollowingAuthor = isFollowingAuthor,
-            viewModel = viewModel,
-            modifier = Modifier.fillMaxSize(),
-            onAuthorClick = onAuthorClick,
-            onFavoriteClick = onFavoriteClick,
-            onFollowClick = onFollowClick,
-            onImageClick = onImageClick,
-            navController = navController
-        )
+    // --- CẤU HÌNH PULL TO REFRESH ---
+    var isRefreshing by remember { mutableStateOf(false) }
+    val refreshState = rememberPullToRefreshState()
+    val scope = rememberCoroutineScope()
 
-        // Gradient che phần status bar để icon Back/Share luôn rõ
+    Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
+
+        // 🔥 BỌC NỘI DUNG TRONG PullToRefreshBox
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            state = refreshState,
+            onRefresh = {
+                isRefreshing = true
+                scope.launch {
+                    // Gọi hàm load lại dữ liệu
+                    viewModel.loadRecipe(recipe.id)
+                    // Delay giả lập một chút để người dùng thấy vòng xoay (UX)
+                    delay(1000)
+                    isRefreshing = false
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        ) {
+            RecipeDetailContent(
+                recipe = recipe,
+                isFollowingAuthor = isFollowingAuthor,
+                viewModel = viewModel,
+                modifier = Modifier.fillMaxSize(),
+                onAuthorClick = onAuthorClick,
+                onFavoriteClick = onFavoriteClick,
+                onFollowClick = onFollowClick,
+                onImageClick = onImageClick,
+                navController = navController
+            )
+        }
+
+        // Header Gradient (Để đè lên trên list khi cuộn)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -139,6 +177,7 @@ private fun RecipeDetailView(
                 .background(Brush.verticalGradient(colors = listOf(Color.Black.copy(alpha = 0.6f), Color.Transparent)))
         )
 
+        // Top Bar (Luôn nổi trên cùng)
         RecipeDetailTopBar(
             recipeName = recipe.name,
             recipeId = recipe.id,
@@ -150,6 +189,10 @@ private fun RecipeDetailView(
         )
     }
 }
+
+// ... (Giữ nguyên TOÀN BỘ các hàm phía dưới: RecipeDetailTopBar, shareRecipe, LiveTimeText, RecipeDetailContent, etc.)
+// Bạn copy lại các hàm đó từ file cũ hoặc file trước đó để code đầy đủ nhé.
+// Dưới đây là phần còn lại để bạn tiện copy paste trọn vẹn file:
 
 @Composable
 private fun RecipeDetailTopBar(
@@ -170,7 +213,6 @@ private fun RecipeDetailTopBar(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // Nút Back
         IconButton(
             onClick = onBackClick,
             modifier = Modifier.background(Color.Black.copy(alpha = 0.4f), CircleShape)
@@ -179,7 +221,6 @@ private fun RecipeDetailTopBar(
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // Share
             IconButton(
                 onClick = { shareRecipe(context, recipeName, recipeId) },
                 modifier = Modifier
@@ -191,7 +232,6 @@ private fun RecipeDetailTopBar(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // Notification
             IconButton(
                 onClick = onNotificationClick,
                 modifier = Modifier
@@ -207,7 +247,7 @@ private fun RecipeDetailTopBar(
                     )
                     if (hasUnreadNotifications) {
                         Badge(
-                            containerColor = Cinnabar500, // Dùng màu theme đỏ
+                            containerColor = Cinnabar500,
                             modifier = Modifier
                                 .size(8.dp)
                                 .align(Alignment.TopEnd)
@@ -218,7 +258,6 @@ private fun RecipeDetailTopBar(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // Favorite
             IconButton(
                 onClick = onFavoriteClick,
                 modifier = Modifier
@@ -228,7 +267,7 @@ private fun RecipeDetailTopBar(
                 Icon(
                     imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                     contentDescription = "Favorite",
-                    tint = if (isFavorite) Cinnabar500 else Color.White, // Đỏ theme hoặc trắng
+                    tint = if (isFavorite) Cinnabar500 else Color.White,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -247,6 +286,35 @@ fun shareRecipe(context: Context, title: String, id: String) {
 }
 
 @Composable
+fun LiveTimeText(
+    timestamp: Long,
+    color: Color = Color.Gray,
+    style: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.labelSmall
+) {
+    var timeText by remember { mutableStateOf(getRelativeTimeAgo(timestamp)) }
+
+    LaunchedEffect(timestamp) {
+        while (true) {
+            val newText = getRelativeTimeAgo(timestamp)
+            if (newText != timeText) {
+                timeText = newText
+            }
+            val now = System.currentTimeMillis()
+            val diff = now - timestamp
+            val delayMillis = if (diff < 3600000) 60000L else 3600000L
+            kotlinx.coroutines.delay(delayMillis)
+        }
+    }
+
+    Text(
+        text = timeText,
+        color = color,
+        style = style,
+        fontSize = 11.sp
+    )
+}
+
+@Composable
 private fun RecipeDetailContent(
     recipe: Recipe,
     isFollowingAuthor: Boolean,
@@ -259,29 +327,20 @@ private fun RecipeDetailContent(
     navController: NavHostController
 ) {
     LazyColumn(modifier = modifier) {
-        // 1. Header Ảnh
         item {
             RecipeHeader(
                 recipe = recipe,
                 onImageClick = { recipe.imageUrl?.let { onImageClick(it) } }
             )
         }
-
-        // 2. Thông tin chính (Tên, thời gian)
         item { RecipeInfoSection(recipe) }
-
-        // 3. Nguyên liệu
         item { RecipeIngredients(recipe.ingredients) }
-
-        // 4. Cách làm
         item {
             RecipeInstructions(
                 steps = recipe.instructions,
                 onImageClick = onImageClick
             )
         }
-
-        // 5. Nút Thích to (Call to Action)
         item {
             Button(
                 onClick = onFavoriteClick,
@@ -313,8 +372,6 @@ private fun RecipeDetailContent(
                 )
             }
         }
-
-        // 6. Tác giả
         item {
             AuthorInfoSection(
                 author = recipe.author,
@@ -323,19 +380,12 @@ private fun RecipeDetailContent(
                 onFollowClick = onFollowClick
             )
         }
-
-        // 7. Bình luận
-        item {
-            CommentSection(viewModel)
-        }
-
-        // 8. Món tương tự
+        item { CommentSection(viewModel) }
         item {
             if (recipe.relatedRecipes.isNotEmpty()) {
                 RelatedRecipesSection(recipes = recipe.relatedRecipes, navController = navController)
             }
         }
-
         item { Spacer(modifier = Modifier.height(60.dp)) }
     }
 }
@@ -343,7 +393,6 @@ private fun RecipeDetailContent(
 @Composable
 private fun RecipeHeader(recipe: Recipe, onImageClick: () -> Unit) {
     val defaultImage = R.drawable.ic_launcher_background
-
     val painter = rememberAsyncImagePainter(
         model = ImageRequest.Builder(LocalContext.current)
             .data(recipe.imageUrl ?: defaultImage)
@@ -352,42 +401,35 @@ private fun RecipeHeader(recipe: Recipe, onImageClick: () -> Unit) {
             .crossfade(true)
             .build()
     )
-
     Image(
         painter = painter,
         contentDescription = null,
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 280.dp, max = 400.dp) // Điều chỉnh chiều cao cho đẹp hơn
+            .heightIn(min = 280.dp, max = 400.dp)
             .clickable { onImageClick() },
-        contentScale = ContentScale.Crop // Crop ảnh cho vừa khung hình
+        contentScale = ContentScale.Crop
     )
 }
 
 @Composable
 private fun RecipeInfoSection(recipe: Recipe) {
     Column(modifier = Modifier.padding(16.dp)) {
-        // SỬA: Dùng Typography theme thay vì fontSize cứng
         Text(
             text = recipe.name,
-            style = MaterialTheme.typography.headlineMedium, // Font to, đậm từ Theme
+            style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onSurface
         )
-
         Spacer(Modifier.height(8.dp))
-
         if (recipe.description.isNotBlank()) {
             Text(
                 text = recipe.description,
-                style = MaterialTheme.typography.bodyMedium, // Font mô tả chuẩn
+                style = MaterialTheme.typography.bodyMedium,
                 color = Color.Gray
             )
             Spacer(Modifier.height(12.dp))
         }
-
-        // Hàng thông tin phụ
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // Thời gian
             Icon(Icons.Default.Schedule, null, tint = Cinnabar500, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(4.dp))
             Text(
@@ -395,10 +437,7 @@ private fun RecipeInfoSection(recipe: Recipe) {
                 style = MaterialTheme.typography.labelLarge,
                 color = Color.Gray
             )
-
             Spacer(Modifier.width(16.dp))
-
-            // Độ khó (bọc trong thẻ màu nhẹ giống Favorite)
             Surface(
                 color = Cinnabar500.copy(alpha = 0.1f),
                 shape = RoundedCornerShape(8.dp)
@@ -420,11 +459,10 @@ private fun RecipeIngredients(ingredients: List<String>) {
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
         Text(
             text = "Nguyên Liệu",
-            style = MaterialTheme.typography.titleMedium, // Font tiêu đề section
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold
         )
         Spacer(Modifier.height(8.dp))
-
         if (ingredients.isEmpty()) {
             Text("Đang cập nhật...", color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
         } else {
@@ -442,7 +480,6 @@ private fun RecipeIngredients(ingredients: List<String>) {
 @Composable
 private fun RecipeInstructions(steps: List<InstructionStep>, onImageClick: (String) -> Unit) {
     val context = LocalContext.current
-
     Column(modifier = Modifier.padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -453,9 +490,7 @@ private fun RecipeInstructions(steps: List<InstructionStep>, onImageClick: (Stri
             Spacer(Modifier.weight(1f))
             Icon(painter = painterResource(R.drawable.ic_launcher_foreground), contentDescription = null, modifier = Modifier.size(24.dp), tint = Color.LightGray)
         }
-
         Spacer(Modifier.height(12.dp))
-
         if (steps.isEmpty()) {
             Text("Đang cập nhật...", color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
         } else {
@@ -464,7 +499,6 @@ private fun RecipeInstructions(steps: List<InstructionStep>, onImageClick: (Stri
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.Top
                 ) {
-                    // Số thứ tự: Dùng màu Cinnabar500 cho nổi bật hoặc Đen (tùy bạn, ở đây để Đen cho clean)
                     Box(
                         modifier = Modifier
                             .size(24.dp)
@@ -478,19 +512,15 @@ private fun RecipeInstructions(steps: List<InstructionStep>, onImageClick: (Stri
                             fontWeight = FontWeight.Bold
                         )
                     }
-
                     Spacer(Modifier.width(12.dp))
-
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = step.description,
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color.Black,
-                            lineHeight = 22.sp // Tăng chiều cao dòng cho dễ đọc
+                            lineHeight = 22.sp
                         )
-
                         Spacer(Modifier.height(8.dp))
-
                         if (!step.imageUrl.isNullOrEmpty()) {
                             val painter = rememberAsyncImagePainter(
                                 model = ImageRequest.Builder(context)
@@ -500,12 +530,11 @@ private fun RecipeInstructions(steps: List<InstructionStep>, onImageClick: (Stri
                                     .crossfade(true)
                                     .build()
                             )
-
                             Image(
                                 painter = painter,
                                 contentDescription = "Step image",
                                 modifier = Modifier
-                                    .height(120.dp) // Tăng nhẹ kích thước
+                                    .height(120.dp)
                                     .width(150.dp)
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(Color(0xFFF0F0F0))
@@ -523,7 +552,6 @@ private fun RecipeInstructions(steps: List<InstructionStep>, onImageClick: (Stri
     }
 }
 
-// FullScreenImageViewer giữ nguyên (tốt rồi)
 @Composable
 fun FullScreenImageViewer(imageUrl: String, onDismiss: () -> Unit) {
     val context = LocalContext.current
@@ -531,21 +559,12 @@ fun FullScreenImageViewer(imageUrl: String, onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black)
-        ) {
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
             var scale by remember { mutableFloatStateOf(1f) }
             var offset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
-
             val painter = rememberAsyncImagePainter(
-                model = ImageRequest.Builder(context)
-                    .data(imageUrl)
-                    .size(Size.ORIGINAL)
-                    .build()
+                model = ImageRequest.Builder(context).data(imageUrl).size(Size.ORIGINAL).build()
             )
-
             Image(
                 painter = painter,
                 contentDescription = null,
@@ -565,7 +584,6 @@ fun FullScreenImageViewer(imageUrl: String, onDismiss: () -> Unit) {
                         translationY = offset.y
                     )
             )
-
             IconButton(
                 onClick = onDismiss,
                 modifier = Modifier
@@ -588,13 +606,11 @@ fun AuthorInfoSection(
 ) {
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
     val isMe = currentUserId == author.id
-
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         val defaultAvatar = R.drawable.ic_launcher_background
-
         Image(
             painter = rememberAsyncImagePainter(model = author.avatarUrl ?: defaultAvatar),
             contentDescription = null,
@@ -621,7 +637,7 @@ fun AuthorInfoSection(
                     containerColor = if (isFollowing) Color.LightGray else Color.Black,
                     contentColor = if (isFollowing) Color.Black else Color.White
                 ),
-                shape = RoundedCornerShape(24.dp), // Bo tròn hơn cho nút
+                shape = RoundedCornerShape(24.dp),
                 modifier = Modifier.defaultMinSize(minWidth = 140.dp).height(40.dp)
             ) {
                 Text(
@@ -640,10 +656,23 @@ fun CommentSection(viewModel: RecipeDetailViewModel) {
     val currentUser = FirebaseAuth.getInstance().currentUser
 
     Column(modifier = Modifier.padding(16.dp)) {
-        Text("Bình luận", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(
+            text = "Bình luận (${comments.size})",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black
+        )
         Spacer(Modifier.height(16.dp))
-
         Row(verticalAlignment = Alignment.CenterVertically) {
+            Image(
+                painter = rememberAsyncImagePainter(
+                    model = currentUser?.photoUrl ?: R.drawable.ic_launcher_background
+                ),
+                contentDescription = null,
+                modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.LightGray),
+                contentScale = ContentScale.Crop
+            )
+            Spacer(Modifier.width(8.dp))
             TextField(
                 value = commentText,
                 onValueChange = { viewModel.updateCommentText(it) },
@@ -653,29 +682,38 @@ fun CommentSection(viewModel: RecipeDetailViewModel) {
                     focusedContainerColor = Color(0xFFF5F5F5),
                     unfocusedContainerColor = Color(0xFFF5F5F5),
                     focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent
+                    unfocusedIndicatorColor = Color.Transparent,
+                    focusedTextColor = Color.Black,
+                    unfocusedTextColor = Color.Black,
+                    cursorColor = Color.Black
                 ),
-                shape = RoundedCornerShape(20.dp) // Bo tròn hơn cho ô nhập
+                shape = RoundedCornerShape(20.dp)
             )
             Spacer(Modifier.width(8.dp))
             IconButton(onClick = { viewModel.addComment() }) {
-                Icon(Icons.AutoMirrored.Outlined.Send, contentDescription = "Send", tint = Cinnabar500)
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.Send,
+                    contentDescription = "Send",
+                    tint = if (commentText.isNotBlank()) Cinnabar500 else Color.Gray
+                )
             }
         }
-
-        Spacer(Modifier.height(16.dp))
-
+        Spacer(Modifier.height(24.dp))
         if (comments.isEmpty()) {
-            Text("Chưa có bình luận nào. Hãy là người đầu tiên!", color = Color.Gray, style = MaterialTheme.typography.bodySmall)
+            Text(
+                text = "Chưa có bình luận nào. Hãy là người đầu tiên!",
+                color = Color.Gray,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
         } else {
-            Column {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 comments.forEach { comment ->
                     CommentItem(
                         comment = comment,
                         isOwner = comment.userId == currentUser?.uid,
                         onDelete = { viewModel.deleteComment(comment.id) }
                     )
-                    Spacer(Modifier.height(12.dp))
                 }
             }
         }
@@ -684,46 +722,73 @@ fun CommentSection(viewModel: RecipeDetailViewModel) {
 
 @Composable
 fun CommentItem(comment: Comment, isOwner: Boolean, onDelete: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth()) {
-        Box(
-            modifier = Modifier.size(36.dp).clip(CircleShape).background(Color(0xFFE0E0E0)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = comment.userName.firstOrNull()?.toString() ?: "U",
-                color = Color.Black,
-                fontWeight = FontWeight.Bold
-            )
-        }
-        Spacer(Modifier.width(10.dp))
-
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+        val avatarPainter = rememberAsyncImagePainter(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(if (comment.userAvatar.isNullOrBlank()) R.drawable.ic_launcher_background else comment.userAvatar)
+                .crossfade(true)
+                .build()
+        )
+        Image(
+            painter = avatarPainter,
+            contentDescription = "Avatar",
+            modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.LightGray),
+            contentScale = ContentScale.Crop
+        )
+        Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(comment.userName, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.width(8.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text(
-                    text = comment.timestamp?.let { java.text.SimpleDateFormat("dd/MM HH:mm", java.util.Locale.getDefault()).format(it) } ?: "",
-                    color = Color.Gray,
-                    style = MaterialTheme.typography.bodySmall
+                    text = comment.userName,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+                Spacer(Modifier.width(8.dp))
+                LiveTimeText(
+                    timestamp = comment.timestamp?.time ?: 0L,
+                    color = Color.Gray
                 )
             }
-            Text(comment.text, style = MaterialTheme.typography.bodyMedium)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = comment.text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Black,
+                lineHeight = 20.sp
+            )
         }
-
         if (isOwner) {
-            IconButton(onClick = onDelete, modifier = Modifier.size(20.dp)) {
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier.size(24.dp).padding(top = 4.dp)
+            ) {
                 Icon(Icons.Default.Close, contentDescription = "Delete", tint = Color.Gray, modifier = Modifier.size(16.dp))
             }
         }
     }
 }
 
-// SỬA: Cập nhật Card Món tương tự cho đồng bộ style "White Card"
+// Hàm tiện ích tính thời gian
+fun getRelativeTimeAgo(timestamp: Long): String {
+    val now = System.currentTimeMillis()
+    val diff = now - timestamp
+    return when {
+        diff < 60 * 1000 -> "Vừa xong"
+        diff < 60 * 60 * 1000 -> "${diff / (60 * 1000)} phút trước"
+        diff < 24 * 60 * 60 * 1000 -> "${diff / (60 * 60 * 1000)} giờ trước"
+        diff < 7 * 24 * 60 * 60 * 1000 -> "${diff / (24 * 60 * 60 * 1000)} ngày trước"
+        else -> java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()).format(java.util.Date(timestamp))
+    }
+}
+
 @Composable
 fun RelatedRecipesSection(recipes: List<RecipePreview>, navController: NavHostController) {
     val defaultImage = R.drawable.ic_launcher_background
     val ctx = LocalContext.current
-
     Column(modifier = Modifier.padding(top = 16.dp)) {
         Text(
             "Các món tương tự",
@@ -731,47 +796,31 @@ fun RelatedRecipesSection(recipes: List<RecipePreview>, navController: NavHostCo
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
-
         LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), // Thêm vertical padding cho shadow
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(recipes) { item ->
                 Card(
-                    modifier = Modifier
-                        .width(160.dp)
-                        .height(210.dp)
-                        .shadow(4.dp, RoundedCornerShape(16.dp)) // Đổ bóng
+                    modifier = Modifier.width(160.dp).height(210.dp)
+                        .shadow(4.dp, RoundedCornerShape(16.dp))
                         .clickable {
-                            if (item.id.isNotBlank()) {
-                                navController.navigate(Destination.RecipeDetail(recipeId = item.id))
-                            } else {
-                                Toast.makeText(ctx, "Món ăn không hợp lệ", Toast.LENGTH_SHORT).show()
-                            }
+                            if (item.id.isNotBlank()) navController.navigate(Destination.RecipeDetail(recipeId = item.id))
+                            else Toast.makeText(ctx, "Món ăn không hợp lệ", Toast.LENGTH_SHORT).show()
                         },
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White), // Nền trắng
-                    elevation = CardDefaults.cardElevation(0.dp) // Reset elevation mặc định để dùng shadow
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(0.dp)
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         Image(
                             painter = rememberAsyncImagePainter(model = item.imageUrl ?: defaultImage),
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(130.dp) // Chiếm phần trên
-                                .align(Alignment.TopCenter)
+                            modifier = Modifier.fillMaxWidth().height(130.dp).align(Alignment.TopCenter)
                         )
-
-                        // Thông tin ở dưới (Nền trắng)
                         Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .align(Alignment.BottomCenter)
-                                .background(Color.White)
-                                .padding(10.dp)
-                                .height(80.dp) // Chiều cao phần chữ
+                            modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter).background(Color.White).padding(10.dp).height(80.dp)
                         ) {
                             Text(
                                 text = item.title,

@@ -21,8 +21,12 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import com.example.freshcookapp.data.repository.CommentRepository
 import com.example.freshcookapp.domain.model.Comment
+import java.util.Date
 
-class RecipeDetailViewModel(private val repository: RecipeRepository, private val commentRepository: CommentRepository) : ViewModel() {
+class RecipeDetailViewModel(
+    private val repository: RecipeRepository,
+    private val commentRepository: CommentRepository
+) : ViewModel() {
 
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
@@ -39,15 +43,17 @@ class RecipeDetailViewModel(private val repository: RecipeRepository, private va
     private val _commentText = MutableStateFlow("")
     val commentText: StateFlow<String> = _commentText
 
-    // --- MỚI: TRẠNG THÁI THÔNG BÁO ---
     private val _hasUnreadNotifications = MutableStateFlow(false)
     val hasUnreadNotifications: StateFlow<Boolean> = _hasUnreadNotifications
+
+    // 🔥 BIẾN MỚI: Lưu tên người đang được trả lời (Smart Reply)
+    private val _replyingToUser = MutableStateFlow<String?>(null)
+    val replyingToUser: StateFlow<String?> = _replyingToUser
 
     init {
         listenToUnreadNotifications()
     }
 
-    // Hàm lắng nghe thông báo chưa đọc
     private fun listenToUnreadNotifications() {
         val currentUserId = auth.currentUser?.uid ?: return
         firestore.collection("users").document(currentUserId)
@@ -86,15 +92,17 @@ class RecipeDetailViewModel(private val repository: RecipeRepository, private va
                     )
                     _recipe.value = currentRecipe
 
-                    // Observe local Room changes for this recipe so Detail updates when Home changes favorite/like
                     viewModelScope.launch {
                         repository.getRecipeFlow(recipeId).collect { updatedEntity ->
                             if (updatedEntity != null) {
-                                // Only update favorite flag and likeCount from local DB to avoid overwriting author/instructions
                                 _recipe.value = _recipe.value?.copy(
                                     isFavorite = updatedEntity.isFavorite,
                                     likeCount = updatedEntity.likeCount
-                                ) ?: updatedEntity.toUiModel(Author(updatedEntity.userId, "Đang tải...", null), relatedList, updatedEntity.likeCount)
+                                ) ?: updatedEntity.toUiModel(
+                                    Author(updatedEntity.userId, "Đang tải...", null),
+                                    relatedList,
+                                    updatedEntity.likeCount
+                                )
                             }
                         }
                     }
@@ -139,9 +147,6 @@ class RecipeDetailViewModel(private val repository: RecipeRepository, private va
                             _comments.value = comments
                         }
                     }
-
-                } else {
-                    Log.e("Detail", "Không tìm thấy món trong Local DB")
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -192,10 +197,11 @@ class RecipeDetailViewModel(private val repository: RecipeRepository, private va
             }
         }.addOnSuccessListener { isLiked ->
             viewModelScope.launch {
-                // Pass newCount so repository updates like_count in Room as well
                 repository.toggleFavorite(currentRecipe.id, isLiked, newCount)
             }
-            if (isLiked) sendNotification(currentRecipe.author.id, "đã yêu thích món ăn: ${currentRecipe.name}", currentRecipe.id)
+            if (isLiked && currentRecipe.author.id != currentUser.uid) {
+                sendNotification(currentRecipe.author.id, "đã yêu thích món ăn: ${currentRecipe.name}", currentRecipe.id)
+            }
         }
     }
 
@@ -231,13 +237,16 @@ class RecipeDetailViewModel(private val repository: RecipeRepository, private va
                 true
             }
         }.addOnSuccessListener { isFollowed ->
-            if (isFollowed) sendNotification(authorId, "đã bắt đầu theo dõi bạn", null)
+            if (isFollowed && currentUserId != authorId) {
+                sendNotification(authorId, "đã bắt đầu theo dõi bạn", null)
+            }
         }
     }
 
     private fun sendNotification(receiverId: String, message: String, recipeId: String?) {
         val currentUserId = auth.currentUser?.uid ?: return
         if (currentUserId == receiverId) return
+
         firestore.collection("users").document(currentUserId).get().addOnSuccessListener { doc ->
             val noti = hashMapOf(
                 "senderId" to currentUserId,
@@ -253,19 +262,75 @@ class RecipeDetailViewModel(private val repository: RecipeRepository, private va
         }
     }
 
+    // --- CÁC HÀM XỬ LÝ BÌNH LUẬN NÂNG CAO ---
+
     fun updateCommentText(text: String) { _commentText.value = text }
 
+    // 1. Đặt trạng thái đang reply
+    fun onReplyToComment(username: String) {
+        _replyingToUser.value = username
+    }
+
+    // 2. Hủy reply
+    fun onCancelReply() {
+        _replyingToUser.value = null
+    }
+
     fun addComment() {
-        val text = _commentText.value.trim(); if (text.isEmpty()) return
-        val user = auth.currentUser ?: return; val recipe = _recipe.value ?: return
+        val rawText = _commentText.value.trim()
+        if (rawText.isEmpty()) return
+
+        val user = auth.currentUser ?: return
+        val recipe = _recipe.value ?: return
+
+        // Logic thông minh: Tự động chèn tag vào đầu nội dung nếu đang reply
+        val replyPrefix = _replyingToUser.value?.let { "@$it " } ?: ""
+        val finalContent = replyPrefix + rawText
+
         firestore.collection("users").document(user.uid).get().addOnSuccessListener { doc ->
-            val comment = Comment(userId = user.uid, recipeId = recipe.id, userName = doc.getString("fullName") ?: "User", text = text)
+            val avatarUrl = doc.getString("photoUrl") ?: user.photoUrl?.toString()
+
+            val comment = Comment(
+                userId = user.uid,
+                recipeId = recipe.id,
+                userName = doc.getString("fullName") ?: "User",
+                userAvatar = avatarUrl,
+                text = finalContent, // Gửi nội dung đã có tag
+                timestamp = Date()
+            )
+
             viewModelScope.launch {
                 if (commentRepository.addComment(comment)) {
                     _commentText.value = ""
-                    sendNotification(recipe.author.id, "đã bình luận: ${recipe.name}", recipe.id)
+                    _replyingToUser.value = null // Reset trạng thái reply sau khi gửi
+
+                    if (user.uid != recipe.author.id) {
+                        sendNotification(recipe.author.id, "đã bình luận: ${recipe.name}", recipe.id)
+                    }
                 }
             }
+        }
+    }
+
+    fun toggleLikeComment(comment: Comment) {
+        val currentUserId = auth.currentUser?.uid ?: return
+        val isLiked = comment.likedBy.contains(currentUserId)
+        val commentRef = firestore.collection("recipes").document(comment.recipeId)
+            .collection("comments").document(comment.id)
+
+        if (isLiked) {
+            commentRef.update("likedBy", FieldValue.arrayRemove(currentUserId))
+        } else {
+            commentRef.update("likedBy", FieldValue.arrayUnion(currentUserId))
+                .addOnSuccessListener {
+                    if (comment.userId != currentUserId) {
+                        sendNotification(
+                            receiverId = comment.userId,
+                            message = "đã thích bình luận: \"${comment.text}\"",
+                            recipeId = comment.recipeId
+                        )
+                    }
+                }
         }
     }
 
@@ -273,9 +338,6 @@ class RecipeDetailViewModel(private val repository: RecipeRepository, private va
         val recipe = _recipe.value ?: return
         viewModelScope.launch { commentRepository.deleteComment(recipe.id, commentId) }
     }
-
-    fun deleteSampleComments() { /* Logic xóa sample */ }
-    fun addSampleComment() { /* Logic thêm sample */ }
 
     private fun RecipeEntity.toUiModel(author: Author, related: List<RecipePreview>, likes: Int): Recipe {
         return Recipe(
@@ -288,6 +350,7 @@ class RecipeDetailViewModel(private val repository: RecipeRepository, private va
             author = author,
             isFavorite = this.isFavorite,
             likeCount = likes,
+            createdAt = this.createdAt,
             ingredients = this.ingredients ?: emptyList(),
             instructions = this.steps?.mapIndexed { index, s -> InstructionStep(index + 1, s, null) } ?: emptyList(),
             relatedRecipes = related

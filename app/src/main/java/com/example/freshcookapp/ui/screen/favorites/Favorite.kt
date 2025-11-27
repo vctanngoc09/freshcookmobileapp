@@ -13,6 +13,8 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.outlined.RestaurantMenu
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox // 🔥 Import Refresh
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState // 🔥 Import Refresh
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,10 +22,9 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp // Import thêm cái này để chỉnh cỡ chữ
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -31,8 +32,6 @@ import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import coil.size.Size
 import coil.size.Precision
-
-// Import các class trong project của bạn
 import com.example.freshcookapp.FreshCookAppRoom
 import com.example.freshcookapp.R
 import com.example.freshcookapp.data.local.AppDatabase
@@ -40,8 +39,11 @@ import com.example.freshcookapp.data.repository.RecipeRepository
 import com.example.freshcookapp.domain.model.Recipe
 import com.example.freshcookapp.ui.component.ScreenContainer
 import com.example.freshcookapp.ui.theme.Cinnabar500
+// 🔥 IMPORT SKELETON TỪ FILE BẠN ĐÃ TẠO (Sửa lại package nếu cần)
+import com.example.freshcookapp.ui.component.FavoriteItemSkeleton
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
-// --- PHẦN 1: HELPER ĐỂ TẠO VIEWMODEL ---
 @Composable
 fun getFavoriteViewModel(): FavoriteViewModel {
     val context = LocalContext.current
@@ -58,15 +60,20 @@ fun getFavoriteViewModel(): FavoriteViewModel {
     return viewModel(factory = factory)
 }
 
-// --- PHẦN 2: MÀN HÌNH CHÍNH (ĐÃ SỬA HEADER) ---
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Favorite(
-    onBackClick: () -> Unit, // Vẫn giữ tham số để không lỗi bên Nav, nhưng không dùng
+    onBackClick: () -> Unit,
     onRecipeClick: (String) -> Unit
 ) {
     val viewModel = getFavoriteViewModel()
     val recipes by viewModel.favoriteRecipes.collectAsState()
     var initialLoadComplete by remember { mutableStateOf(false) }
+
+    // --- CẤU HÌNH REFRESH ---
+    var isRefreshing by remember { mutableStateOf(false) }
+    val refreshState = rememberPullToRefreshState()
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(recipes) {
         if (recipes.isNotEmpty() || viewModel.favoriteRecipes.value.isEmpty()) {
@@ -80,49 +87,64 @@ fun Favorite(
                 .fillMaxSize()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-
-            // 🔥 HEADER MỚI (Đã bỏ nút Back, Font giống trang Home) 🔥
+            // HEADER
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 10.dp), // Padding cho thoáng
+                    .padding(vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Start // Canh lề trái
+                horizontalArrangement = Arrangement.Start
             ) {
                 Text(
                     text = "Món yêu thích",
-                    // Style gốc là bodyLarge (giống Hi User), nhưng mình thêm copy(fontSize = 24.sp)
-                    // để nó to ra cho xứng tầm Tiêu đề màn hình
-                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 24.sp),
+                    style = MaterialTheme.typography.headlineMedium, // Dùng style to đẹp
                     color = Cinnabar500,
                     fontWeight = FontWeight.Bold
                 )
             }
-            // -----------------------------------------------------
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // LIST CONTENT
-            if (recipes.isEmpty() && !initialLoadComplete) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Cinnabar500)
-                }
-            } else if (recipes.isEmpty()) {
-                FavoriteEmptyState()
-            } else {
-                FavoriteList(
-                    recipes = recipes,
-                    onRecipeClick = { recipe -> onRecipeClick(recipe.id) },
-                    onRemoveFavorite = { recipeId ->
-                        viewModel.removeFromFavorites(recipeId)
+            // 🔥 BỌC LIST TRONG PULL TO REFRESH BOX 🔥
+            PullToRefreshBox(
+                isRefreshing = isRefreshing,
+                state = refreshState,
+                onRefresh = {
+                    isRefreshing = true
+                    scope.launch {
+                        // Giả lập loading (vì Room tự động cập nhật nên không cần gọi hàm load)
+                        delay(1000)
+                        isRefreshing = false
                     }
-                )
+                },
+                modifier = Modifier.fillMaxSize() // Chiếm hết không gian còn lại
+            ) {
+                // LOGIC HIỂN THỊ NỘI DUNG
+                if (recipes.isEmpty() && !initialLoadComplete) {
+                    // Đang tải lần đầu -> Hiện Skeleton
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        items(3) {
+                            FavoriteItemSkeleton() // Gọi Skeleton từ file bạn tạo
+                        }
+                    }
+                } else if (recipes.isEmpty()) {
+                    // Không có dữ liệu
+                    FavoriteEmptyState()
+                } else {
+                    // Có dữ liệu -> Hiện List thật
+                    FavoriteList(
+                        recipes = recipes,
+                        onRecipeClick = { recipe -> onRecipeClick(recipe.id) },
+                        onRemoveFavorite = { recipeId ->
+                            viewModel.removeFromFavorites(recipeId)
+                        }
+                    )
+                }
             }
         }
     }
 }
 
-// --- PHẦN 3: CÁC COMPOSABLE CON (GIỮ NGUYÊN) ---
 @Composable
 private fun FavoriteList(
     recipes: List<Recipe>,
@@ -185,20 +207,21 @@ private fun FavoriteItemCard(
                     contentScale = ContentScale.Crop
                 )
 
-                IconButton(
-                    onClick = onFavoriteClick,
+                Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(10.dp)
-                        .size(36.dp)
-                        .background(Color.White, CircleShape)
-                        .shadow(4.dp, CircleShape)
+                        .padding(12.dp) // Khoảng cách từ mép ảnh vào
+                        .size(36.dp)    // Kích thước vòng tròn trắng
+                        .shadow(4.dp, CircleShape) // Đổ bóng
+                        .background(Color.White, CircleShape) // Nền trắng
+                        .clickable(onClick = onFavoriteClick), // Bấm vào đây
+                    contentAlignment = Alignment.Center // Căn icon tim vào chính giữa
                 ) {
                     Icon(
                         imageVector = Icons.Default.Favorite,
                         contentDescription = "Remove Favorite",
-                        tint = Cinnabar500,
-                        modifier = Modifier.size(22.dp)
+                        tint = Cinnabar500, // Màu đỏ
+                        modifier = Modifier.size(20.dp) // Kích thước icon tim
                     )
                 }
             }
