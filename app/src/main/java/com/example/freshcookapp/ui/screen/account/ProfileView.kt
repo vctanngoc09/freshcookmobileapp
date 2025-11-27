@@ -27,7 +27,6 @@ import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.ktx.toObject
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -35,22 +34,22 @@ import com.google.firebase.firestore.ktx.toObject
 fun AuthorProfileScreen(
     userId: String,
     onBackClick: () -> Unit,
-    // --- THÊM THAM SỐ NÀY ĐỂ BẤM VÀO MÓN ---
-    onRecipeClick: (String) -> Unit
+    onRecipeClick: (String) -> Unit,
+    // --- THÊM 2 HÀNH ĐỘNG CLICK MỚI ---
+    onFollowerClick: (String) -> Unit,
+    onFollowingClick: (String) -> Unit
 ) {
     val context = LocalContext.current
     val firestore = FirebaseFirestore.getInstance()
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
 
     // Dữ liệu hiển thị
-    var fullName by remember { mutableStateOf("Đang tải...") } // Mặc định hiển thị đang tải
+    var fullName by remember { mutableStateOf("Đang tải...") }
     var username by remember { mutableStateOf("") }
     var photoUrl by remember { mutableStateOf<String?>(null) }
-
     var followerCount by remember { mutableIntStateOf(0) }
     var followingCount by remember { mutableIntStateOf(0) }
     var recipeCount by remember { mutableIntStateOf(0) }
-
     var isFollowing by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) }
     var authorRecipes by remember { mutableStateOf<List<RecipeInfo>>(emptyList()) }
@@ -59,7 +58,6 @@ fun AuthorProfileScreen(
     LaunchedEffect(userId) {
         firestore.collection("users").document(userId).addSnapshotListener { snapshot, _ ->
             if (snapshot != null && snapshot.exists()) {
-                // Ưu tiên hiển thị FullName, nếu không có thì lấy Username
                 fullName = snapshot.getString("fullName") ?: "Người dùng"
                 username = snapshot.getString("username") ?: ""
                 photoUrl = snapshot.getString("photoUrl")
@@ -106,9 +104,7 @@ fun AuthorProfileScreen(
     val onFollowClick: () -> Unit = {
         if (currentUserId == null) {
             Toast.makeText(context, "Bạn cần đăng nhập", Toast.LENGTH_SHORT).show()
-        } else if (currentUserId == userId) {
-            // Không follow chính mình
-        } else {
+        } else if (currentUserId != userId) {
             val currentUserRef = firestore.collection("users").document(currentUserId)
             val viewedUserRef = firestore.collection("users").document(userId)
             val followingRef = currentUserRef.collection("following").document(userId)
@@ -130,10 +126,9 @@ fun AuthorProfileScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                // --- HIỂN THỊ TÊN NGƯỜI DÙNG Ở ĐÂY ---
                 title = {
                     Text(
-                        text = fullName, // Hiển thị Họ tên đầy đủ
+                        text = fullName,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -159,7 +154,7 @@ fun AuthorProfileScreen(
                 modifier = Modifier.fillMaxSize().padding(paddingValues),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // --- INFO ---
+                // INFO
                 item {
                     Spacer(modifier = Modifier.height(24.dp))
                     Image(
@@ -176,20 +171,33 @@ fun AuthorProfileScreen(
                     Spacer(modifier = Modifier.height(24.dp))
                 }
 
-                // --- STATS ---
+                // --- STATS (THỐNG KÊ) ---
                 item {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        AuthorStatItem(count = followerCount.toString(), label = "Followers")
-                        AuthorStatItem(count = recipeCount.toString(), label = "Món ăn")
-                        AuthorStatItem(count = followingCount.toString(), label = "Following")
+                        // --- SỬA Ở ĐÂY: Thêm onClick cho Followers ---
+                        AuthorStatItem(
+                            count = followerCount.toString(),
+                            label = "Followers",
+                            onClick = { onFollowerClick(userId) }
+                        )
+                        AuthorStatItem(
+                            count = recipeCount.toString(),
+                            label = "Món ăn"
+                        ) // Món ăn không cần click
+                        // --- SỬA Ở ĐÂY: Thêm onClick cho Following ---
+                        AuthorStatItem(
+                            count = followingCount.toString(),
+                            label = "Following",
+                            onClick = { onFollowingClick(userId) }
+                        )
                     }
                     Spacer(modifier = Modifier.height(24.dp))
                 }
 
-                // --- BUTTON ---
+                // BUTTON
                 if (currentUserId != userId) {
                     item {
                         Button(
@@ -207,7 +215,7 @@ fun AuthorProfileScreen(
                     }
                 }
 
-                // --- LIST MÓN ĂN ---
+                // LIST MÓN ĂN
                 if (authorRecipes.isEmpty()) {
                     item {
                         Box(modifier = Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
@@ -218,7 +226,6 @@ fun AuthorProfileScreen(
                     items(authorRecipes) { recipe ->
                         AuthorDishItem(
                             recipe = recipe,
-                            // --- KẾT NỐI SỰ KIỆN CLICK ---
                             onClick = { onRecipeClick(recipe.id) }
                         )
                     }
@@ -228,7 +235,6 @@ fun AuthorProfileScreen(
     }
 }
 
-// Component món ăn: Thêm sự kiện onClick
 @Composable
 fun AuthorDishItem(recipe: RecipeInfo, onClick: () -> Unit) {
     Card(
@@ -236,7 +242,7 @@ fun AuthorDishItem(recipe: RecipeInfo, onClick: () -> Unit) {
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .height(100.dp)
-            .clickable(onClick = onClick), // --- CLICKABLE Ở ĐÂY ---
+            .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
@@ -250,16 +256,23 @@ fun AuthorDishItem(recipe: RecipeInfo, onClick: () -> Unit) {
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(recipe.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("${recipe.timeCookMinutes} phút", color = Color.Gray, fontSize = 14.sp)
             }
         }
     }
 }
 
 @Composable
-private fun AuthorStatItem(count: String, label: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun AuthorStatItem(
+    count: String,
+    label: String,
+    // --- SỬA Ở ĐÂY: Thêm tham số onClick, mặc định là không làm gì ---
+    onClick: () -> Unit = {}
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        // --- SỬA Ở ĐÂY: Thêm modifier clickable ---
+        modifier = Modifier.clickable(onClick = onClick)
+    ) {
         Text(text = count, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
         Spacer(modifier = Modifier.height(4.dp))
         Text(text = label, fontSize = 14.sp, color = Color.Gray)

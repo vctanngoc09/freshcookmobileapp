@@ -123,7 +123,8 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
             AuthorProfileScreen(
                 userId = userId,
                 onBackClick = { navController.navigateUp() },
-
+                onFollowerClick = { id -> navController.navigate(Destination.Follow(userId = id, type = "followers")) },
+                onFollowingClick = { id -> navController.navigate(Destination.Follow(userId = id, type = "following")) },
                 // --- THÊM DÒNG NÀY ĐỂ CHUYỂN TRANG ---
                 onRecipeClick = { recipeId ->
                     navController.navigate(Destination.RecipeDetail(recipeId = recipeId))
