@@ -61,7 +61,7 @@ fun MyBottomBar(
                     if (!isSelected) {
                         navController.navigate(item.route) {
                             launchSingleTop = true
-                            restoreState = true
+                            restoreState = false
                             popUpTo(navController.graph.startDestinationId) {
                                 saveState = true
                             }

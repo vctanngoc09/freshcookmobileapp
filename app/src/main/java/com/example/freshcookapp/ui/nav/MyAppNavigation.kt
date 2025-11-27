@@ -108,6 +108,7 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
 
                 // THÊM DÒNG NÀY ĐỂ XỬ LÝ LOGOUT TỪ DRAWER
                 onLogoutClick = {
+                    Log.d("NAV_TEST", "Đang chuyển hướng sang Welcome...") // <--- Thêm log
                     navController.navigate(Destination.Welcome) {
                         popUpTo(0) { inclusive = true }
                     }
@@ -196,11 +197,15 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
             )
         }
 
-        // --- MÓN CỦA TÔI ---
         composable<Destination.MyDishes> {
             MyDishes(
                 onBackClick = { navController.navigateUp() },
-                onAddNewClick = { navController.navigate(Destination.New) },
+                onAddNewClick = {
+                    // SỬA Ở ĐÂY: launchSingleTop = true để tránh mở nhiều trang NewCook chồng lên nhau
+                    navController.navigate(Destination.New) {
+                        launchSingleTop = true
+                    }
+                },
                 onRecipeClick = { recipeId ->
                     navController.navigate(Destination.RecipeDetail(recipeId = recipeId))
                 }

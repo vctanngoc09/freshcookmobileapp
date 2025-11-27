@@ -16,13 +16,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
+import com.example.freshcookapp.FreshCookAppRoom
 import com.example.freshcookapp.R
+import com.example.freshcookapp.data.local.AppDatabase
+import com.example.freshcookapp.data.repository.RecipeRepository
 import com.example.freshcookapp.ui.component.ScreenContainer
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.example.freshcookapp.ui.theme.WorkSans
@@ -34,11 +40,8 @@ data class RecipeInfo(
     val id: String = "",
     val name: String = "",
     val imageUrl: String? = null,
-
-    // ⭐ FIX LỖI: Ánh xạ từ field 'timeCook' trong Firestore sang timeCookMinutes
     @get:PropertyName("timeCook")
     val timeCookMinutes: Int = 0,
-
     val userId: String = ""
 )
 
@@ -54,12 +57,28 @@ fun ProfileScreen(
     onMenuClick: () -> Unit = {},
     onFollowerClick: (String) -> Unit = {},
     onFollowingClick: (String) -> Unit = {},
-    onLogoutClick: () -> Unit = {},
+    onLogoutClick: () -> Unit = {}, // Callback này chỉ chạy KHI đã dọn dẹp xong DB
     modifier: Modifier = Modifier
 ) {
     val viewModel: ProfileViewModel = viewModel()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+
+    // --- PHẦN MỚI THÊM: KHỞI TẠO SettingsViewModel ĐỂ LOGOUT ---
+    val context = LocalContext.current
+    val app = context.applicationContext as FreshCookAppRoom
+    val db = remember { AppDatabase.getDatabase(app) }
+    val repo = remember { RecipeRepository(db) }
+
+    val settingsViewModel: SettingsViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return SettingsViewModel(repo) as T
+            }
+        }
+    )
+    // -----------------------------------------------------------
 
     LaunchedEffect(userId) {
         viewModel.loadProfile(userId)
@@ -71,13 +90,23 @@ fun ProfileScreen(
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            // SettingsDrawerContent phải là Composable riêng biệt
             SettingsDrawerContent(
                 onCloseClick = { scope.launch { drawerState.close() } },
                 onEditProfileClick = { scope.launch { drawerState.close() }; onEditProfileClick() },
                 onRecentlyViewedClick = { scope.launch { drawerState.close() }; onRecentlyViewedClick() },
                 onMyDishesClick = { scope.launch { drawerState.close() }; onMyDishesClick() },
-                onLogoutClick = { scope.launch { drawerState.close() }; onLogoutClick() }
+
+                // ⭐ SỬA LOGIC LOGOUT TẠI ĐÂY ⭐
+                onLogoutClick = {
+                    scope.launch {
+                        drawerState.close() // 1. Đóng menu
+                        // 2. Gọi ViewModel để xóa dữ liệu Room & Firebase
+                        settingsViewModel.logout {
+                            // 3. Sau khi xóa xong mới chuyển màn hình
+                            onLogoutClick()
+                        }
+                    }
+                }
             )
         }
     ) {
@@ -94,7 +123,7 @@ fun ProfileScreen(
                     }
                     Text("Tài khoản", fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = WorkSans, color = Cinnabar500)
 
-                    // ICON THÔNG BÁO CÓ DẤU CHẤM ĐỎ (BADGE)
+                    // ICON THÔNG BÁO
                     IconButton(onClick = onNotificationClick) {
                         BadgedBox(
                             badge = {
@@ -168,7 +197,7 @@ fun ProfileScreen(
                                 modifier = Modifier.weight(1f).height(48.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = Cinnabar500,
-                                    contentColor = Color.White // <--- SỬA LỖI: Chữ màu Trắng
+                                    contentColor = Color.White
                                 ),
                                 shape = RoundedCornerShape(28.dp)
                             ) {

@@ -180,7 +180,17 @@ fun EditProfileScreen(
                         onValueChange = { fullName = it },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                         shape = MaterialTheme.shapes.medium,
-                        colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = GrayLight, focusedContainerColor = GrayLight, unfocusedBorderColor = Color.Transparent, focusedBorderColor = Cinnabar500)
+                        // --- SỬA Ở ĐÂY ---
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = GrayLight,
+                            unfocusedContainerColor = GrayLight,
+                            focusedBorderColor = Cinnabar500,
+                            unfocusedBorderColor = Color.Transparent,
+                            // Thêm dòng này để chữ luôn đen
+                            focusedTextColor = Color.Black,
+                            unfocusedTextColor = Color.Black,
+                            cursorColor = Color.Black
+                        )
                     )
                 }
                 Spacer(modifier = Modifier.height(16.dp))
@@ -193,7 +203,17 @@ fun EditProfileScreen(
                         onValueChange = { username = it },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                         shape = MaterialTheme.shapes.medium,
-                        colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = GrayLight, focusedContainerColor = GrayLight, unfocusedBorderColor = Color.Transparent, focusedBorderColor = Cinnabar500)
+                        // --- SỬA Ở ĐÂY ---
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = GrayLight,
+                            unfocusedContainerColor = GrayLight,
+                            focusedBorderColor = Cinnabar500,
+                            unfocusedBorderColor = Color.Transparent,
+                            // Thêm dòng này
+                            focusedTextColor = Color.Black,
+                            unfocusedTextColor = Color.Black,
+                            cursorColor = Color.Black
+                        )
                     )
                 }
                 Spacer(modifier = Modifier.height(16.dp))
@@ -220,11 +240,14 @@ fun EditProfileScreen(
                                 onValueChange = { },
                                 modifier = Modifier.fillMaxSize(),
                                 shape = MaterialTheme.shapes.medium,
-                                enabled = false, // QUAN TRỌNG: Tắt hẳn tương tác để sự kiện click lọt ra ngoài Box
+                                enabled = false,
+                                // --- SỬA Ở ĐÂY ---
                                 colors = OutlinedTextFieldDefaults.colors(
-                                    disabledContainerColor = GrayLight, // Màu nền khi disable
-                                    disabledTextColor = Color.Black,    // Màu chữ vẫn đen đậm
-                                    disabledBorderColor = Color.Transparent // Border trong suốt
+                                    disabledContainerColor = GrayLight,
+                                    disabledBorderColor = Color.Transparent,
+                                    // Quy định rõ màu chữ khi bị disable là Đen
+                                    disabledTextColor = Color.Black,
+                                    disabledPlaceholderColor = Color.Gray
                                 )
                             )
                         }

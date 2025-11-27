@@ -25,7 +25,6 @@ class ProfileViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(UserProfileUIState())
     val uiState: StateFlow<UserProfileUIState> = _uiState
 
-    // --- ĐÃ KHẮC PHỤC: KHAI BÁO TRẠNG THÁI THÔNG BÁO CHƯA ĐỌC ---
     private val _hasUnreadNotifications = MutableStateFlow(false)
     val hasUnreadNotifications: StateFlow<Boolean> = _hasUnreadNotifications
 
@@ -34,10 +33,12 @@ class ProfileViewModel : ViewModel() {
     private var recipeCountListener: ListenerRegistration? = null
     private var followerListener: ListenerRegistration? = null
     private var followingListener: ListenerRegistration? = null
-    private var unreadListener: ListenerRegistration? = null // Listener mới
+    private var unreadListener: ListenerRegistration? = null
 
     fun loadProfile(targetUserId: String?) {
         val currentUserId = auth.currentUser?.uid ?: return
+
+        // Xác định xem đang load profile của ai
         val userIdToLoad = if (targetUserId == null || targetUserId == currentUserId || targetUserId == "{userId}") {
             currentUserId
         } else {
@@ -47,21 +48,25 @@ class ProfileViewModel : ViewModel() {
 
         removeListeners()
 
-        // 1. Lắng nghe thông tin cơ bản
+        // 1. Lắng nghe thông tin người dùng (Của userIdToLoad)
         userListener = firestore.collection("users").document(userIdToLoad)
             .addSnapshotListener { document, _ ->
                 if (document != null && document.exists()) {
+                    // SỬA LỖI 1: Ưu tiên lấy username từ DB, nếu null mới fallback sang email
+                    val dbUsername = document.getString("username")
+                    val emailUsername = document.getString("email")?.substringBefore("@") ?: ""
+
                     _uiState.value = _uiState.value.copy(
                         uid = userIdToLoad,
                         fullName = document.getString("fullName") ?: "Người dùng",
-                        username = document.getString("email")?.substringBefore("@") ?: "",
+                        username = if (!dbUsername.isNullOrBlank()) dbUsername else emailUsername,
                         photoUrl = document.getString("photoUrl"),
                         isCurrentUser = isMe
                     )
                 }
             }
 
-        // 2. Lắng nghe số lượng món ăn (Tự đếm)
+        // 2. Lắng nghe số lượng món ăn (Của userIdToLoad)
         recipeCountListener = firestore.collection("recipes")
             .whereEqualTo("userId", userIdToLoad)
             .addSnapshotListener { snapshot, e ->
@@ -70,7 +75,7 @@ class ProfileViewModel : ViewModel() {
                 }
             }
 
-        // 3. Lắng nghe Follower (Tự đếm)
+        // 3. Lắng nghe Follower (Của userIdToLoad)
         followerListener = firestore.collection("users").document(userIdToLoad)
             .collection("followers")
             .addSnapshotListener { snapshot, _ ->
@@ -79,7 +84,7 @@ class ProfileViewModel : ViewModel() {
                 }
             }
 
-        // 4. Lắng nghe Following (Tự đếm)
+        // 4. Lắng nghe Following (Của userIdToLoad)
         followingListener = firestore.collection("users").document(userIdToLoad)
             .collection("following")
             .addSnapshotListener { snapshot, _ ->
@@ -88,8 +93,9 @@ class ProfileViewModel : ViewModel() {
                 }
             }
 
-        // 5. LẮNG NGHE THÔNG BÁO CHƯA ĐỌC (Badge)
-        unreadListener = firestore.collection("users").document(userIdToLoad)
+        // 5. SỬA LỖI 2: LẮNG NGHE THÔNG BÁO CHƯA ĐỌC (LUÔN CỦA CURRENT USER)
+        // Dù đang xem profile người khác, badge thông báo vẫn phải là của MÌNH
+        unreadListener = firestore.collection("users").document(currentUserId) // <-- Luôn là currentUserId
             .collection("notifications")
             .whereEqualTo("isRead", false)
             .addSnapshotListener { snapshot, e ->

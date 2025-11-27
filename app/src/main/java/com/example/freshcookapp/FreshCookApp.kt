@@ -29,7 +29,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.FirebaseAuth
-
+import androidx.compose.runtime.remember
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FreshCookApp(
@@ -46,10 +46,12 @@ fun FreshCookApp(
     val context = LocalContext.current
 
     // Logic xác định màn hình bắt đầu (Giữ nguyên)
-    val startDestination = if (auth.currentUser != null) {
-        Destination.Home
-    } else {
-        Destination.Splash
+    val startDestination = remember {
+        if (auth.currentUser != null) {
+            Destination.Home
+        } else {
+            Destination.Splash
+        }
     }
 
     // --- XỬ LÝ CHUYỂN TRANG KHI BẤM THÔNG BÁO (Deep Link) ---
