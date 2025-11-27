@@ -2,6 +2,7 @@ package com.example.freshcookapp.ui.screen.newcook
 
 import android.net.Uri
 import android.util.Log
+import androidx.compose.runtime.mutableStateOf
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -16,12 +17,16 @@ import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.Locale
 import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import java.text.Normalizer
 
 
 class NewCookViewModel(
     private val recipeRepository: RecipeRepository
 ) : ViewModel() {
+
+    val isUploading = mutableStateOf(false)
 
     private fun normalizeText(input: String): String {
         return Normalizer.normalize(input, Normalizer.Form.NFD)
@@ -49,6 +54,7 @@ class NewCookViewModel(
     ) {
         viewModelScope.launch {
             try {
+                isUploading.value = true
                 val currentUserId =
                     FirebaseAuth.getInstance().currentUser?.uid ?: "admin"
 
@@ -70,18 +76,6 @@ class NewCookViewModel(
                 // 5. CategoryId
                 val finalCategoryId = categoryId ?: "other"
 
-                // 6. Lưu local Room (cho offline / home list)
-                recipeRepository.saveRecipe(
-                    name = name,
-                    description = description,
-                    timeCook = timeCook,
-                    people = people,
-                    imageUrl = imageUrl,
-                    userId = currentUserId,
-                    categoryId = finalCategoryId,
-                    ingredients = ingredients,
-                    instructions = instructions
-                )
                 // 7. Lưu lên Firestore đúng cấu trúc
                 saveRecipeToFirestore(
                     recipeId = recipeId, // Dùng ID đã tạo
@@ -91,8 +85,10 @@ class NewCookViewModel(
                     ingredients = ingredients, instructions = instructions
                 )
 
+                isUploading.value = false   // 🔥 DONE
                 onSuccess()
             } catch (e: Throwable) {
+                isUploading.value = false
                 Log.e("NewCookViewModel", "Lỗi lưu món", e)
                 onError(e)
             }
@@ -166,32 +162,28 @@ class NewCookViewModel(
         instructions: List<Instruction>
     ) {
         val db = FirebaseFirestore.getInstance()
+        val storage = FirebaseStorage.getInstance()
 
-        // --- FIX LỖI: Dùng ID đã tạo sẵn để SET document ID ---
-        val recipeDocRef = db.collection("recipes").document(recipeId)
+        val recipeDoc = db.collection("recipes").document(recipeId)
 
-        val safeTime = (timeCook ?: 0)
-        val safePeople = (people ?: 1)
+        // ====== 1️⃣ LƯU DOCUMENT CHÍNH — NHANH NHẤT ======
+        val safeTime = timeCook ?: 0
+        val safePeople = people ?: 1
 
         val createdAt = SimpleDateFormat(
             "yyyy-MM-dd'T'HH:mm:ss",
             Locale.getDefault()
         ).format(java.util.Date())
 
-        val rawTokens = listOf(name) + ingredients.map { it.name }
-        val normalizedTokens = rawTokens.flatMap { token ->
-            val norm = normalizeText(token)
-            val words = norm.split(Regex("\\s+"))
-                .map { it.trim() }
+        val searchTokens =
+            (listOf(name) + ingredients.map { it.name })
+                .map { normalizeText(it) }
+                .flatMap { it.split(" ") }
                 .filter { it.isNotBlank() }
-            listOf(norm) + words
-        }.map { it.trim() }
-            .filter { it.isNotBlank() }
-            .distinct()
+                .distinct()
 
-        // === Document chính ===
         val recipeData = hashMapOf(
-            "id" to recipeId, // Lưu ID vào trong data luôn cho tiện query
+            "id" to recipeId,
             "name" to name,
             "description" to description,
             "categoryId" to categoryId,
@@ -203,40 +195,57 @@ class NewCookViewModel(
             "people" to safePeople,
             "timeCook" to safeTime,
             "userId" to userId,
-            "searchTokens" to normalizedTokens
+            "searchTokens" to searchTokens
         )
 
-        // 1. Lưu document chính vào ID đã tạo (Sử dụng set)
-        recipeDocRef.set(recipeData).await()
+        recipeDoc.set(recipeData).await()
 
-        // 2. Subcollection: recipeIngredients
-        val ingredientsCol = recipeDocRef.collection("recipeIngredients")
-        ingredients.forEach { ing ->
-            val ingData = hashMapOf(
-                "name" to ing.name,
-                "quantity" to ing.quantity,
-                "unit" to ing.unit,
-                "note" to ing.notes
-            )
-            ingredientsCol.add(ingData).await()
+
+        // ====== 2️⃣ UPLOAD ẢNH STEP + LƯU INSTRUCTION SONG SONG ======
+
+        val instructionCol = recipeDoc.collection("instruction")
+
+        val instructionTasks = instructions.mapIndexed { index, step ->
+
+            viewModelScope.async {
+                // Upload ảnh step (nếu có)
+                val uploadedUrl =
+                    if (step.imageUrl.isNullOrBlank()) ""
+                    else uploadStepImage(recipeId, index, step.imageUrl)
+
+                // Build data
+                val stepData = hashMapOf(
+                    "step" to step.stepNumber,
+                    "description" to step.description,
+                    "imageUrl" to uploadedUrl
+                )
+
+                instructionCol.add(stepData).await()
+            }
         }
 
-        // 3. Subcollection: instruction
-        val instructionCol = recipeDocRef.collection("instruction")
+        // CHẠY TẤT CẢ CÙNG LÚC
+        instructionTasks.awaitAll()
 
-        instructions.forEachIndexed { index, ins ->
 
-            val uploadedStepImageUrl = uploadStepImage(recipeId, index, ins.imageUrl)
+        // ====== 3️⃣ LƯU INGREDIENT SONG SONG ======
 
-            val insData = hashMapOf(
-                "step" to ins.stepNumber,
-                "description" to ins.description,
-                "imageUrl" to uploadedStepImageUrl
-            )
+        val ingCol = recipeDoc.collection("recipeIngredients")
 
-            instructionCol.add(insData).await()
+        val ingredientTasks = ingredients.map { ing ->
+            viewModelScope.async {
+                val data = hashMapOf(
+                    "name" to ing.name,
+                    "quantity" to ing.quantity,
+                    "unit" to ing.unit,
+                    "note" to ing.notes
+                )
+                ingCol.add(data).await()
+            }
         }
 
-        Log.d("NewCookViewModel", "Đã lưu Firestore với ID: $recipeId")
+        ingredientTasks.awaitAll()
+
+        Log.d("NewCookViewModel", "🔥 Tối ưu: Lưu Firestore nhanh hoàn tất cho ID: $recipeId")
     }
 }

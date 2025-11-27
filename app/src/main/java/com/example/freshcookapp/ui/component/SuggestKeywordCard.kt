@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -61,21 +62,19 @@ fun SuggestKeywordCard(
             // Keyword
             Text(
                 text = keyword,
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.bodyMedium.copy(
                     color = Color.Black
                 ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.width(5.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             // Time text
             Text(
                 text = convertTimestampToText(time),
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    color = Color.Gray
-                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )

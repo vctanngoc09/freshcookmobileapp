@@ -85,6 +85,8 @@ fun NewCook(onBackClick: () -> Unit) {
     val scope = rememberCoroutineScope()
 
     var isSaved by remember { mutableStateOf(false) }
+    val isUploading by viewModel.isUploading
+
     val snackbarHostState = remember { SnackbarHostState() }
 
     // --- CAMERA & ẢNH (STEP) ---
@@ -167,39 +169,61 @@ fun NewCook(onBackClick: () -> Unit) {
                 ) {
                     Button(
                         onClick = {
-                            val parsedMinutes = parseCookTime(cookTime)
-                            if (parsedMinutes == null) {
-                                scope.launch { snackbarHostState.showSnackbar("Không hiểu định dạng thời gian.") }
-                                return@Button
-                            }
-                            scope.launch {
-                                viewModel.saveRecipe(
-                                    name = recipeName,
-                                    description = description,
-                                    timeCook = parsedMinutes,
-                                    people = parsePeople(people) ?: 1,
-                                    imageUri = recipeImageUri,
-                                    hashtags = hashtagList.toList(),
-                                    difficultyUi = difficulty,
-                                    categoryId = selectedCategoryId,
-                                    ingredients = ingredients.filter { it.name.isNotBlank() },
-                                    instructions = instructions.filter { it.description.isNotBlank() },
-                                    onSuccess = {
-                                        isSaved = true
-                                        scope.launch {
-                                            snackbarHostState.showSnackbar("Lưu công thức thành công!")
-                                            delay(1000)
-                                            onBackClick()
+                            if (!isUploading) {
+                                val parsedMinutes = parseCookTime(cookTime)
+                                if (parsedMinutes == null) {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("Không hiểu định dạng thời gian.")
+                                    }
+                                    return@Button
+                                }
+                                scope.launch {
+                                    viewModel.saveRecipe(
+                                        name = recipeName,
+                                        description = description,
+                                        timeCook = parsedMinutes,
+                                        people = parsePeople(people) ?: 1,
+                                        imageUri = recipeImageUri,
+                                        hashtags = hashtagList.toList(),
+                                        difficultyUi = difficulty,
+                                        categoryId = selectedCategoryId,
+                                        ingredients = ingredients.filter { it.name.isNotBlank() },
+                                        instructions = instructions.filter { it.description.isNotBlank() },
+                                        onSuccess = {
+                                            isSaved = true
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar("Lưu công thức thành công!")
+                                                delay(1000)
+                                                onBackClick()
+                                            }
+                                        },
+                                        onError = {
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar("Lỗi: ${it.message}")
+                                            }
                                         }
-                                    },
-                                    onError = { scope.launch { snackbarHostState.showSnackbar("Lỗi: ${it.message}") } }
-                                )
+                                    )
+                                }
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Cinnabar500, contentColor = White),
+                        enabled = !isUploading,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isUploading) Color.Gray else Cinnabar500,
+                            contentColor = White
+                        ),
                         shape = RoundedCornerShape(10.dp),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
-                    ) { Text("Lên sóng", style = MaterialTheme.typography.labelLarge) }
+                    ) {
+                        if (isUploading) {
+                            CircularProgressIndicator(
+                                color = White,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        } else {
+                            Text("Lên sóng", style = MaterialTheme.typography.labelLarge)
+                        }
+                    }
                 }
             }
 
