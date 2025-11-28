@@ -19,8 +19,27 @@ class CategoryRecipesViewModel(
 
     fun loadRecipes(categoryId: String) {
         viewModelScope.launch {
-            repo.getRecipesByCategory(categoryId).collect { list ->
-                _recipes.value = list.map { it.toRecipe() }
+            when (categoryId) {
+                "TRENDING" -> {
+                    repo.getTrendingRecipes().collect { list ->
+                        _recipes.value = list.map { it.toRecipe() }
+                    }
+                }
+                "NEW" -> {
+                    repo.getNewDishes().collect { list ->
+                        _recipes.value = list.map { it.toRecipe() }
+                    }
+                }
+                "RECENTLY_VIEWED" -> {
+                    repo.getRecentlyViewed().collect { list ->
+                        _recipes.value = list.map { it.toRecipe() }
+                    }
+                }
+                else -> {
+                    repo.getRecipesByCategory(categoryId).collect { list ->
+                        _recipes.value = list.map { it.toRecipe() }
+                    }
+                }
             }
         }
     }
@@ -28,8 +47,12 @@ class CategoryRecipesViewModel(
 
     class Factory(private val repo: RecipeRepository) :
         ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return CategoryRecipesViewModel(repo) as T
+            if (modelClass.isAssignableFrom(CategoryRecipesViewModel::class.java)) {
+                return CategoryRecipesViewModel(repo) as T
+            }
+            throw IllegalArgumentException("Unknown ViewModel class: " + modelClass.name)
         }
     }
 }

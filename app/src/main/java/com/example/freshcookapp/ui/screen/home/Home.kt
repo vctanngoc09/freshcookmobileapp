@@ -1,7 +1,6 @@
 package com.example.freshcookapp.ui.screen.home
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -13,7 +12,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -41,9 +39,7 @@ import kotlinx.coroutines.launch
 
 
 
-// Hàm giả lập hiệu ứng Shimmer (nếu bạn chưa tạo file riêng)
-// Tốt nhất nên tạo file ui/component/ShimmerEffect.kt như hướng dẫn trước
-// Ở đây mình để tạm hàm rỗng để không bị lỗi biên dịch nếu bạn chưa làm
+@Suppress("unused")
 @Composable
 fun Modifier.shimmerEffect(): Modifier {
     // Logic shimmer thực tế cần animation, ở đây mình trả về Modifier gốc tạm thời
@@ -242,7 +238,7 @@ fun Home(
 
                 // ======== XU HƯỚNG (CÓ SKELETON) ========
                 item {
-                    SectionHeader(title = "Xu hướng")
+                    SectionHeader(title = "Xu hướng", onViewAll = { onCategoryRecipes("TRENDING", "Xu hướng") })
                     Spacer(modifier = Modifier.height(8.dp))
 
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -273,7 +269,7 @@ fun Home(
                 // ====== GỢI Ý CHO BẠN ======
                 if (suggestions.isNotEmpty()) {
                     item {
-                        SectionHeader(title = "Tìm kiếm gần đây")
+                        SectionHeader(title = "Tìm kiếm gần đây", onViewAll = { onCategoryRecipes("RECENTLY_VIEWED", "Tìm kiếm gần đây") })
                         Spacer(Modifier.height(8.dp))
                     }
                     items(suggestions) { item ->
@@ -290,7 +286,7 @@ fun Home(
 
                 // ======== MỚI LÊN SÓNG GẦN ĐÂY (CÓ SKELETON) ========
                 item {
-                    SectionHeader(title = "Món mới lên sóng gần đây")
+                    SectionHeader(title = "Món mới lên sóng gần đây", onViewAll = { onCategoryRecipes("NEW", "Món mới lên sóng gần đây") })
                     Spacer(modifier = Modifier.height(8.dp))
 
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {

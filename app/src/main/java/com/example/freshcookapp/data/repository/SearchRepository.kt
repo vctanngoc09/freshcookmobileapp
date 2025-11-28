@@ -50,7 +50,7 @@ class SearchRepository(
         return historyDao.getAllHistory()
     }
 
-    // Lưu từ khóa vào lịch sử
+    // New: map history entries to suggestion items with image
     suspend fun saveSearchQuery(query: String) {
         // Chỉ lưu nếu từ khóa không rỗng
         if (query.isNotBlank()) {
