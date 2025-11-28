@@ -458,16 +458,17 @@ fun RecipeImagePicker(imageUri: Uri?, onImageChanged: (Uri?) -> Unit) {
 
 @Composable
 fun ShowImageSourceDialog(onPickGallery: () -> Unit, onTakePhoto: () -> Unit) {
-    val openDialog = remember { mutableStateOf(true) }
-    if (openDialog.value) {
-        AlertDialog(
-            onDismissRequest = { openDialog.value = false },
-            title = { Text("Chọn ảnh món ăn") },
-            text = { Text("Bạn muốn chụp ảnh mới hay chọn từ thư viện?") },
-            confirmButton = { TextButton(onClick = { openDialog.value = false; onTakePhoto() }) { Text("Chụp ảnh") } },
-            dismissButton = { TextButton(onClick = { openDialog.value = false; onPickGallery() }) { Text("Chọn ảnh") } }
-        )
-    }
+    AlertDialog(
+        onDismissRequest = { },
+        title = { Text("Chọn ảnh minh họa") },
+        text = { Text("Bạn muốn chụp ảnh hay chọn từ thư viện?") },
+        confirmButton = {
+            TextButton(onClick = { onTakePhoto() }) { Text("Chụp ảnh") }
+        },
+        dismissButton = {
+            TextButton(onClick = { onPickGallery() }) { Text("Chọn ảnh") }
+        }
+    )
 }
 
 fun createImageUri(context: Context): Uri {
