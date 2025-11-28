@@ -36,6 +36,8 @@ import com.example.freshcookapp.ui.component.*
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.navigation.NavHostController
+import com.example.freshcookapp.ui.nav.Destination
 
 
 
@@ -51,6 +53,7 @@ fun Modifier.shimmerEffect(): Modifier {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Home(
+    navController: NavHostController,
     onFilterClick: () -> Unit,
     onEditProfileClick: () -> Unit,
     onCategoryRecipes: (String, String) -> Unit,
@@ -269,7 +272,10 @@ fun Home(
                 // ====== GỢI Ý CHO BẠN ======
                 if (suggestions.isNotEmpty()) {
                     item {
-                        SectionHeader(title = "Tìm kiếm gần đây", onViewAll = { onCategoryRecipes("RECENTLY_VIEWED", "Tìm kiếm gần đây") })
+                        SectionHeader(title = "Tìm kiếm gần đây", onViewAll = {
+                            navController.currentBackStackEntry?.savedStateHandle?.set("suggestions", suggestions)
+                            navController.navigate(Destination.RecentlySearched)
+                        })
                         Spacer(Modifier.height(8.dp))
                     }
                     items(suggestions) { item ->

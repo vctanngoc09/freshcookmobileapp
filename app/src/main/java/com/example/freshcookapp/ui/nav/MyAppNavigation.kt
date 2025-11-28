@@ -29,6 +29,7 @@ import com.example.freshcookapp.ui.screen.home.CategoryRecipesScreen
 import com.example.freshcookapp.ui.screen.newcook.NewCook
 import com.example.freshcookapp.ui.screen.search.Search
 import com.example.freshcookapp.ui.screen.search.SearchResultScreen
+import com.example.freshcookapp.ui.screen.RecentlySearchedScreen
 import com.google.firebase.auth.FirebaseAuth
 
 @Composable
@@ -48,6 +49,7 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
 
         composable<Destination.Home> {
             Home(
+                navController = navController,
                 onFilterClick = { navController.navigate(Destination.Filter) },
                 onEditProfileClick = { navController.navigate(Destination.EditProfile) },
                 onCategoryRecipes = { id, name ->
@@ -215,6 +217,14 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
                 onRecipeClick = { recipeId ->
                     navController.navigate(Destination.RecipeDetail(recipeId = recipeId))
                 }
+            )
+        }
+
+        composable<Destination.RecentlySearched> {
+            RecentlySearchedScreen(
+                navController = navController,
+                onBackClick = { navController.navigateUp() },
+                onSearchClick = { keyword -> navController.navigate(Destination.Search(keyword)) }
             )
         }
 

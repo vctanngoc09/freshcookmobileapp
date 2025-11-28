@@ -57,6 +57,9 @@ sealed class Destination(val route: String) {
     data object RecentlyViewed: Destination("Món ăn đã xem")
 
     @Serializable
+    data object RecentlySearched: Destination("recently_searched")
+
+    @Serializable
     data object Settings: Destination("Quay lại")
 
     @Serializable
