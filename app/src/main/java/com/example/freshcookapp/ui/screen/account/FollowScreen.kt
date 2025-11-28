@@ -38,66 +38,46 @@ fun FollowScreen(
     userId: String,
     type: String, // "followers" hoặc "following"
     onBackClick: () -> Unit,
-    onProfileClick: (String) -> Unit = {}
+    onUserClick: (userId: String) -> Unit // <-- THÊM THAM SỐ NÀY
 ) {
     val firestore = FirebaseFirestore.getInstance()
     var userList by remember { mutableStateOf<List<UserInfo>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     val title = if (type == "followers") "Followers" else "Following"
 
+    // Logic lấy dữ liệu giữ nguyên
     DisposableEffect(userId, type) {
         val collectionPath = "users/$userId/$type"
-
         val listener = firestore.collection(collectionPath)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     isLoading = false
                     return@addSnapshotListener
                 }
-
                 if (snapshot == null || snapshot.isEmpty) {
                     userList = emptyList()
                     isLoading = false
                     return@addSnapshotListener
                 }
-
                 val userIds = snapshot.documents.map { it.id }
-
                 if (userIds.isNotEmpty()) {
-                    val chunks = userIds.chunked(10)
-                    val tempUserList = mutableListOf<UserInfo>()
-                    var loadedChunks = 0
-
-                    chunks.forEach { chunk ->
-                        firestore.collection("users")
-                            .whereIn("uid", chunk)
-                            .get()
-                            .addOnSuccessListener { userDocs ->
-                                val users = userDocs.mapNotNull { doc ->
-                                    doc.toObject<UserInfo>()?.copy(uid = doc.id)
-                                }
-                                tempUserList.addAll(users)
-                                loadedChunks++
-
-                                if (loadedChunks == chunks.size) {
-                                    userList = tempUserList
-                                    isLoading = false
-                                }
-                            }
-                            .addOnFailureListener {
-                                isLoading = false
-                            }
-                    }
+                    firestore.collection("users").whereIn("uid", userIds)
+                        .get()
+                        .addOnSuccessListener { userDocs ->
+                            userList = userDocs.mapNotNull { it.toObject<UserInfo>() }
+                            isLoading = false
+                        }
+                        .addOnFailureListener {
+                            isLoading = false
+                        }
                 } else {
                     userList = emptyList()
                     isLoading = false
                 }
             }
-
-        onDispose {
-            listener.remove()
-        }
+        onDispose { listener.remove() }
     }
+
 
     Scaffold(
         containerColor = Color.White,
@@ -147,7 +127,8 @@ fun FollowScreen(
                     contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
                     items(userList) { user ->
-                        UserItem(user = user, onProfileClick = onProfileClick)
+                        // SỬA Ở ĐÂY: Truyền callback onUserClick vào UserItem
+                        UserItem(user = user, onUserClick = onUserClick)
                     }
                 }
             }
@@ -156,11 +137,12 @@ fun FollowScreen(
 }
 
 @Composable
-fun UserItem(user: UserInfo, onProfileClick: (String) -> Unit) {
+fun UserItem(user: UserInfo, onUserClick: (String) -> Unit) { // <-- SỬA TÊN THAM SỐ
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onProfileClick(user.uid) }
+            // SỬA Ở ĐÂY: Gọi onUserClick với uid của user
+            .clickable { onUserClick(user.uid) }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

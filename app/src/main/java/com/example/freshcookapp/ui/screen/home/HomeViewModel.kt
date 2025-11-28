@@ -42,6 +42,7 @@ class HomeViewModel(
 ) : ViewModel() {
 
     private var unreadListener: ListenerRegistration? = null
+    private val firestore = FirebaseFirestore.getInstance() // Thêm một thể hiện của Firestore
 
     private val _hasUnreadNotifications = MutableStateFlow(false)
     val hasUnreadNotifications: StateFlow<Boolean> = _hasUnreadNotifications
@@ -104,8 +105,7 @@ class HomeViewModel(
     // nòication
     fun startNotificationListener() {
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        val firestore = FirebaseFirestore.getInstance()
-
+        
         unreadListener?.remove()
 
         unreadListener = firestore.collection("users")
@@ -123,7 +123,6 @@ class HomeViewModel(
     // ======= LIKE (FAVORITE) =======
     fun toggleFavorite(recipeId: String) {
         val user = FirebaseAuth.getInstance().currentUser ?: return
-        val firestore = Firebase.firestore
 
         viewModelScope.launch {
 
@@ -182,7 +181,7 @@ class HomeViewModel(
     }
 
     // ======= USER INFO =======
-    private val _userName = MutableStateFlow<String?>(null)
+    private val _userName = MutableStateFlow<String?>("User") // Giá trị mặc định
     val userName = _userName.asStateFlow()
 
     private val _userPhotoUrl = MutableStateFlow<String?>(null)
@@ -197,10 +196,30 @@ class HomeViewModel(
         loadCurrentUser()
     }
 
+    // SỬA LẠI HÀM NÀY
     private fun loadCurrentUser() {
         val user = FirebaseAuth.getInstance().currentUser
-        _userName.value = user?.displayName
-        _userPhotoUrl.value = user?.photoUrl?.toString()
+        if (user != null) {
+            // Nếu có người dùng, lấy UID và truy vấn Firestore
+            firestore.collection("users").document(user.uid).get()
+                .addOnSuccessListener { document ->
+                    if (document != null && document.exists()) {
+                        // Lấy fullName từ Firestore
+                        _userName.value = document.getString("fullName") ?: "User"
+                        _userPhotoUrl.value = document.getString("photoUrl")
+                    } else {
+                        // Trường hợp có user auth nhưng không có document trong firestore
+                        _userName.value = "User" 
+                    }
+                }
+                .addOnFailureListener {
+                    // Xử lý lỗi nếu có
+                    _userName.value = "User"
+                }
+        } else {
+            // Không có người dùng nào đăng nhập
+            _userName.value = "User"
+        }
     }
 
     // ======= FACTORY =======

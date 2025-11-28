@@ -6,10 +6,9 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.navigation
 import androidx.navigation.toRoute
 import com.example.freshcookapp.util.FilterStore
-// --- CÁC IMPORT PHẢI ĐẦY ĐỦ NHƯ DƯỚI ---
+// --- CÁC IMPORT PHẢI ĐẦY ĐỦ NHƯ Dưới ---
 import com.example.freshcookapp.ui.screen.auth.ForgotPassword
 import com.example.freshcookapp.ui.screen.auth.Login
 import com.example.freshcookapp.ui.screen.auth.Register
@@ -30,6 +29,7 @@ import com.example.freshcookapp.ui.screen.home.CategoryRecipesScreen
 import com.example.freshcookapp.ui.screen.newcook.NewCook
 import com.example.freshcookapp.ui.screen.search.Search
 import com.example.freshcookapp.ui.screen.search.SearchResultScreen
+import com.google.firebase.auth.FirebaseAuth
 
 @Composable
 fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifier, startDestination: Destination, onGoogleSignInClick: () -> Unit){
@@ -84,12 +84,9 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
             RecipeDetail(
                 recipeId = args.recipeId,
                 navController = navController,
-
-                // --- THÊM DÒNG NÀY ĐỂ NÚT THÔNG BÁO HOẠT ĐỘNG ---
                 onNotificationClick = {
                     navController.navigate(Destination.Notification)
                 }
-                // ------------------------------------------------
             )
         }
 
@@ -99,16 +96,11 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
                 onMyDishesClick = { navController.navigate(Destination.MyDishes) },
                 onRecentlyViewedClick = { navController.navigate(Destination.RecentlyViewed) },
                 onEditProfileClick = { navController.navigate(Destination.EditProfile) },
-
-                // onMenuClick để trống cũng được vì giờ nó tự mở Drawer
                 onMenuClick = { },
-
                 onFollowerClick = { userId -> navController.navigate(Destination.Follow(userId = userId, type = "followers")) },
                 onFollowingClick = { userId -> navController.navigate(Destination.Follow(userId = userId, type = "following")) },
-
-                // THÊM DÒNG NÀY ĐỂ XỬ LÝ LOGOUT TỪ DRAWER
                 onLogoutClick = {
-                    Log.d("NAV_TEST", "Đang chuyển hướng sang Welcome...") // <--- Thêm log
+                    FirebaseAuth.getInstance().signOut()
                     navController.navigate(Destination.Welcome) {
                         popUpTo(0) { inclusive = true }
                     }
@@ -116,16 +108,13 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
             )
         }
 
-        // --- XEM PROFILE NGƯỜI KHÁC ---
         composable("user_profile/{userId}") { backStackEntry ->
             val userId = backStackEntry.arguments?.getString("userId") ?: ""
-
             AuthorProfileScreen(
                 userId = userId,
                 onBackClick = { navController.navigateUp() },
                 onFollowerClick = { id -> navController.navigate(Destination.Follow(userId = id, type = "followers")) },
                 onFollowingClick = { id -> navController.navigate(Destination.Follow(userId = id, type = "following")) },
-                // --- THÊM DÒNG NÀY ĐỂ CHUYỂN TRANG ---
                 onRecipeClick = { recipeId ->
                     navController.navigate(Destination.RecipeDetail(recipeId = recipeId))
                 }
@@ -134,9 +123,8 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
 
         composable<Destination.Search> { backStackEntry ->
             val args = backStackEntry.toRoute<Destination.Search>()
-
             Search(
-                keyword = args.keyword,     // 🔥 TRUYỀN KEYWORD VÀO ĐÂY
+                keyword = args.keyword,
                 onBackClick = { navController.popBackStack() },
                 onFilterClick = { navController.navigate(Destination.Filter) },
                 onSuggestionClick = { keyword ->
@@ -161,15 +149,11 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
             Filter(
                 onBackClick = { navController.navigateUp() },
                 onApply = { included, excluded, diff, time ->
-                    Log.d("MyAppNav", "Saving filters: included=$included excluded=$excluded diff=$diff time=$time")
-                    // also store in global FilterStore as reliable fallback
                     FilterStore.setFilters(included, excluded, diff, time)
-                    // store filters in savedStateHandle of current back stack entry (Filter screen)
                     navController.currentBackStackEntry?.savedStateHandle?.set("filter_included", included)
                     navController.currentBackStackEntry?.savedStateHandle?.set("filter_excluded", excluded)
                     navController.currentBackStackEntry?.savedStateHandle?.set("filter_difficulty", diff)
                     navController.currentBackStackEntry?.savedStateHandle?.set("filter_time", time)
-                    // navigate to the filtered results screen (we will read savedStateHandle there)
                     navController.navigate(Destination.FilteredRecipes(included, excluded, diff, time))
                 }
             )
@@ -180,10 +164,23 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
             FollowScreen(
                 userId = args.userId,
                 type = args.type,
-                onBackClick = { navController.navigateUp() }
+                onBackClick = { navController.navigateUp() },
+                // SỬA Ở ĐÂY: Xử lý sự kiện click vào user
+                onUserClick = { clickedUserId ->
+                    // Kiểm tra để không mở lại trang của chính mình nếu đang xem ds follower của mình
+                    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+                    if (clickedUserId == currentUserId) {
+                         // Nếu là chính mình thì chuyển về tab Profile chính
+                        navController.navigate(Destination.Profile) {
+                            // Cân nhắc popUpTo để có trải nghiệm tốt hơn
+                        }
+                    } else {
+                        // Nếu là người khác, chuyển đến trang AuthorProfileScreen của họ
+                        navController.navigate("user_profile/$clickedUserId")
+                    }
+                }
             )
         }
-
 
         composable<Destination.Notification> {
             NotificationScreen(
@@ -202,7 +199,6 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
             MyDishes(
                 onBackClick = { navController.navigateUp() },
                 onAddNewClick = {
-                    // SỬA Ở ĐÂY: launchSingleTop = true để tránh mở nhiều trang NewCook chồng lên nhau
                     navController.navigate(Destination.New) {
                         launchSingleTop = true
                     }
@@ -213,12 +209,9 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
             )
         }
 
-        // --- XEM GẦN ĐÂY ---
         composable<Destination.RecentlyViewed> {
             RecentlyViewedScreen(
                 onBackClick = { navController.navigateUp() },
-                // Nếu trang RecentlyViewedScreen của bạn chưa có tham số này thì tạm thời xóa dòng này đi
-                // Nhưng tốt nhất là cập nhật RecentlyViewedScreen như tôi đã gửi ở tin nhắn trước
                 onRecipeClick = { recipeId ->
                     navController.navigate(Destination.RecipeDetail(recipeId = recipeId))
                 }
@@ -246,7 +239,7 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
         composable<Destination.Login> {
             Login(
                 onBackClick = { navController.navigateUp() },
-                onLoginSuccess = { navController.navigate(Destination.Home) },
+                onLoginSuccess = { navController.navigate(Destination.Home) { popUpTo(0){ inclusive = true } } },
                 onRegisterClick = { navController.navigate(Destination.Register) },
                 onForgotPassClick = { navController.navigate(Destination.ForgotPassword) },
                 onGoogleSignInClick = onGoogleSignInClick
@@ -262,7 +255,6 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
 
         composable<Destination.CategoryRecipes> { backStackEntry ->
             val args = backStackEntry.toRoute<Destination.CategoryRecipes>()
-
             CategoryRecipesScreen(
                 navController = navController,
                 categoryId = args.categoryId,
@@ -271,7 +263,6 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
         }
 
         composable<Destination.FilteredRecipes> { backStackEntry ->
-            // Try to read filters from the previous back stack entry's savedStateHandle first (more reliable for lists)
             val prev = navController.previousBackStackEntry
             val included = prev?.savedStateHandle?.get<List<String>>("filter_included")
                 ?: backStackEntry.toRoute<Destination.FilteredRecipes>().includedIngredients
@@ -282,13 +273,10 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
             val time = prev?.savedStateHandle?.get<Float>("filter_time")
                 ?: backStackEntry.toRoute<Destination.FilteredRecipes>().timeCook
 
-            // If still null/empty, fallback to global FilterStore
             val finalIncluded = included ?: FilterStore.includedIngredients
             val finalExcluded = excluded ?: FilterStore.excludedIngredients
             val finalDifficulty = difficulty ?: FilterStore.difficulty
             val finalTime = time ?: FilterStore.timeCook
-
-            Log.d("MyAppNav", "Entering FilteredRecipes: included=$finalIncluded excluded=$finalExcluded difficulty=$finalDifficulty time=$finalTime")
 
             SearchResultScreen(
                 includedIngredients = finalIncluded,

@@ -21,17 +21,22 @@ import com.example.freshcookapp.ui.theme.WorkSans
 fun PrimaryButton(
     text: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true // THÊM THAM SỐ NÀY
 ) {
     Button(
         onClick = onClick,
+        enabled = enabled, // TRUYỀN THAM SỐ VÀO ĐÂY
         modifier = modifier
             .fillMaxWidth()
             .height(50.dp),
         shape = RoundedCornerShape(16.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = Cinnabar500,
-            contentColor = White
+            contentColor = White,
+            // Thêm màu cho trạng thái bị vô hiệu hóa để dễ nhận biết
+            disabledContainerColor = Cinnabar500.copy(alpha = 0.5f),
+            disabledContentColor = White.copy(alpha = 0.7f)
         ),
         contentPadding = PaddingValues(
             horizontal = 10.dp,
@@ -43,7 +48,7 @@ fun PrimaryButton(
             fontSize = 16.sp,
             fontWeight = FontWeight.Medium,
             lineHeight = 20.sp,
-            fontFamily = WorkSans, // đổi thành WorkSans bên dưới
+            fontFamily = WorkSans,
             textAlign = TextAlign.Center
         )
     }
