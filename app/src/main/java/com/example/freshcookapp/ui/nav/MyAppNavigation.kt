@@ -223,8 +223,7 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
         composable<Destination.RecentlySearched> {
             RecentlySearchedScreen(
                 navController = navController,
-                onBackClick = { navController.navigateUp() },
-                onSearchClick = { keyword -> navController.navigate(Destination.Search(keyword)) }
+                onBackClick = { navController.navigateUp() }
             )
         }
 

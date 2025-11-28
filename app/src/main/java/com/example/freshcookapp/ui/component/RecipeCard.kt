@@ -50,7 +50,8 @@ fun RecipeCard(
     difficulty: String?,
     isFavorite: Boolean,
     onFavoriteClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
 ) {
 
     // ⭐ Animation cho nút tim
@@ -86,7 +87,8 @@ fun RecipeCard(
 
                 // ====== NÚT TIM ANIMATION ======
                 IconButton(
-                    onClick = onFavoriteClick,
+                    onClick = { if (enabled) onFavoriteClick() },
+                    enabled = enabled,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(8.dp)

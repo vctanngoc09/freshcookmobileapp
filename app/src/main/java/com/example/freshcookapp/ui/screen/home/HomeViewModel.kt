@@ -1,5 +1,6 @@
 package com.example.freshcookapp.ui.screen.home
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -14,11 +15,8 @@ import kotlinx.coroutines.launch
 import com.example.freshcookapp.data.local.dao.CategoryDao
 import com.example.freshcookapp.data.repository.CategoryRepository
 import com.example.freshcookapp.data.repository.SearchRepository
-import com.google.firebase.Firebase
-import com.google.firebase.firestore.FieldValue
-import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
-import com.google.firebase.firestore.firestore
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +26,10 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map // <-- Quan trọng: import map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
+import java.util.Collections
+import java.util.HashSet
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.debounce
 
 data class SuggestItem(
     val keyword: String,
@@ -46,6 +48,7 @@ class HomeViewModel(
 
     private val _hasUnreadNotifications = MutableStateFlow(false)
     val hasUnreadNotifications: StateFlow<Boolean> = _hasUnreadNotifications
+
     // ======= CATEGORIES =======
     val categories = categoryRepo.getLocalCategories()
         .stateIn(
@@ -55,22 +58,17 @@ class HomeViewModel(
         )
 
     // ======= TRENDING =======
-    val trendingRecipes = recipeRepo.getTrendingRecipes()
-        .map { list -> list.map { it.toRecipe() } }
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5000),
-            emptyList()
-        )
+    private val _trendingRecipes = MutableStateFlow<List<Recipe>>(emptyList())
+    val trendingRecipes: StateFlow<List<Recipe>> = _trendingRecipes.asStateFlow()
 
     // ======= NEW DISHES =======
-    val newDishes = recipeRepo.getNewDishes()
-        .map { list -> list.map { it.toRecipe() } }
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5000),
-            emptyList()
-        )
+    private val _newDishes = MutableStateFlow<List<Recipe>>(emptyList())
+    val newDishes: StateFlow<List<Recipe>> = _newDishes.asStateFlow()
+
+    // In-flight toggles to avoid concurrent operations on same recipe
+    private val inFlightFavorites: MutableSet<String> = Collections.synchronizedSet(HashSet())
+    private val _inFlightIds = MutableStateFlow<Set<String>>(emptySet())
+    val inFlightIds = _inFlightIds.asStateFlow()
 
     // ======= GỢI Ý THEO TỪ KHÓA (KHÔNG HIỂN THỊ TOÀN BỘ RECIPE) =======
     val suggestedSearch = searchRepo.getAllHistory()   // Flow<List<SearchHistoryEntity>>
@@ -124,58 +122,42 @@ class HomeViewModel(
     fun toggleFavorite(recipeId: String) {
         val user = FirebaseAuth.getInstance().currentUser ?: return
 
+        // Prevent concurrent toggles on same recipe
+        val started = inFlightFavorites.add(recipeId)
+        if (!started) return
+        _inFlightIds.value = inFlightFavorites.toSet()
+
         viewModelScope.launch {
+            try {
+                Log.d("HomeVM", "toggleFavorite START (delegated): $recipeId, inFlight=${inFlightFavorites.size}")
 
-            // Lấy trending current list
-            val list = trendingRecipes.value.toMutableList()
-            val index = list.indexOfFirst { it.id == recipeId }
-            if (index == -1) return@launch
+                // Read a local copy only to decide desired state (don't apply optimistic update here;
+                // repository will handle optimistic local update and rollback atomically).
+                val trendingList = _trendingRecipes.value
+                val newDishesList = _newDishes.value
 
-            val recipe = list[index]
-            val newStatus = !recipe.isFavorite
-            val newCount = if (newStatus) recipe.likeCount + 1 else recipe.likeCount - 1
-
-            // ⭐ UI update ngay
-            list[index] = recipe.copy(isFavorite = newStatus, likeCount = newCount)
-            recipeRepo.updateFavoriteLocal(recipeId, newStatus, newCount)
-
-            val recipeRef = firestore.collection("recipes").document(recipeId)
-            val userFavRef = firestore.collection("users")
-                .document(user.uid)
-                .collection("favorites")
-                .document(recipeId)
-
-            // ⭐ Firestore transaction
-            firestore.runTransaction { tx ->
-                val snap = tx.get(userFavRef)
-
-                if (snap.exists()) {
-                    tx.delete(userFavRef)
-                    tx.update(
-                        recipeRef,
-                        "likeCount",
-                        FieldValue.increment(-1)
-                    )
-                    false
-                } else {
-                    tx.set(
-                        userFavRef,
-                        mapOf(
-                            "addedAt" to FieldValue.serverTimestamp(),
-                            "recipeId" to recipeId
-                        )
-                    )
-                    tx.update(
-                        recipeRef,
-                        "likeCount",
-                        FieldValue.increment(1)
-                    )
-                    true
+                val found = (trendingList + newDishesList).firstOrNull { it.id == recipeId }
+                if (found == null) {
+                    Log.w("HomeVM", "toggleFavorite: recipe not found locally: $recipeId")
+                    inFlightFavorites.remove(recipeId)
+                    _inFlightIds.value = inFlightFavorites.toSet()
+                    return@launch
                 }
-            }.addOnSuccessListener { isLiked ->
-                viewModelScope.launch {
-                    recipeRepo.toggleFavorite(recipeId, isLiked, newCount)
-                }
+
+                val desiredState = !found.isFavorite
+
+                // Delegate the full atomic optimistic toggle + remote transaction to repository
+                recipeRepo.toggleFavoriteWithRemote(user.uid, recipeId, desiredState)
+
+                // repository will persist final state in Room; we simply clear in-flight below
+                inFlightFavorites.remove(recipeId)
+                _inFlightIds.value = inFlightFavorites.toSet()
+
+            } catch (e: Exception) {
+                Log.e("HomeVM", "toggleFavorite EXCEPTION: $recipeId", e)
+                // Ensure cleanup on unexpected errors
+                inFlightFavorites.remove(recipeId)
+                _inFlightIds.value = inFlightFavorites.toSet()
             }
         }
     }
@@ -187,10 +169,41 @@ class HomeViewModel(
     private val _userPhotoUrl = MutableStateFlow<String?>(null)
     val userPhotoUrl = _userPhotoUrl.asStateFlow()
 
+    // ======= NEW: FAVORITES IDS SET =======
+    private val _favoriteIds = MutableStateFlow<Set<String>>(emptySet())
+    val favoriteIds: StateFlow<Set<String>> = _favoriteIds.asStateFlow()
+
     init {
         // Sync category
         viewModelScope.launch {
             categoryRepo.syncCategories()
+        }
+
+        // Collect trending recipes
+        viewModelScope.launch {
+            recipeRepo.getTrendingRecipes()
+                .map { list -> list.map { it.toRecipe() } }
+                .collect { _trendingRecipes.value = it }
+        }
+
+        // Collect new dishes
+        viewModelScope.launch {
+            recipeRepo.getNewDishes()
+                .map { list -> list.map { it.toRecipe() } }
+                .collect { _newDishes.value = it }
+        }
+
+        // Collect favorite ids (single source of truth for isFavorite in UI)
+        viewModelScope.launch {
+            recipeRepo.getFavoriteRecipes()
+                .map { list -> list.map { it.id }.toSet() }
+                // Debounce a bit to coalesce quick transient changes (reduces UI flicker)
+                .debounce(150)
+                .distinctUntilChanged()
+                .collect {
+                    Log.d("HomeVM", "favoriteIds EMIT (debounced): ${it.size} -> ${it.joinToString(",")} ")
+                    _favoriteIds.value = it
+                }
         }
 
         loadCurrentUser()

@@ -1,6 +1,7 @@
 package com.example.freshcookapp.ui.screen.home
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -12,6 +13,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -86,6 +88,8 @@ fun Home(
         val hasUnreadNotifications by viewModel.hasUnreadNotifications.collectAsState()
         val trending by viewModel.trendingRecipes.collectAsState()
         val newDishes by viewModel.newDishes.collectAsState()
+        val favoriteIds by viewModel.favoriteIds.collectAsState()
+        val inFlightIds by viewModel.inFlightIds.collectAsState()
 
         var searchText by remember { mutableStateOf("") }
 
@@ -229,7 +233,7 @@ fun Home(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         userScrollEnabled = false
                     ) {
-                        items(categories) { category ->
+                        items(categories, key = { it.id }) { category ->
                             TrendingCategoryItem(
                                 category = category,
                                 onClick = { onCategoryRecipes(category.id, category.name) }
@@ -253,14 +257,15 @@ fun Home(
                             }
                         } else {
                             // Có dữ liệu -> Hiện món thật
-                            items(trending) { recipe ->
+                            items(trending, key = { it.id }) { recipe ->
                                 RecipeCard(
                                     imageUrl = recipe.imageUrl,
                                     name = recipe.name,
                                     timeCook = recipe.timeCook,
                                     difficulty = recipe.difficulty ?: "Dễ",
-                                    isFavorite = recipe.isFavorite,
+                                    isFavorite = favoriteIds.contains(recipe.id),
                                     onFavoriteClick = { viewModel.toggleFavorite(recipe.id) },
+                                    enabled = !inFlightIds.contains(recipe.id),
                                     modifier = Modifier.clickable { onRecipeDetail(recipe.id) }
                                 )
                             }
@@ -278,14 +283,14 @@ fun Home(
                         })
                         Spacer(Modifier.height(8.dp))
                     }
-                    items(suggestions) { item ->
+                    items(suggestions, key = { it.keyword + "_" + it.timestamp }) { item ->
                         SuggestKeywordCard(
                             keyword = item.keyword,
                             time = item.timestamp,
                             imageUrl = item.imageUrl,
                             onClick = { onSearchDetail(item.keyword) }
                         )
-                        Spacer(Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
                     }
                     item { Spacer(Modifier.height(20.dp)) }
                 }
@@ -302,14 +307,15 @@ fun Home(
                                 RecipeCardSkeleton()
                             }
                         } else {
-                            items(newDishes) { recipe ->
+                            items(newDishes, key = { it.id }) { recipe ->
                                 RecipeCard(
                                     imageUrl = recipe.imageUrl,
                                     name = recipe.name,
                                     timeCook = recipe.timeCook,
                                     difficulty = recipe.difficulty ?: "Dễ",
-                                    isFavorite = recipe.isFavorite,
+                                    isFavorite = favoriteIds.contains(recipe.id),
                                     onFavoriteClick = { viewModel.toggleFavorite(recipe.id) },
+                                    enabled = !inFlightIds.contains(recipe.id),
                                     modifier = Modifier.clickable { onRecipeDetail(recipe.id) }
                                 )
                             }
@@ -319,5 +325,21 @@ fun Home(
                 }
             }
         }
+
+        // --- DEBUG OVERLAY (tắt trước khi release) ---
+        Box(modifier = Modifier
+            .fillMaxSize(), contentAlignment = Alignment.TopEnd) {
+            Column(modifier = Modifier
+                .padding(8.dp)
+                .background(Color.White.copy(alpha = 0.85f), shape = RoundedCornerShape(8.dp))
+                .padding(6.dp)) {
+                Text(text = "FavIds: ${favoriteIds.size}", style = MaterialTheme.typography.labelSmall)
+                Text(text = favoriteIds.joinToString(", ") { it.take(6) }, style = MaterialTheme.typography.bodySmall)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(text = "InFlight: ${inFlightIds.size}", style = MaterialTheme.typography.labelSmall)
+                Text(text = inFlightIds.joinToString(", ") { it.take(6) }, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+
     }
 }

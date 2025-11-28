@@ -177,29 +177,15 @@ class RecipeDetailViewModel(
     fun toggleFavorite() {
         val currentRecipe = _recipe.value ?: return
         val currentUser = auth.currentUser ?: return
-        val recipeRef = firestore.collection("recipes").document(currentRecipe.id)
-        val userFavRef = firestore.collection("users").document(currentUser.uid).collection("favorites").document(currentRecipe.id)
 
-        val newStatus = !currentRecipe.isFavorite
-        val newCount = if (newStatus) currentRecipe.likeCount + 1 else currentRecipe.likeCount - 1
-        _recipe.value = currentRecipe.copy(isFavorite = newStatus, likeCount = newCount)
+        val desiredState = !currentRecipe.isFavorite
 
-        firestore.runTransaction { transaction ->
-            val snapshot = transaction.get(userFavRef)
-            if (snapshot.exists()) {
-                transaction.delete(userFavRef)
-                transaction.update(recipeRef, "likeCount", FieldValue.increment(-1))
-                false
-            } else {
-                transaction.set(userFavRef, mapOf("addedAt" to FieldValue.serverTimestamp(), "recipeId" to currentRecipe.id))
-                transaction.set(recipeRef, mapOf("likeCount" to FieldValue.increment(1)), SetOptions.merge())
-                true
-            }
-        }.addOnSuccessListener { isLiked ->
-            viewModelScope.launch {
-                repository.toggleFavorite(currentRecipe.id, isLiked, newCount)
-            }
-            if (isLiked && currentRecipe.author.id != currentUser.uid) {
+        // Delegate atomic optimistic toggle to repository which handles local optimistic update and remote transaction.
+        viewModelScope.launch {
+            repository.toggleFavoriteWithRemote(currentUser.uid, currentRecipe.id, desiredState)
+
+            // After repository completes (it already updated Room optimistically), send notification if liked
+            if (desiredState && currentRecipe.author.id != currentUser.uid) {
                 sendNotification(currentRecipe.author.id, "đã yêu thích món ăn: ${currentRecipe.name}", currentRecipe.id)
             }
         }

@@ -8,25 +8,52 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.*
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import com.example.freshcookapp.ui.component.SuggestKeywordCard
+import com.example.freshcookapp.ui.component.CategoryRecipeCard
 import com.example.freshcookapp.ui.screen.home.SuggestItem
 import com.example.freshcookapp.ui.theme.Cinnabar500
+import com.example.freshcookapp.FreshCookAppRoom
+import com.example.freshcookapp.data.local.AppDatabase
+import com.example.freshcookapp.data.repository.RecipeRepository
+import com.example.freshcookapp.data.mapper.toRecipe
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
+@Suppress("DEPRECATION")
 @Composable
 fun RecentlySearchedScreen(
     navController: NavHostController,
-    onBackClick: () -> Unit,
-    onSearchClick: (String) -> Unit
+    onBackClick: () -> Unit
 ) {
     val suggestions = navController.previousBackStackEntry
         ?.savedStateHandle
         ?.get<List<SuggestItem>>("suggestions") ?: emptyList()
+
+    val context = LocalContext.current
+    val app = context.applicationContext as FreshCookAppRoom
+    val db = remember { AppDatabase.getDatabase(app) }
+    val repo = remember { RecipeRepository(db) }
+
+    var recipes by remember { mutableStateOf<List<com.example.freshcookapp.domain.model.Recipe>>(emptyList()) }
+
+    LaunchedEffect(suggestions) {
+        if (suggestions.isEmpty()) {
+            recipes = emptyList()
+        } else {
+            // Query DB off main thread
+            val entities = withContext(Dispatchers.IO) {
+                suggestions.flatMap { item -> repo.searchByNameLocal(item.keyword) }
+            }
+            val unique = entities.distinctBy { it.id }.map { it.toRecipe() }
+            recipes = unique
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -40,7 +67,7 @@ fun RecentlySearchedScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Icon(
-                imageVector = Icons.Default.ArrowBack,
+                imageVector = Icons.Filled.ArrowBack,
                 contentDescription = null,
                 tint = Cinnabar500,
                 modifier = Modifier
@@ -58,10 +85,9 @@ fun RecentlySearchedScreen(
         Spacer(Modifier.height(16.dp))
 
         // ===== EMPTY STATE =====
-        if (suggestions.isEmpty()) {
-            // Có thể thêm CategoryEmptyState nếu có, hoặc text đơn giản
+        if (recipes.isEmpty()) {
             Text(
-                text = "Không có tìm kiếm gần đây",
+                text = "Không có kết quả tìm kiếm",
                 style = MaterialTheme.typography.bodyLarge,
                 color = Color.Gray,
                 modifier = Modifier.fillMaxSize().wrapContentSize(Alignment.Center)
@@ -74,12 +100,12 @@ fun RecentlySearchedScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.fillMaxSize()
         ) {
-            items(suggestions) { item ->
-                SuggestKeywordCard(
-                    keyword = item.keyword,
-                    time = item.timestamp,
-                    imageUrl = item.imageUrl,
-                    onClick = { onSearchClick(item.keyword) }
+            items(recipes) { recipe ->
+                CategoryRecipeCard(
+                    recipe = recipe,
+                    onClick = {
+                        navController.navigate(com.example.freshcookapp.ui.nav.Destination.RecipeDetail(recipeId = recipe.id))
+                    }
                 )
             }
         }

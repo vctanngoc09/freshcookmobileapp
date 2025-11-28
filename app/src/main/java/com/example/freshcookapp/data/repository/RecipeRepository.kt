@@ -6,8 +6,24 @@ import com.example.freshcookapp.domain.model.Ingredient
 import com.example.freshcookapp.domain.model.Instruction
 import kotlinx.coroutines.flow.Flow
 import java.util.UUID
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FieldValue
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.max
 
 class RecipeRepository(private val db: AppDatabase) {
+
+    private val firestore = FirebaseFirestore.getInstance()
+    // per-recipe mutexes to avoid concurrent toggles racing and causing inconsistent UI state
+    private val toggleMutexes = ConcurrentHashMap<String, Mutex>()
+
+    private fun mutexFor(recipeId: String): Mutex {
+        return toggleMutexes.computeIfAbsent(recipeId) { Mutex() }
+    }
 
     // --- CÁC HÀM LẤY DATA TRANG HOME ---
     fun getNewDishes() = db.recipeDao().getNewDishes()
@@ -25,6 +41,7 @@ class RecipeRepository(private val db: AppDatabase) {
 
     // Live flow for a single recipe
     fun getRecipeFlow(id: String) = db.recipeDao().getRecipeByIdFlow(id)
+
 
     // 2. Lấy danh sách các món đã thả tim
     fun getFavoriteRecipes(): Flow<List<RecipeEntity>> {
@@ -55,6 +72,72 @@ class RecipeRepository(private val db: AppDatabase) {
         )
     }
 
+    // New: perform Firestore transaction centrally and return success/failure
+    suspend fun setFavoriteRemote(userId: String, recipeId: String, desiredState: Boolean): Boolean =
+        suspendCancellableCoroutine { cont ->
+            try {
+                val recipeRef = firestore.collection("recipes").document(recipeId)
+                val userFavRef = firestore.collection("users").document(userId).collection("favorites").document(recipeId)
+
+                firestore.runTransaction { tx ->
+                    val snap = tx.get(userFavRef)
+                    val exists = snap.exists()
+
+                    if (desiredState) {
+                        if (!exists) {
+                            tx.set(userFavRef, mapOf("addedAt" to FieldValue.serverTimestamp(), "recipeId" to recipeId))
+                            tx.update(recipeRef, "likeCount", FieldValue.increment(1))
+                        }
+                    } else {
+                        if (exists) {
+                            tx.delete(userFavRef)
+                            tx.update(recipeRef, "likeCount", FieldValue.increment(-1))
+                        }
+                    }
+                    null
+                }
+                    .addOnSuccessListener {
+                        if (!cont.isCompleted) cont.resume(true)
+                    }
+                    .addOnFailureListener {
+                        if (!cont.isCompleted) cont.resume(false)
+                    }
+            } catch (_: Exception) {
+                if (!cont.isCompleted) cont.resume(false)
+            }
+        }
+
+    /*
+     Atomic optimistic toggle:
+      - acquires a per-recipe mutex
+      - reads current local entity
+      - applies optimistic local update (is_favorite + likeCount)
+      - calls remote transaction (setFavoriteRemote)
+      - rolls back local update if remote fails
+    */
+    suspend fun toggleFavoriteWithRemote(userId: String, recipeId: String, desiredState: Boolean) {
+        val mutex = mutexFor(recipeId)
+        mutex.withLock {
+            val current = db.recipeDao().getRecipeById(recipeId) ?: return
+            val currentCount = current.likeCount
+            val newCount = if (desiredState) currentCount + 1 else max(0, currentCount - 1)
+
+            // optimistic local update so UI reflects immediately
+            db.recipeDao().updateFavoriteLocal(recipeId, desiredState, newCount)
+
+            // perform remote; rollback if fails
+            val success = try {
+                setFavoriteRemote(userId, recipeId, desiredState)
+            } catch (_: Exception) {
+                false
+            }
+
+            if (!success) {
+                // rollback to previous state
+                db.recipeDao().updateFavoriteLocal(recipeId, !desiredState, currentCount)
+            }
+        }
+    }
 
     // Gọi hàm này khi vào xem chi tiết (Lịch sử)
     suspend fun addToHistory(recipeId: String) {
