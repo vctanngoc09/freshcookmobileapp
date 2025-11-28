@@ -1,11 +1,9 @@
-# freshcookmobileapp
-FreshCook Mobile App - Ứng dụng gợi ý món ăn từ nguyên liệu sẵn có
-
-## Link thiết kế figma
--> [Xem thiết kế trên Figma](https://www.figma.com/design/HBPVIPmQl7bpBxa3uG3qs2/FRESHCOOK?node-id=0-1&p=f&t=NDNwZystc2X9w0Tc-0)
 # 🍳 FreshCook - Ứng dụng gợi ý món ăn
 
 > **FreshCook** là ứng dụng Android giúp sinh viên và người bận rộn giải quyết bài toán "Hôm nay ăn gì?", tối ưu hóa nguyên liệu có sẵn và kết nối cộng đồng yêu bếp.
+
+## Link thiết kế figma
+-> [Xem thiết kế trên Figma](https://www.figma.com/design/HBPVIPmQl7bpBxa3uG3qs2/FRESHCOOK?node-id=0-1&p=f&t=NDNwZystc2X9w0Tc-0)
 
 ---
 
