@@ -2,7 +2,6 @@ package com.example.freshcookapp.ui.screen.detail
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -28,7 +27,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -46,10 +44,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import coil.size.Size
-import coil.size.Precision
 import com.example.freshcookapp.FreshCookAppRoom
 import com.example.freshcookapp.R
 import com.example.freshcookapp.data.local.AppDatabase
@@ -59,9 +57,8 @@ import com.example.freshcookapp.domain.model.*
 import com.example.freshcookapp.ui.component.RecipeCard
 import com.example.freshcookapp.ui.component.RecipeDetailSkeleton
 import com.example.freshcookapp.ui.theme.Cinnabar500
-import com.google.firebase.auth.FirebaseAuth
 import com.example.freshcookapp.ui.nav.Destination
-import com.google.firebase.ktx.Firebase
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -135,7 +132,9 @@ fun RecipeDetail(
                 onFollowClick = { viewModel.toggleFollowAuthor() },
                 onImageClick = { url -> expandedImageUrl = url },
                 onNotificationClick = onNotificationClick,
-                navController = navController
+                navController = navController,
+                // Gọi hàm toggleRelatedFavorite từ ViewModel
+                onRelatedFavoriteClick = { id -> viewModel.toggleRelatedFavorite(id) }
             )
 
             if (expandedImageUrl != null) {
@@ -164,6 +163,7 @@ private fun RecipeDetailView(
     onFollowClick: () -> Unit,
     onImageClick: (String) -> Unit,
     onNotificationClick: () -> Unit,
+    onRelatedFavoriteClick: (String) -> Unit,
     navController: NavHostController
 ) {
     Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
@@ -177,10 +177,10 @@ private fun RecipeDetailView(
             modifier = Modifier.fillMaxSize(),
             onAuthorClick = onAuthorClick,
             onFavoriteClick = onFavoriteClick,
-
             onFollowClick = onFollowClick,
             onImageClick = onImageClick,
-            navController = navController
+            navController = navController,
+            onRelatedFavoriteClick = onRelatedFavoriteClick
         )
         Box(
             modifier = Modifier
@@ -199,6 +199,7 @@ private fun RecipeDetailView(
         )
     }
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RecipeDetailTopBar(
@@ -281,17 +282,17 @@ private fun RecipeDetailTopBar(
     }
 }
 
-// 🔥 HÀM SHARE ĐƯỢC CẬP NHẬT 🔥
 fun shareRecipe(context: Context, title: String, id: String) {
-    // 🔥 THAY BẰNG TÊN MIỀN FIREBASE HOSTING CỦA BẠN 🔥
-    val domain = "your-project-id.web.app"
-    val link = "https://$domain/recipe/$id"
+    // Tạo link đúng chuẩn domain của bạn
+    val deepLink = "https://freshcookapp-b376c.web.app/recipe/$id"
 
     val sendIntent = Intent().apply {
         action = Intent.ACTION_SEND
-        putExtra(Intent.EXTRA_TEXT, "Món ngon này tuyệt vời lắm: $title\nXem chi tiết tại: $link")
+        // Nội dung tin nhắn sẽ gửi đi
+        putExtra(Intent.EXTRA_TEXT, "Món '$title' này ngon lắm, xem công thức ở đây nhé: $deepLink")
         type = "text/plain"
     }
+
     val shareIntent = Intent.createChooser(sendIntent, "Chia sẻ món ăn")
     context.startActivity(shareIntent)
 }
@@ -337,37 +338,37 @@ private fun RecipeDetailContent(
     onFavoriteClick: () -> Unit,
     onFollowClick: () -> Unit,
     onImageClick: (String) -> Unit,
+    onRelatedFavoriteClick: (String) -> Unit,
     viewModel: RecipeDetailViewModel,
     navController: NavHostController
 ) {
     LazyColumn(modifier = modifier, state = lazyListState) {
-        item { // index 0
+        item {
             RecipeHeader(
                 recipe = recipe,
                 onImageClick = { recipe.imageUrl?.let { onImageClick(it) } }
             )
         }
-        item { // index 1
+        item {
             RecipeInfoSection(
                 recipe = recipe,
                 commentsCount = commentsCount,
                 onFavoriteClick = onFavoriteClick,
                 onCommentClick = {
                     scope.launch {
-                        // Scroll to the comment section (index 4)
                         lazyListState.animateScrollToItem(4)
                     }
                 }
             )
         }
-        item { RecipeIngredients(recipe.ingredients) } // index 2
-        item { // index 3
+        item { RecipeIngredients(recipe.ingredients) }
+        item {
             RecipeInstructions(
                 steps = recipe.instructions,
                 onImageClick = onImageClick
             )
         }
-        item { // index 4
+        item {
             AuthorInfoSection(
                 author = recipe.author,
                 isFollowing = isFollowingAuthor,
@@ -375,10 +376,14 @@ private fun RecipeDetailContent(
                 onFollowClick = onFollowClick
             )
         }
-        item { CommentSection(viewModel) } // index 5
+        item { CommentSection(viewModel) }
         item {
             if (recipe.relatedRecipes.isNotEmpty()) {
-                RelatedRecipesSection(recipes = recipe.relatedRecipes, navController = navController)
+                RelatedRecipesSection(
+                    recipes = recipe.relatedRecipes,
+                    navController = navController,
+                    onFavoriteClick = onRelatedFavoriteClick
+                )
             }
         }
         item { Spacer(modifier = Modifier.height(60.dp)) }
@@ -388,22 +393,20 @@ private fun RecipeDetailContent(
 @Composable
 private fun RecipeHeader(recipe: Recipe, onImageClick: () -> Unit) {
     val defaultImage = R.drawable.ic_launcher_background
-    val painter = rememberAsyncImagePainter(
+
+    AsyncImage(
         model = ImageRequest.Builder(LocalContext.current)
             .data(recipe.imageUrl ?: defaultImage)
-            .size(Size.ORIGINAL)
-            .precision(Precision.EXACT)
             .crossfade(true)
-            .build()
-    )
-    Image(
-        painter = painter,
+            .build(),
         contentDescription = null,
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 280.dp, max = 400.dp)
             .clickable { onImageClick() },
-        contentScale = ContentScale.Crop
+        contentScale = ContentScale.Crop,
+        placeholder = painterResource(defaultImage),
+        error = painterResource(defaultImage)
     )
 }
 
@@ -572,16 +575,11 @@ private fun RecipeInstructions(steps: List<InstructionStep>, onImageClick: (Stri
                         )
                         Spacer(Modifier.height(8.dp))
                         if (!step.imageUrl.isNullOrEmpty()) {
-                            val painter = rememberAsyncImagePainter(
+                            AsyncImage(
                                 model = ImageRequest.Builder(context)
                                     .data(step.imageUrl)
-                                    .size(Size.ORIGINAL)
-                                    .precision(Precision.EXACT)
                                     .crossfade(true)
-                                    .build()
-                            )
-                            Image(
-                                painter = painter,
+                                    .build(),
                                 contentDescription = "Step image",
                                 modifier = Modifier
                                     .height(120.dp)
@@ -589,7 +587,8 @@ private fun RecipeInstructions(steps: List<InstructionStep>, onImageClick: (Stri
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(Color(0xFFF0F0F0))
                                     .clickable { onImageClick(step.imageUrl) },
-                                contentScale = ContentScale.Crop
+                                contentScale = ContentScale.Crop,
+                                placeholder = painterResource(R.drawable.ic_launcher_background)
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                         } else {
@@ -661,11 +660,15 @@ fun AuthorInfoSection(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         val defaultAvatar = R.drawable.ic_launcher_background
-        Image(
-            painter = rememberAsyncImagePainter(model = author.avatarUrl ?: defaultAvatar),
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(author.avatarUrl ?: defaultAvatar)
+                .crossfade(true)
+                .build(),
             contentDescription = null,
             modifier = Modifier.size(64.dp).clip(CircleShape).clickable { onAuthorClick(author.id) },
-            contentScale = ContentScale.Crop
+            contentScale = ContentScale.Crop,
+            placeholder = painterResource(defaultAvatar)
         )
         Spacer(Modifier.height(8.dp))
         Text(
@@ -715,10 +718,11 @@ fun CommentSection(viewModel: RecipeDetailViewModel) {
         )
         Spacer(Modifier.height(16.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Image(
-                painter = rememberAsyncImagePainter(
-                    model = currentUser?.photoUrl ?: R.drawable.ic_launcher_background
-                ),
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(currentUser?.photoUrl ?: R.drawable.ic_launcher_background)
+                    .crossfade(true)
+                    .build(),
                 contentDescription = null,
                 modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.LightGray),
                 contentScale = ContentScale.Crop
@@ -774,17 +778,15 @@ fun CommentSection(viewModel: RecipeDetailViewModel) {
 @Composable
 fun CommentItem(comment: Comment, isOwner: Boolean, onDelete: () -> Unit) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-        val avatarPainter = rememberAsyncImagePainter(
+        AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(if (comment.userAvatar.isNullOrBlank()) R.drawable.ic_launcher_background else comment.userAvatar)
                 .crossfade(true)
-                .build()
-        )
-        Image(
-            painter = avatarPainter,
+                .build(),
             contentDescription = "Avatar",
             modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.LightGray),
-            contentScale = ContentScale.Crop
+            contentScale = ContentScale.Crop,
+            placeholder = painterResource(R.drawable.ic_launcher_background)
         )
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -834,8 +836,13 @@ fun getRelativeTimeAgo(timestamp: Long): String {
     }
 }
 
+// 🔥 SỬA MỤC NÀY ĐỂ BẤM TIM ĐƯỢC 🔥
 @Composable
-fun RelatedRecipesSection(recipes: List<RecipePreview>, navController: NavHostController) {
+fun RelatedRecipesSection(
+    recipes: List<RecipePreview>,
+    navController: NavHostController,
+    onFavoriteClick: (String) -> Unit
+) {
     val ctx = LocalContext.current
     Column(modifier = Modifier.padding(top = 16.dp)) {
         Text(
@@ -849,19 +856,22 @@ fun RelatedRecipesSection(recipes: List<RecipePreview>, navController: NavHostCo
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(recipes) { item ->
-                Box(modifier = Modifier.clickable {
-                    if (item.id.isNotBlank()) navController.navigate(Destination.RecipeDetail(recipeId = item.id))
-                    else Toast.makeText(ctx, "Món ăn không hợp lệ", Toast.LENGTH_SHORT).show()
-                }) {
-                    RecipeCard(
-                        imageUrl = item.imageUrl,
-                        name = item.title,
-                        timeCook = item.time.replace(" phút", "").toIntOrNull() ?: 0,
-                        difficulty = "Dễ",
-                        isFavorite = false, // Not tracked here
-                        onFavoriteClick = {} // No action
-                    )
-                }
+                // 🔥 ĐÃ XÓA CÁI BOX CLICKABLE BAO NGOÀI 🔥
+                // Thay vào đó, gán click chuyển trang vào modifier của RecipeCard
+                RecipeCard(
+                    imageUrl = item.imageUrl,
+                    name = item.title,
+                    timeCook = item.time.replace(" phút", "").toIntOrNull() ?: 0,
+                    difficulty = "Dễ",
+                    isFavorite = item.isFavorite,
+                    onFavoriteClick = { onFavoriteClick(item.id) }, // Bấm tim thì gọi hàm này
+
+                    // Gán sự kiện chuyển trang vào đây
+                    modifier = Modifier.clickable {
+                        if (item.id.isNotBlank()) navController.navigate(Destination.RecipeDetail(recipeId = item.id))
+                        else Toast.makeText(ctx, "Món ăn không hợp lệ", Toast.LENGTH_SHORT).show()
+                    }
+                )
             }
         }
     }

@@ -7,8 +7,9 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
+import androidx.navigation.navDeepLink // <-- QUAN TRỌNG: Đừng quên import cái này
 import com.example.freshcookapp.util.FilterStore
-// --- CÁC IMPORT PHẢI ĐẦY ĐỦ NHƯ Dưới ---
+// --- CÁC IMPORT PHẢI ĐẦY ĐỦ NHƯ DƯỚI ---
 import com.example.freshcookapp.ui.screen.auth.ForgotPassword
 import com.example.freshcookapp.ui.screen.auth.Login
 import com.example.freshcookapp.ui.screen.auth.Register
@@ -20,7 +21,7 @@ import com.example.freshcookapp.ui.screen.account.NotificationScreen
 import com.example.freshcookapp.ui.screen.account.EditProfileScreen
 import com.example.freshcookapp.ui.screen.account.MyDishes
 import com.example.freshcookapp.ui.screen.account.RecentlyViewedScreen
-import com.example.freshcookapp.ui.screen.account.FollowScreen // <-- Đã thêm Import FollowScreen
+import com.example.freshcookapp.ui.screen.account.FollowScreen
 import com.example.freshcookapp.ui.screen.account.AuthorProfileScreen
 import com.example.freshcookapp.ui.screen.detail.RecipeDetail
 import com.example.freshcookapp.ui.screen.favorites.Favorite
@@ -167,17 +168,11 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
                 userId = args.userId,
                 type = args.type,
                 onBackClick = { navController.navigateUp() },
-                // SỬA Ở ĐÂY: Xử lý sự kiện click vào user
                 onUserClick = { clickedUserId ->
-                    // Kiểm tra để không mở lại trang của chính mình nếu đang xem ds follower của mình
                     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
                     if (clickedUserId == currentUserId) {
-                         // Nếu là chính mình thì chuyển về tab Profile chính
-                        navController.navigate(Destination.Profile) {
-                            // Cân nhắc popUpTo để có trải nghiệm tốt hơn
-                        }
+                        navController.navigate(Destination.Profile)
                     } else {
-                        // Nếu là người khác, chuyển đến trang AuthorProfileScreen của họ
                         navController.navigate("user_profile/$clickedUserId")
                     }
                 }
@@ -186,7 +181,7 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
 
         composable<Destination.Notification> {
             NotificationScreen(
-                navController = navController, // TRUYỀN navCOntroller VÀO ĐÂY
+                navController = navController,
                 onBackClick = { navController.navigateUp() }
             )
         }

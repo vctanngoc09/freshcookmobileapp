@@ -5,12 +5,11 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     id("com.google.gms.google-services")
     alias(libs.plugins.ksp)
-
 }
 
 android {
     namespace = "com.example.freshcookapp"
-    compileSdk = 36
+    compileSdk = 36 // Lưu ý: SDK 36 khá mới, đảm bảo Android Studio của bạn đã update
 
     defaultConfig {
         applicationId = "com.example.freshcookapp"
@@ -42,20 +41,31 @@ android {
         compose = true
     }
 }
-dependencies {
 
+dependencies {
+    // Android Core & Lifecycle
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
+
+    // Compose
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation("androidx.compose.material:material-icons-extended") // Icon mở rộng
+
+    // Navigation (Chỉ giữ 1 dòng này)
+    implementation(libs.androidx.navigation.compose)
+
+    // Auth & Credentials
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)
     implementation(libs.play.services.appsearch)
+
+    // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -63,36 +73,30 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    // Serialization (JSON)
     implementation(libs.kotlinx.serialization.json)
-    implementation(libs.androidx.navigation.compose)
-    implementation("androidx.compose.material:material-icons-extended")
+
+    // Coil (Load ảnh)
     implementation(platform("io.coil-kt:coil-bom:2.7.0"))
     implementation("io.coil-kt:coil-compose")
-    // Firebase Bill of Materials (BoM) - quản lý phiên bản
-    implementation(platform("com.google.firebase:firebase-bom:33.1.1"))
-    // Firebase Analytics (để xem người dùng)
-    implementation("com.google.firebase:firebase-analytics")
-    // Firebase Authentication (để đăng nhập)
-    implementation("com.google.firebase:firebase-auth")
-    // Firebase Firestore (để lưu dữ liệu)
-    implementation("com.google.firebase:firebase-firestore-ktx")
-    // Google Sign-In (hỗ trợ đăng nhập)
-    implementation("com.google.android.gms:play-services-auth:21.2.0")
-    implementation("androidx.navigation:navigation-compose:2.7.7")
 
-    // Room
+    // Firebase (Dùng BOM để quản lý phiên bản chung)
+    implementation(platform("com.google.firebase:firebase-bom:33.1.1"))
+    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-firestore-ktx")
+    implementation("com.google.firebase:firebase-storage-ktx")
+    implementation("com.google.firebase:firebase-messaging") // Đã xóa version cứng, để BOM tự quản lý
+
+    // Google Sign-In cũ (Nếu bạn vẫn dùng song song với Credential Manager)
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+
+    // Room Database
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
-
-    // Annotation processor (KSP)
     ksp("androidx.room:room-compiler:2.6.1")
 
+    // Gson
     implementation("com.google.code.gson:gson:2.10.1")
-    implementation("com.google.firebase:firebase-storage-ktx")
-
-    implementation("com.google.firebase:firebase-messaging:23.4.0")
-    // 🔥 THÊM THƯ VIỆN DYNAMIC LINKS 🔥
-    implementation("com.google.firebase:firebase-dynamic-links-ktx")
-
-
 }

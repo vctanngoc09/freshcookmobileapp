@@ -7,7 +7,6 @@ import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
-import com.google.firebase.firestore.ktx.toObject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -15,6 +14,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+// Model giữ nguyên
 data class NotificationModel(
     val id: String = "",
     val userId: String = "",
@@ -52,6 +52,26 @@ class NotificationViewModel : ViewModel() {
 
                 if (snapshot != null) {
                     val list = snapshot.documents.mapNotNull { doc ->
+                        // 1. Lấy dữ liệu thô từ Firebase
+                        val type = doc.getString("type") ?: "unknown"
+                        val senderId = doc.getString("senderId")
+                        val recipeId = doc.getString("recipeId")
+                        val rawTargetId = doc.getString("targetId") // Có thể null như trong ảnh
+
+                        // 2. LOGIC TỰ ĐỘNG XÁC ĐỊNH ID ĐÍCH (SỬA Ở ĐÂY)
+                        // Nếu 'targetId' có sẵn thì dùng, nếu không thì tự suy luận:
+                        // - Nếu là 'follow' -> Đích đến là trang cá nhân của người gửi (senderId)
+                        // - Nếu là 'like/comment' -> Đích đến là bài viết (recipeId)
+                        val finalTargetId = if (!rawTargetId.isNullOrEmpty()) {
+                            rawTargetId
+                        } else {
+                            when (type) {
+                                "follow" -> senderId
+                                "like", "comment" -> recipeId
+                                else -> null
+                            }
+                        }
+
                         val timestampValue = doc.get("timestamp")
                         val timestampMillis = when (timestampValue) {
                             is Timestamp -> timestampValue.toDate().time
@@ -61,13 +81,13 @@ class NotificationViewModel : ViewModel() {
 
                         val model = NotificationModel(
                             id = doc.id,
-                            userId = doc.getString("senderId") ?: "",
+                            userId = senderId ?: "",
                             userName = doc.getString("senderName") ?: "Ai đó",
                             userAvatar = doc.getString("senderAvatar"),
                             message = doc.getString("message") ?: "",
                             isRead = doc.getBoolean("isRead") ?: false,
-                            type = doc.getString("type") ?: "unknown",
-                            targetId = doc.getString("targetId")
+                            type = type,
+                            targetId = finalTargetId // Gán ID đã xử lý vào đây
                         )
 
                         model.copy(

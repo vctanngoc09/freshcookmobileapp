@@ -1,6 +1,5 @@
 package com.example.freshcookapp.ui.screen.account
 
-// Import hàm shimmerEffect từ file Home hoặc component chung
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -57,6 +56,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest // <--- QUAN TRỌNG: Import cái này
 import com.example.freshcookapp.FreshCookAppRoom
 import com.example.freshcookapp.R
 import com.example.freshcookapp.data.local.AppDatabase
@@ -143,7 +143,7 @@ fun ProfileScreen(
     ) {
         ScreenContainer {
             Column(modifier = modifier.fillMaxSize().background(Color.White)) {
-                // HEADER (Giữ nguyên vị trí, không bị kéo theo refresh)
+                // HEADER
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -179,9 +179,8 @@ fun ProfileScreen(
                     onRefresh = {
                         isRefreshing = true
                         scope.launch {
-                            // Gọi hàm load lại dữ liệu
                             viewModel.loadProfile(userId)
-                            delay(1000) // Delay giả lập để thấy hiệu ứng xoay
+                            delay(1000)
                             isRefreshing = false
                         }
                     },
@@ -191,7 +190,6 @@ fun ProfileScreen(
                         contentPadding = PaddingValues(bottom = 16.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        // LOGIC HIỂN THỊ SKELETON KHI TÊN CHƯA LOAD XONG
                         if (uiState.fullName == "Đang tải...") {
                             item {
                                 ProfileSkeleton()
@@ -203,12 +201,25 @@ fun ProfileScreen(
                                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 24.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
+                                    // --- SỬA Ở ĐÂY: Dùng ImageRequest để mượt mà hơn ---
                                     Image(
-                                        painter = rememberAsyncImagePainter(model = uiState.photoUrl ?: R.drawable.avatar1),
+                                        painter = rememberAsyncImagePainter(
+                                            model = ImageRequest.Builder(LocalContext.current)
+                                                .data(uiState.photoUrl)
+                                                .placeholder(R.drawable.avatar1) // Hiện ngay lập tức
+                                                .error(R.drawable.avatar1)       // Nếu lỗi thì hiện cái này
+                                                .crossfade(true)                 // Hiệu ứng hiện dần
+                                                .build()
+                                        ),
                                         contentDescription = "Profile",
-                                        modifier = Modifier.size(140.dp).clip(CircleShape).clickable { onEditProfileClick() },
+                                        modifier = Modifier
+                                            .size(140.dp)
+                                            .clip(CircleShape)
+                                            .clickable { onEditProfileClick() },
                                         contentScale = ContentScale.Crop
                                     )
+                                    // ----------------------------------------------------
+
                                     Spacer(modifier = Modifier.height(16.dp))
                                     Text(uiState.fullName, fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = WorkSans, color = Color.Black)
                                     Spacer(modifier = Modifier.height(4.dp))

@@ -27,11 +27,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.PlatformTextStyle
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
+import coil.compose.AsyncImage // <-- QUAN TRỌNG: Dùng cái này
+import coil.request.ImageRequest
 import com.example.freshcookapp.FreshCookAppRoom
 import com.example.freshcookapp.R
 import com.example.freshcookapp.data.local.AppDatabase
@@ -113,6 +114,7 @@ fun Home(
         LaunchedEffect(lifecycleOwner) {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 viewModel.refreshUserData()
+                viewModel.startNotificationListener()
             }
         }
 
@@ -138,7 +140,7 @@ fun Home(
                 contentPadding = PaddingValues(bottom = 60.dp)
             ) {
                 item {
-                     Row(
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 8.dp),
@@ -149,22 +151,24 @@ fun Home(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.clickable { onEditProfileClick() }
                         ) {
-                            Image(
-                                painter = rememberAsyncImagePainter(
-                                    model = userPhotoUrl,
-                                    fallback = painterResource(id = R.drawable.avatar1),
-                                    error = painterResource(id = R.drawable.avatar1),
-                                    placeholder = painterResource(id = R.drawable.avatar1)
-                                ),
+                            // --- ĐÃ SỬA: DÙNG ASYNC IMAGE VỚI CONTENT SCALE CROP ---
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(userPhotoUrl)
+                                    .crossfade(true)
+                                    .placeholder(R.drawable.avatar1)
+                                    .error(R.drawable.avatar1)
+                                    .build(),
                                 contentDescription = "User Avatar",
+                                contentScale = ContentScale.Crop, // 🔥 QUAN TRỌNG: Cắt ảnh cho vừa khung tròn
                                 modifier = Modifier
                                     .size(40.dp)
                                     .clip(CircleShape)
-                                    .border(1.5.dp, Cinnabar500, CircleShape),
-                                contentScale = ContentScale.Crop
+                                    .border(1.5.dp, Cinnabar500, CircleShape)
                             )
+                            // -------------------------------------------------------
+
                             Spacer(Modifier.width(8.dp))
-                            // --- SỬA LỖI CĂN CHỈNH BẰNG CÁCH TẮT FONT PADDING ---
                             Text(
                                 text = "Hi, ${userName ?: "User"}",
                                 style = MaterialTheme.typography.bodyLarge.copy(
@@ -219,8 +223,7 @@ fun Home(
                     )
                 }
 
-                // ... (Các phần còn lại của LazyColumn không thay đổi)
-                // -------- CATEGORY GRID --------
+                // ... (Phần Category, Trending giữ nguyên)
                 item {
                     Spacer(Modifier.height(16.dp))
                     Row(

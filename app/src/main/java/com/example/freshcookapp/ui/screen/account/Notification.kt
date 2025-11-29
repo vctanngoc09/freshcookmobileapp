@@ -3,6 +3,7 @@ package com.example.freshcookapp.ui.screen.account
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log // <-- Đã thêm Import Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -29,7 +30,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.NotificationsOff
-import androidx.compose.material3.Badge
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -66,6 +66,9 @@ import com.example.freshcookapp.ui.nav.Destination
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.example.freshcookapp.ui.theme.WorkSans
 
+// Giả định bạn có model này (đảm bảo import đúng gói chứa model này)
+// import com.example.freshcookapp.model.NotificationModel
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationScreen(
@@ -79,7 +82,9 @@ fun NotificationScreen(
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
-        onResult = { isGranted -> }
+        onResult = { isGranted ->
+            Log.d("NotificationScreen", "Permission granted: $isGranted")
+        }
     )
 
     LaunchedEffect(Unit) {
@@ -185,10 +190,34 @@ fun NotificationItem(
             .fillMaxWidth()
             .background(if (notification.isRead) Color.White else Color(0xFFFFF9F9))
             .clickable {
-                when (notification.type) {
-                    "comment", "like" -> notification.targetId?.let { navController.navigate(Destination.RecipeDetail(it)) }
-                    "follow" -> notification.targetId?.let { navController.navigate("user_profile/${it}") }
+                // --- BẮT ĐẦU LOGIC ĐIỀU HƯỚNG AN TOÀN ---
+
+                // 1. Log dữ liệu gốc để debug
+                Log.d("NotificationClick", "RAW DATA -> Type: '${notification.type}', TargetId: '${notification.targetId}'")
+
+                // 2. Chuẩn hóa dữ liệu (chuyển thường, bỏ khoảng trắng)
+                val type = notification.type.lowercase().trim()
+                val targetId = notification.targetId
+
+                // 3. Kiểm tra điều kiện và điều hướng
+                if (!targetId.isNullOrEmpty()) {
+                    when (type) {
+                        "comment", "like" -> {
+                            Log.d("NotificationClick", "Action: Navigating to RecipeDetail with ID: $targetId")
+                            navController.navigate(Destination.RecipeDetail(targetId))
+                        }
+                        "follow" -> {
+                            Log.d("NotificationClick", "Action: Navigating to UserProfile with ID: $targetId")
+                            navController.navigate("user_profile/$targetId")
+                        }
+                        else -> {
+                            Log.e("NotificationClick", "ERROR: Unknown type '$type'. Check your Firebase/Database data.")
+                        }
+                    }
+                } else {
+                    Log.e("NotificationClick", "ERROR: TargetId is NULL or Empty. Cannot navigate.")
                 }
+                // --- KẾT THÚC LOGIC ĐIỀU HƯỚNG ---
             }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.Center
