@@ -46,7 +46,6 @@ class RecipeDetailViewModel(
     private val _hasUnreadNotifications = MutableStateFlow(false)
     val hasUnreadNotifications: StateFlow<Boolean> = _hasUnreadNotifications
 
-    // 🔥 BIẾN MỚI: Lưu tên người đang được trả lời (Smart Reply)
     private val _replyingToUser = MutableStateFlow<String?>(null)
     val replyingToUser: StateFlow<String?> = _replyingToUser
 
@@ -85,39 +84,48 @@ class RecipeDetailViewModel(
                         )
                     }
 
-                    var currentRecipe = localEntity.toUiModel(
+                    _recipe.value = localEntity.toUiModel(
                         Author(localEntity.userId, "Đang tải...", null),
                         relatedList,
                         localEntity.likeCount
                     )
-                    _recipe.value = currentRecipe
 
                     viewModelScope.launch {
                         repository.getRecipeFlow(recipeId).collect { updatedEntity ->
                             if (updatedEntity != null) {
-                                _recipe.value = _recipe.value?.copy(
-                                    isFavorite = updatedEntity.isFavorite,
-                                    likeCount = updatedEntity.likeCount
-                                ) ?: updatedEntity.toUiModel(
-                                    Author(updatedEntity.userId, "Đang tải...", null),
+                                val currentAuthor = _recipe.value?.author ?: Author(updatedEntity.userId, "Đang tải...", null)
+                                _recipe.value = updatedEntity.toUiModel(
+                                    currentAuthor,
                                     relatedList,
                                     updatedEntity.likeCount
                                 )
                             }
                         }
                     }
-
-                    fetchAuthorInfo(localEntity.userId) { author ->
-                        currentRecipe = currentRecipe.copy(author = author)
-                        _recipe.value = currentRecipe
-                        checkFollowStatus(localEntity.userId)
+                    
+                    if (localEntity.userId.isNotBlank()) {
+                        fetchAuthorInfo(localEntity.userId) { author ->
+                            _recipe.value = _recipe.value?.copy(author = author)
+                            checkFollowStatus(localEntity.userId) 
+                        }
+                    } else {
+                        Log.e("RecipeDetailVM", "Author ID from Room is blank for recipe ID: $recipeId. Waiting for Firestore sync.")
                     }
 
                     firestore.collection("recipes").document(recipeId)
                         .addSnapshotListener { snapshot, _ ->
                             if (snapshot != null && snapshot.exists()) {
                                 val liveLikeCount = snapshot.getLong("likeCount")?.toInt() ?: 0
+                                val firestoreUserId = snapshot.getString("userId")
+                                
                                 _recipe.value = _recipe.value?.copy(likeCount = liveLikeCount)
+
+                                if (!firestoreUserId.isNullOrBlank() && (_recipe.value?.author?.id.isNullOrBlank() || _recipe.value?.author?.id != firestoreUserId)) {
+                                    fetchAuthorInfo(firestoreUserId) { author ->
+                                        _recipe.value = _recipe.value?.copy(author = author)
+                                        checkFollowStatus(firestoreUserId)
+                                    }
+                                }
                             }
                         }
 
@@ -135,6 +143,18 @@ class RecipeDetailViewModel(
                                     )
                                 }
                                 _recipe.value = _recipe.value?.copy(instructions = fullSteps)
+                            }
+                        }
+                    
+                    firestore.collection("recipes").document(recipeId)
+                        .collection("recipeIngredients")
+                        .get()
+                        .addOnSuccessListener { snapshot ->
+                            if (!snapshot.isEmpty) {
+                                val ingredientsList = snapshot.documents.mapNotNull { doc ->
+                                    doc.getString("name")
+                                }
+                                _recipe.value = _recipe.value?.copy(ingredients = ingredientsList)
                             }
                         }
 
@@ -157,12 +177,17 @@ class RecipeDetailViewModel(
     private fun fetchAuthorInfo(authorId: String, onResult: (Author) -> Unit) {
         firestore.collection("users").document(authorId).get()
             .addOnSuccessListener { doc ->
-                val name = doc.getString("fullName") ?: "Đầu bếp"
-                val avatar = doc.getString("photoUrl")
-                onResult(Author(authorId, name, avatar))
+                if (doc != null && doc.exists()) {
+                    val name = doc.getString("fullName") ?: "Đầu bếp"
+                    val avatar = doc.getString("photoUrl")
+                    onResult(Author(authorId, name, avatar))
+                } else {
+                    Log.e("RecipeDetailVM", "Author document does not exist for ID: $authorId")
+                    onResult(Author(authorId, "Người dùng không tồn tại", null))
+                }
             }
-            .addOnFailureListener {
-                onResult(Author(authorId, "Người dùng", null))
+            .addOnFailureListener { exception ->
+                Log.e("RecipeDetailVM", "Failed to fetch author info for ID: $authorId", exception)
             }
     }
 
@@ -177,23 +202,26 @@ class RecipeDetailViewModel(
     fun toggleFavorite() {
         val currentRecipe = _recipe.value ?: return
         val currentUser = auth.currentUser ?: return
-
+        val authorId = currentRecipe.userId ?: currentRecipe.author.id
+        if (authorId.isBlank()) return
+        
         val desiredState = !currentRecipe.isFavorite
 
-        // Delegate atomic optimistic toggle to repository which handles local optimistic update and remote transaction.
         viewModelScope.launch {
             repository.toggleFavoriteWithRemote(currentUser.uid, currentRecipe.id, desiredState)
 
-            // After repository completes (it already updated Room optimistically), send notification if liked
-            if (desiredState && currentRecipe.author.id != currentUser.uid) {
-                sendNotification(currentRecipe.author.id, "đã yêu thích món ăn: ${currentRecipe.name}", currentRecipe.id)
+            if (desiredState) {
+                sendNotification(authorId, "đã yêu thích món ăn: ${currentRecipe.name}", currentRecipe.id)
             }
         }
     }
 
     private fun checkFollowStatus(authorId: String) {
         val currentUserId = auth.currentUser?.uid ?: return
-        if (currentUserId == authorId) return
+        if (currentUserId == authorId || authorId.isBlank()) {
+            _isFollowingAuthor.value = false
+            return
+        }
         firestore.collection("users").document(currentUserId).collection("following").document(authorId)
             .addSnapshotListener { s, _ -> _isFollowingAuthor.value = s != null && s.exists() }
     }
@@ -201,8 +229,12 @@ class RecipeDetailViewModel(
     fun toggleFollowAuthor() {
         val currentUserId = auth.currentUser?.uid ?: return
         val currentRecipe = _recipe.value ?: return
-        val authorId = currentRecipe.author.id
-        if (currentUserId == authorId) return
+        val authorId = currentRecipe.userId ?: currentRecipe.author.id
+
+        if (currentUserId == authorId || authorId.isBlank()) {
+            Log.e("RecipeDetailVM", "Invalid authorId or user is trying to follow themselves. Aborting.")
+            return
+        }
 
         val currentUserRef = firestore.collection("users").document(currentUserId)
         val authorRef = firestore.collection("users").document(authorId)
@@ -210,28 +242,31 @@ class RecipeDetailViewModel(
         val followerRef = authorRef.collection("followers").document(currentUserId)
 
         firestore.runTransaction { transaction ->
-            if (transaction.get(followingRef).exists()) {
-                transaction.delete(followingRef); transaction.delete(followerRef)
-                transaction.update(currentUserRef, "followingCount", FieldValue.increment(-1))
-                transaction.update(authorRef, "followerCount", FieldValue.increment(-1))
-                false
+            val followingDoc = transaction.get(followingRef)
+            if (followingDoc.exists()) {
+                transaction.delete(followingRef)
+                transaction.delete(followerRef)
+                // 🔥 ĐÃ XÓA CẬP NHẬT COUNT
             } else {
                 transaction.set(followingRef, mapOf("timestamp" to FieldValue.serverTimestamp()))
                 transaction.set(followerRef, mapOf("timestamp" to FieldValue.serverTimestamp()))
-                transaction.set(currentUserRef, mapOf("followingCount" to FieldValue.increment(1)), SetOptions.merge())
-                transaction.set(authorRef, mapOf("followerCount" to FieldValue.increment(1)), SetOptions.merge())
-                true
+                 // 🔥 ĐÃ XÓA CẬP NHẬT COUNT
             }
-        }.addOnSuccessListener { isFollowed ->
-            if (isFollowed && currentUserId != authorId) {
+        }.addOnSuccessListener {
+            Log.d("RecipeDetailVM", "Follow/unfollow transaction successful.")
+            // Gửi thông báo chỉ khi isFollowed là true (tức là sau khi follow thành công)
+            if (!(_isFollowingAuthor.value)) { // Logic ngược vì state chưa cập nhật
                 sendNotification(authorId, "đã bắt đầu theo dõi bạn", null)
             }
+        }.addOnFailureListener { e ->
+            Log.e("RecipeDetailVM", "Follow/unfollow transaction FAILED", e)
         }
     }
 
+
     private fun sendNotification(receiverId: String, message: String, recipeId: String?) {
         val currentUserId = auth.currentUser?.uid ?: return
-        if (currentUserId == receiverId) return
+        if (currentUserId == receiverId || receiverId.isBlank()) return
 
         firestore.collection("users").document(currentUserId).get().addOnSuccessListener { doc ->
             val noti = hashMapOf(
@@ -248,16 +283,12 @@ class RecipeDetailViewModel(
         }
     }
 
-    // --- CÁC HÀM XỬ LÝ BÌNH LUẬN NÂNG CAO ---
-
     fun updateCommentText(text: String) { _commentText.value = text }
 
-    // 1. Đặt trạng thái đang reply
     fun onReplyToComment(username: String) {
         _replyingToUser.value = username
     }
 
-    // 2. Hủy reply
     fun onCancelReply() {
         _replyingToUser.value = null
     }
@@ -268,8 +299,9 @@ class RecipeDetailViewModel(
 
         val user = auth.currentUser ?: return
         val recipe = _recipe.value ?: return
+        val authorId = recipe.userId ?: recipe.author.id
+        if (authorId.isBlank()) return
 
-        // Logic thông minh: Tự động chèn tag vào đầu nội dung nếu đang reply
         val replyPrefix = _replyingToUser.value?.let { "@$it " } ?: ""
         val finalContent = replyPrefix + rawText
 
@@ -281,18 +313,16 @@ class RecipeDetailViewModel(
                 recipeId = recipe.id,
                 userName = doc.getString("fullName") ?: "User",
                 userAvatar = avatarUrl,
-                text = finalContent, // Gửi nội dung đã có tag
+                text = finalContent,
                 timestamp = Date()
             )
 
             viewModelScope.launch {
                 if (commentRepository.addComment(comment)) {
                     _commentText.value = ""
-                    _replyingToUser.value = null // Reset trạng thái reply sau khi gửi
+                    _replyingToUser.value = null
 
-                    if (user.uid != recipe.author.id) {
-                        sendNotification(recipe.author.id, "đã bình luận: ${recipe.name}", recipe.id)
-                    }
+                    sendNotification(authorId, "đã bình luận: ${recipe.name}", recipe.id)
                 }
             }
         }
@@ -309,13 +339,11 @@ class RecipeDetailViewModel(
         } else {
             commentRef.update("likedBy", FieldValue.arrayUnion(currentUserId))
                 .addOnSuccessListener {
-                    if (comment.userId != currentUserId) {
-                        sendNotification(
-                            receiverId = comment.userId,
-                            message = "đã thích bình luận: \"${comment.text}\"",
-                            recipeId = comment.recipeId
-                        )
-                    }
+                    sendNotification(
+                        receiverId = comment.userId,
+                        message = "đã thích bình luận: \"${comment.text}\"",
+                        recipeId = comment.recipeId
+                    )
                 }
         }
     }
@@ -339,7 +367,8 @@ class RecipeDetailViewModel(
             createdAt = this.createdAt,
             ingredients = this.ingredients ?: emptyList(),
             instructions = this.steps?.mapIndexed { index, s -> InstructionStep(index + 1, s, null) } ?: emptyList(),
-            relatedRecipes = related
+            relatedRecipes = related,
+            userId = this.userId
         )
     }
 }

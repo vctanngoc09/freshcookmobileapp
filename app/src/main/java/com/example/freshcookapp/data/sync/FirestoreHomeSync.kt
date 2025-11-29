@@ -9,6 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import com.google.firebase.firestore.QuerySnapshot
 
 class FirestoreHomeSync(
     private val recipeDao: RecipeDao
@@ -18,10 +19,29 @@ class FirestoreHomeSync(
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     /**
-     *  Sync dành riêng cho HOME
-     *  Không lấy ingredients / steps / user info → load cực nhanh
+     *  Hàm mới: Lấy dữ liệu một lần, dành cho Pull-to-refresh.
+     *  Sử dụng .get() thay vì .addSnapshotListener()
      */
-    fun start() {
+    suspend fun forceRefresh() {
+        try {
+            val snapshot = firestore.collection("recipes")
+                .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                .get()
+                .await() // Sử dụng .get().await() để lấy dữ liệu một lần
+
+            processSnapshot(snapshot) // Tách logic xử lý ra hàm riêng
+        } catch (e: Exception) {
+            Log.e("HomeSync", "Lỗi khi forceRefresh", e)
+            // Ném lại lỗi để coroutine ở Home.kt có thể bắt được
+            throw e
+        }
+    }
+
+    /**
+     *  Hàm cũ: Thiết lập listener thời gian thực.
+     *  Vẫn hữu ích khi ứng dụng khởi động lần đầu.
+     */
+    fun startListener() {
         firestore.collection("recipes")
             .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, e ->
@@ -34,78 +54,84 @@ class FirestoreHomeSync(
                 if (snapshot == null || snapshot.isEmpty) return@addSnapshotListener
 
                 scope.launch {
-
-                    val list = mutableListOf<RecipeEntity>()
-
-                    for (doc in snapshot.documents) {
-                        try {
-
-                            // ----------- LẤY FIELD NHẸ CHO HOME -------------
-                            val id = doc.id
-                            val name = doc.getString("name") ?: ""
-                            val imageUrl = doc.getString("imageUrl") ?: ""
-                            val timeCook = doc.getLong("timeCook")?.toInt() ?: 0
-                            val difficultyRaw = doc.getString("difficulty") ?: "medium"
-                            val categoryId = doc.getString("categoryId") ?: "other"
-                            val createdAtString = doc.getString("createdAt") ?: ""
-                            val like = doc.getLong("likeCount")?.toInt() ?: 0
-                            val people = doc.getLong("people")?.toInt() ?: 1
-
-                            // Mapping difficulty
-                            val difficulty = when (difficultyRaw.lowercase()) {
-                                "easy" -> "Dễ"
-                                "medium" -> "Trung bình"
-                                "hard" -> "Khó"
-                                else -> "Trung bình"
-                            }
-
-                            // Parse createdAt string → long
-                            val createdAt = try {
-                                utilsParseDate(createdAtString)
-                            } catch (_: Exception) {
-                                System.currentTimeMillis()
-                            }
-
-                            // ----------- GIỮ LẠI LIKE + FAVORITE LOCAL -------------
-                            val local = recipeDao.getRecipeById(id)
-
-                            val finalIsFavorite = local?.isFavorite ?: false
-                            val finalLikeCount = local?.likeCount ?: like
-
-                            // ---------- ENTITY NHẸ DÀNH RIÊNG CHO HOME -----------
-                            val entity = RecipeEntity(
-                                id = id,
-                                name = name,
-                                description = local?.description ?: "",
-                                timeCook = timeCook,
-                                imageUrl = imageUrl,
-                                difficulty = difficulty,
-                                ingredients = local?.ingredients ?: emptyList(),
-                                steps = local?.steps ?: emptyList(),
-                                people = people,
-                                userId = local?.userId ?: "",
-                                categoryId = categoryId,
-                                createdAt = createdAt,
-                                authorName = local?.authorName ?: "",
-                                authorAvatar = local?.authorAvatar ?: "",
-                                isFavorite = finalIsFavorite,
-                                likeCount = finalLikeCount
-                            )
-
-                            list.add(entity)
-
-                        } catch (err: Exception) {
-                            Log.e("HomeSync", "Lỗi parse document HomeSync", err)
-                        }
-                    }
-
-                    // ------------ LƯU NHẸ VÀO ROOM ------------------
-                    if (list.isNotEmpty()) {
-                        recipeDao.insertAll(list)
-                        Log.d("HomeSync", "Đã đồng bộ ${list.size} món (FAST HOME MODE).")
-                    }
+                    processSnapshot(snapshot)
                 }
             }
+    }
+
+    /**
+     *  Hàm chung để xử lý dữ liệu từ Firestore và cập nhật vào Room.
+     */
+    private suspend fun processSnapshot(snapshot: QuerySnapshot) {
+        val list = mutableListOf<RecipeEntity>()
+
+        for (doc in snapshot.documents) {
+            try {
+                // ----------- LẤY FIELD NHẸ CHO HOME -------------
+                val id = doc.id
+                val name = doc.getString("name") ?: ""
+                val imageUrl = doc.getString("imageUrl") ?: ""
+                val timeCook = doc.getLong("timeCook")?.toInt() ?: 0
+                val difficultyRaw = doc.getString("difficulty") ?: "medium"
+                val categoryId = doc.getString("categoryId") ?: "other"
+                val createdAtString = doc.getString("createdAt") ?: ""
+                val like = doc.getLong("likeCount")?.toInt() ?: 0
+                val people = doc.getLong("people")?.toInt() ?: 1
+
+                // Mapping difficulty
+                val difficulty = when (difficultyRaw.lowercase()) {
+                    "easy" -> "Dễ"
+                    "medium" -> "Trung bình"
+                    "hard" -> "Khó"
+                    else -> "Trung bình"
+                }
+
+                // Parse createdAt string → long
+                val createdAt = try {
+                    utilsParseDate(createdAtString)
+                } catch (_: Exception) {
+                    System.currentTimeMillis()
+                }
+
+                // ----------- GIỮ LẠI LIKE + FAVORITE LOCAL -------------
+                val local = recipeDao.getRecipeById(id)
+
+                val finalIsFavorite = local?.isFavorite ?: false
+                // Giữ lại số like local nếu nó lớn hơn, phòng trường hợp optimistic update chưa kịp đồng bộ
+                val finalLikeCount = maxOf(local?.likeCount ?: 0, like)
+
+                // ---------- ENTITY NHẸ DÀNH RIÊNG CHO HOME -----------
+                val entity = RecipeEntity(
+                    id = id,
+                    name = name,
+                    description = local?.description ?: "",
+                    timeCook = timeCook,
+                    imageUrl = imageUrl,
+                    difficulty = difficulty,
+                    ingredients = local?.ingredients ?: emptyList(),
+                    steps = local?.steps ?: emptyList(),
+                    people = people,
+                    userId = local?.userId ?: "",
+                    categoryId = categoryId,
+                    createdAt = createdAt,
+                    authorName = local?.authorName ?: "",
+                    authorAvatar = local?.authorAvatar ?: "",
+                    isFavorite = finalIsFavorite,
+                    likeCount = finalLikeCount
+                )
+
+                list.add(entity)
+
+            } catch (err: Exception) {
+                Log.e("HomeSync", "Lỗi parse document HomeSync", err)
+            }
+        }
+
+        // ------------ LƯU NHẸ VÀO ROOM ------------------
+        if (list.isNotEmpty()) {
+            recipeDao.insertAll(list)
+            Log.d("HomeSync", "Đã đồng bộ ${list.size} món (FAST HOME MODE).")
+        }
     }
 
     // Parse createdAt string to Long

@@ -8,15 +8,45 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.NotificationsOff
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Badge
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,14 +59,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 import coil.compose.rememberAsyncImagePainter
 import com.example.freshcookapp.R
+import com.example.freshcookapp.ui.nav.Destination
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.example.freshcookapp.ui.theme.WorkSans
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationScreen(
+    navController: NavHostController,
     onBackClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -44,34 +77,19 @@ fun NotificationScreen(
     val notifications by viewModel.notifications.collectAsState()
     val context = LocalContext.current
 
-    // --- PHẦN MỚI: XIN QUYỀN THÔNG BÁO (ANDROID 13+) ---
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
-        onResult = { isGranted ->
-            if (isGranted) {
-                // Người dùng đã đồng ý -> Có thể nhận thông báo đẩy
-            } else {
-                // Người dùng từ chối -> Chỉ xem được trong app
-            }
-        }
+        onResult = { isGranted -> }
     )
 
     LaunchedEffect(Unit) {
         viewModel.markAllAsRead()
-
-        // Kiểm tra và xin quyền nếu là Android 13 trở lên
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val hasPermission = ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-
-            if (!hasPermission) {
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
     }
-    // ----------------------------------------------------
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -107,13 +125,14 @@ fun NotificationScreen(
         } else {
             NotificationList(
                 notifications = notifications,
-                paddingValues = innerPadding
+                paddingValues = innerPadding,
+                viewModel = viewModel,
+                navController = navController
             )
         }
     }
 }
 
-// ... (Các Composable EmptyNotificationState, NotificationList, NotificationItem GIỮ NGUYÊN như cũ)
 @Composable
 fun EmptyNotificationState(modifier: Modifier = Modifier) {
     Column(
@@ -136,24 +155,41 @@ fun EmptyNotificationState(modifier: Modifier = Modifier) {
 @Composable
 fun NotificationList(
     notifications: List<NotificationModel>,
-    paddingValues: PaddingValues
+    paddingValues: PaddingValues,
+    viewModel: NotificationViewModel,
+    navController: NavHostController
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(paddingValues)
     ) {
         items(notifications) { notification ->
-            NotificationItem(notification = notification)
+            NotificationItem(
+                notification = notification,
+                viewModel = viewModel,
+                navController = navController
+            )
         }
     }
 }
 
 @Composable
-fun NotificationItem(notification: NotificationModel) {
+fun NotificationItem(
+    notification: NotificationModel,
+    viewModel: NotificationViewModel,
+    navController: NavHostController
+) {
+    var showMenu by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(if (notification.isRead) Color.White else Color(0xFFFFF9F9))
-            .clickable { /* Handle click */ }
+            .clickable {
+                when (notification.type) {
+                    "comment", "like" -> notification.targetId?.let { navController.navigate(Destination.RecipeDetail(it)) }
+                    "follow" -> notification.targetId?.let { navController.navigate("user_profile/${it}") }
+                }
+            }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.Center
     ) {
@@ -162,7 +198,7 @@ fun NotificationItem(notification: NotificationModel) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Image(
-                painter = rememberAsyncImagePainter(model = notification.userAvatar ?: R.drawable.ic_launcher_background), // Đã sửa icon mặc định cho đỡ lỗi
+                painter = rememberAsyncImagePainter(model = notification.userAvatar ?: R.drawable.ic_launcher_background),
                 contentDescription = null,
                 modifier = Modifier.size(48.dp).clip(CircleShape).background(Color.LightGray),
                 contentScale = ContentScale.Crop
@@ -171,30 +207,31 @@ fun NotificationItem(notification: NotificationModel) {
             Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = notification.userName,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = WorkSans,
-                    color = Color.Black
-                )
+                Text(text = notification.userName, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = WorkSans, color = Color.Black)
                 Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = notification.message,
-                    fontSize = 14.sp,
-                    fontFamily = WorkSans,
-                    color = Color.DarkGray,
-                    maxLines = 2
-                )
+                Text(text = notification.message, fontSize = 14.sp, fontFamily = WorkSans, color = Color.DarkGray, maxLines = 2)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = notification.time,
-                    fontSize = 11.sp,
-                    fontFamily = WorkSans,
-                    color = Color.Gray
-                )
+                Text(text = notification.time, fontSize = 11.sp, fontFamily = WorkSans, color = Color.Gray)
+            }
+
+            Box {
+                IconButton(onClick = { showMenu = true }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                }
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Xóa") },
+                        onClick = {
+                            viewModel.deleteNotification(notification.id)
+                            showMenu = false
+                        }
+                    )
+                }
             }
         }
-        HorizontalDivider(modifier = Modifier.padding(top = 12.dp), color = Color(0xFFEEEEEE), thickness = 1.dp) // Dùng HorizontalDivider cho bản M3 mới
+        HorizontalDivider(modifier = Modifier.padding(top = 12.dp), color = Color(0xFFEEEEEE), thickness = 1.dp)
     }
 }

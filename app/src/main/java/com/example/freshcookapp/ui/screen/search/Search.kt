@@ -7,8 +7,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.History // Icon đồng hồ cho lịch sử
-import androidx.compose.material.icons.filled.Search  // Icon kính lúp cho tìm kiếm
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -31,7 +33,6 @@ fun Search(
     keyword: String? = null,
     onBackClick: () -> Unit,
     onFilterClick: () -> Unit,
-    // Callback này sẽ trả về TÊN món ăn (String) khi bấm vào
     onSuggestionClick: (String) -> Unit
 ) {
     val context = LocalContext.current
@@ -43,7 +44,7 @@ fun Search(
     val searchText by viewModel.query.collectAsState()
     LaunchedEffect(keyword) {
         if (keyword != null) {
-            viewModel.onQueryChange(keyword)   // 🔥 set chữ từ Home
+            viewModel.onQueryChange(keyword)
         }
     }
     val suggestions by viewModel.suggestions.collectAsState()
@@ -85,24 +86,39 @@ fun Search(
                 .padding(padding)
                 .padding(top = 16.dp)
         ) {
-            // Hiển thị danh sách (Lịch sử hoặc Gợi ý tùy vào searchText)
+            if (searchText.isBlank() && suggestions.isNotEmpty()) {
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Lịch sử tìm kiếm",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        TextButton(onClick = { viewModel.clearAllHistory() }) {
+                            Text("Xóa tất cả", color = Cinnabar400)
+                        }
+                    }
+                }
+            }
+
             items(suggestions) { item ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
-                            // 1. Lưu từ khóa vào lịch sử
                             viewModel.saveSearchQuery(item)
-                            // 2. Chuyển sang trang kết quả
                             onSuggestionClick(item)
                         }
                         .background(White)
-                        .padding(horizontal = 16.dp, vertical = 12.dp), // Tăng padding dọc chút cho dễ bấm
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Logic đổi icon:
-                    // Nếu đang tìm kiếm (có chữ) -> Hiện kính lúp
-                    // Nếu chưa nhập gì (lịch sử) -> Hiện đồng hồ
                     val icon = if (searchText.isNotBlank()) Icons.Default.Search else Icons.Default.History
                     val iconColor = if (searchText.isNotBlank()) Cinnabar400 else Color.Gray
 
@@ -118,8 +134,20 @@ fun Search(
                     Text(
                         text = item,
                         fontSize = 16.sp,
-                        color = Black
+                        color = Black,
+                        modifier = Modifier.weight(1f)
                     )
+
+                    if (searchText.isBlank()) {
+                        IconButton(onClick = { viewModel.deleteSearchQuery(item) }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Delete",
+                                tint = Color.Gray,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
                 }
             }
         }

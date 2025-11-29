@@ -15,7 +15,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-// MODEL DỮ LIỆU CHÍNH
 data class NotificationModel(
     val id: String = "",
     val userId: String = "",
@@ -24,10 +23,11 @@ data class NotificationModel(
     val message: String = "",
     val time: String = "",
     val isRead: Boolean = false,
-    val recipeId: String? = null
+    val type: String = "unknown",
+    val targetId: String? = null
 )
 
-class NotificationViewModel() : ViewModel() {
+class NotificationViewModel : ViewModel() {
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
 
@@ -52,26 +52,25 @@ class NotificationViewModel() : ViewModel() {
 
                 if (snapshot != null) {
                     val list = snapshot.documents.mapNotNull { doc ->
-
-                        // Fix 1: Xử lý TIMESTAMP linh hoạt để tránh lỗi runtime (như đã bàn)
                         val timestampValue = doc.get("timestamp")
                         val timestampMillis = when (timestampValue) {
-                            is Timestamp -> timestampValue.toDate().time // Fix 2: Đã có Timestamp và toDate()
+                            is Timestamp -> timestampValue.toDate().time
                             is Long -> timestampValue
                             else -> System.currentTimeMillis()
                         }
 
                         val model = NotificationModel(
+                            id = doc.id,
                             userId = doc.getString("senderId") ?: "",
                             userName = doc.getString("senderName") ?: "Ai đó",
                             userAvatar = doc.getString("senderAvatar"),
                             message = doc.getString("message") ?: "",
                             isRead = doc.getBoolean("isRead") ?: false,
-                            recipeId = doc.getString("recipeId")
+                            type = doc.getString("type") ?: "unknown",
+                            targetId = doc.getString("targetId")
                         )
 
                         model.copy(
-                            id = doc.id,
                             time = convertTimestampToTime(timestampMillis)
                         )
                     }
@@ -104,5 +103,12 @@ class NotificationViewModel() : ViewModel() {
                     batch.commit()
                 }
         }
+    }
+
+    fun deleteNotification(notificationId: String) {
+        val currentUserId = auth.currentUser?.uid ?: return
+        firestore.collection("users").document(currentUserId)
+            .collection("notifications").document(notificationId)
+            .delete()
     }
 }

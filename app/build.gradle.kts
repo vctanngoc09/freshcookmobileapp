@@ -91,5 +91,8 @@ dependencies {
     implementation("com.google.firebase:firebase-storage-ktx")
 
     implementation("com.google.firebase:firebase-messaging:23.4.0")
+    // 🔥 THÊM THƯ VIỆN DYNAMIC LINKS 🔥
+    implementation("com.google.firebase:firebase-dynamic-links-ktx")
+
 
 }

@@ -77,7 +77,7 @@ class HomeViewModel(
                 val finalList = historyList.map { historyItem ->
 
                     // Lấy danh sách món ăn theo keyword
-                    val matchedRecipes = recipeRepo.searchByNameLocal(historyItem.query)
+                    val matchedRecipes = recipeRepo.searchRecipesByName(historyItem.query)
 
                     // Lấy ảnh ngẫu nhiên
                     val randomImage = matchedRecipes.randomOrNull()?.imageUrl
@@ -219,20 +219,29 @@ class HomeViewModel(
                     if (document != null && document.exists()) {
                         // Lấy fullName từ Firestore
                         _userName.value = document.getString("fullName") ?: "User"
-                        _userPhotoUrl.value = document.getString("photoUrl")
+                        val photoUrl = document.getString("photoUrl")
+                        // Thêm timestamp để phá cache
+                        _userPhotoUrl.value = if (photoUrl != null) "$photoUrl?t=${System.currentTimeMillis()}" else null
                     } else {
                         // Trường hợp có user auth nhưng không có document trong firestore
                         _userName.value = "User" 
+                        _userPhotoUrl.value = null
                     }
                 }
                 .addOnFailureListener {
                     // Xử lý lỗi nếu có
                     _userName.value = "User"
+                    _userPhotoUrl.value = null
                 }
         } else {
             // Không có người dùng nào đăng nhập
             _userName.value = "User"
+            _userPhotoUrl.value = null
         }
+    }
+
+    fun refreshUserData() {
+        loadCurrentUser()
     }
 
     // ======= FACTORY =======

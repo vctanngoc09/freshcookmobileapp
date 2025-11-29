@@ -24,11 +24,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.example.freshcookapp.FreshCookAppRoom
 import com.example.freshcookapp.R
 import com.example.freshcookapp.data.local.AppDatabase
-import com.example.freshcookapp.data.repository.RecipeRepository
 import com.example.freshcookapp.ui.component.SearchBar
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.example.freshcookapp.ui.theme.WorkSans
@@ -52,8 +52,11 @@ fun RecentlyViewedScreen(
     val context = LocalContext.current
     val app = context.applicationContext as FreshCookAppRoom
     val db = remember { AppDatabase.getDatabase(app) }
-    val repo = remember { RecipeRepository(db) }
-    val viewModel = remember { RecentlyViewedViewModel(repo) }
+
+    // --- SỬA CÁCH LẤY VIEWMODEL ---
+    val viewModel: RecentlyViewedViewModel = viewModel(
+        factory = RecentlyViewedViewModel.provideFactory(db)
+    )
 
     val viewedList by viewModel.recentlyViewedList.collectAsState()
 
@@ -97,7 +100,6 @@ fun RecentlyViewedScreen(
                     .padding(innerPadding)
                     .background(Color.White)
             ) {
-                // Search state for filtering history
                 var query by remember { mutableStateOf("") }
 
                 SearchBar(
@@ -107,7 +109,6 @@ fun RecentlyViewedScreen(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
 
-                // Compute filtered list based on query (case-insensitive)
                 val filteredList = remember(viewedList, query) {
                     if (query.isBlank()) viewedList
                     else viewedList.filter { item ->
@@ -116,8 +117,7 @@ fun RecentlyViewedScreen(
                     }
                 }
 
-                if (filteredList.isEmpty()) {
-                    // Show a small empty state when search returns no results
+                if (filteredList.isEmpty() && query.isNotBlank()) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
                             text = "Không tìm thấy kết quả",
@@ -131,7 +131,7 @@ fun RecentlyViewedScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(filteredList) { item ->
+                    items(filteredList, key = { it.id }) { item ->
                         RecentlyViewedItem(
                             item = item,
                             onRemoveClick = {

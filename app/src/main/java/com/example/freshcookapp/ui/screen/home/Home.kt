@@ -1,5 +1,6 @@
 package com.example.freshcookapp.ui.screen.home
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,6 +26,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -36,19 +39,34 @@ import com.example.freshcookapp.data.repository.RecipeRepository
 import com.example.freshcookapp.data.sync.FirestoreHomeSync
 import com.example.freshcookapp.ui.component.*
 import com.example.freshcookapp.ui.theme.Cinnabar500
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.navigation.NavHostController
 import com.example.freshcookapp.ui.nav.Destination
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 
-
-
-@Suppress("unused")
 @Composable
-fun Modifier.shimmerEffect(): Modifier {
-    // Logic shimmer thực tế cần animation, ở đây mình trả về Modifier gốc tạm thời
-    // Bạn hãy dùng code ShimmerEffect mình gửi ở tin nhắn trước để thay thế
-    return this
+fun CategoryItemSkeleton(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .aspectRatio(1.5f)
+            .shimmerEffect()
+            .clip(RoundedCornerShape(12.dp))
+    )
+}
+
+@Composable
+fun SuggestKeywordCardSkeleton(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(80.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .shimmerEffect(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {}
 }
 
 
@@ -76,11 +94,6 @@ fun Home(
             )
         )
 
-        LaunchedEffect(true) {
-            FirestoreHomeSync(db.recipeDao()).start()
-            viewModel.startNotificationListener()
-        }
-
         val categories by viewModel.categories.collectAsState()
         val userName by viewModel.userName.collectAsState()
         val userPhotoUrl by viewModel.userPhotoUrl.collectAsState()
@@ -92,23 +105,31 @@ fun Home(
         val inFlightIds by viewModel.inFlightIds.collectAsState()
 
         var searchText by remember { mutableStateOf("") }
-
-        // --- 2. TRẠNG THÁI REFRESH ---
         var isRefreshing by remember { mutableStateOf(false) }
-        val refreshState = rememberPullToRefreshState()
         val coroutineScope = rememberCoroutineScope()
+        val homeSync = remember { FirestoreHomeSync(db.recipeDao()) }
 
-        // Bọc nội dung trong PullToRefreshBox
+        val lifecycleOwner = LocalLifecycleOwner.current
+        LaunchedEffect(lifecycleOwner) {
+            lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                viewModel.refreshUserData()
+            }
+        }
+
         PullToRefreshBox(
             isRefreshing = isRefreshing,
-            state = refreshState,
+            state = rememberPullToRefreshState(),
             onRefresh = {
                 isRefreshing = true
                 coroutineScope.launch {
-                    // Giả lập reload dữ liệu (Gọi hàm sync thực tế ở đây)
-                    FirestoreHomeSync(db.recipeDao()).start()
-                    delay(1500) // Delay giả để hiện vòng xoay
-                    isRefreshing = false
+                    try {
+                        homeSync.forceRefresh()
+                        viewModel.refreshUserData()
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "Không thể làm mới: ${e.message}", Toast.LENGTH_SHORT).show()
+                    } finally {
+                        isRefreshing = false
+                    }
                 }
             }
         ) {
@@ -116,10 +137,8 @@ fun Home(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 60.dp)
             ) {
-
-                // -------- HEADER --------
                 item {
-                    Row(
+                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 8.dp),
@@ -131,71 +150,68 @@ fun Home(
                             modifier = Modifier.clickable { onEditProfileClick() }
                         ) {
                             Image(
-                                painter = rememberAsyncImagePainter(userPhotoUrl ?: R.drawable.avatar1),
-                                contentDescription = null,
+                                painter = rememberAsyncImagePainter(
+                                    model = userPhotoUrl,
+                                    fallback = painterResource(id = R.drawable.avatar1),
+                                    error = painterResource(id = R.drawable.avatar1),
+                                    placeholder = painterResource(id = R.drawable.avatar1)
+                                ),
+                                contentDescription = "User Avatar",
                                 modifier = Modifier
                                     .size(40.dp)
                                     .clip(CircleShape)
                                     .border(1.5.dp, Cinnabar500, CircleShape),
                                 contentScale = ContentScale.Crop
                             )
-
                             Spacer(Modifier.width(8.dp))
-
+                            // --- SỬA LỖI CĂN CHỈNH BẰNG CÁCH TẮT FONT PADDING ---
                             Text(
                                 text = "Hi, ${userName ?: "User"}",
-                                style = MaterialTheme.typography.bodyLarge,
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    platformStyle = PlatformTextStyle(
+                                        includeFontPadding = false
+                                    )
+                                ),
                                 color = Cinnabar500,
                                 fontWeight = FontWeight.Bold
                             )
                         }
-
                         Box(
                             modifier = Modifier
-                                .size(30.dp)
+                                .size(40.dp)
                                 .clip(CircleShape)
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
-                                    indication = ripple(bounded = true, radius = 16.dp),
+                                    indication = ripple(bounded = false),
                                     onClick = onNotificationClick
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
                             BadgedBox(
-                                badge = {
-                                    if (hasUnreadNotifications) {
-                                        Badge(containerColor = Color.Red, modifier = Modifier.size(8.dp))
-                                    }
-                                }
+                                badge = { if (hasUnreadNotifications) { Badge(containerColor = Color.Red) } }
                             ) {
                                 Icon(
                                     painter = painterResource(R.drawable.ic_notifications),
                                     contentDescription = "Notifications",
                                     tint = Cinnabar500,
-                                    modifier = Modifier.size(22.dp)
+                                    modifier = Modifier.size(24.dp)
                                 )
                             }
                         }
                     }
-
                     Spacer(Modifier.height(8.dp))
-
                     Text(
                         text = "Hôm nay bạn muốn\nnấu món gì?",
                         style = MaterialTheme.typography.titleMedium,
                         color = Cinnabar500,
                         fontWeight = FontWeight.SemiBold
                     )
-
                     Spacer(Modifier.height(12.dp))
-
                     SearchBar(
                         value = searchText,
                         onValueChange = { newValue ->
                             searchText = newValue
-                            if (newValue.isNotEmpty()) {
-                                onSearchDetail(newValue)
-                            }
+                            if (newValue.isNotEmpty()) { onSearchDetail(newValue) }
                         },
                         placeholder = "Tìm món ăn...",
                         onFilterClick = onFilterClick,
@@ -203,6 +219,7 @@ fun Home(
                     )
                 }
 
+                // ... (Các phần còn lại của LazyColumn không thay đổi)
                 // -------- CATEGORY GRID --------
                 item {
                     Spacer(Modifier.height(16.dp))
@@ -233,30 +250,30 @@ fun Home(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         userScrollEnabled = false
                     ) {
-                        items(categories, key = { it.id }) { category ->
-                            TrendingCategoryItem(
-                                category = category,
-                                onClick = { onCategoryRecipes(category.id, category.name) }
-                            )
+                        if (categories.isEmpty() || isRefreshing) {
+                            items(4) {
+                                CategoryItemSkeleton()
+                            }
+                        } else {
+                            items(categories, key = { it.id }) { category ->
+                                TrendingCategoryItem(
+                                    category = category,
+                                    onClick = { onCategoryRecipes(category.id, category.name) }
+                                )
+                            }
                         }
                     }
                     Spacer(Modifier.height(20.dp))
                 }
 
-                // ======== XU HƯỚNG (CÓ SKELETON) ========
+                // ======== XU HƯỚNG ========
                 item {
                     SectionHeader(title = "Xu hướng", onViewAll = { onCategoryRecipes("TRENDING", "Xu hướng") })
                     Spacer(modifier = Modifier.height(8.dp))
-
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        // --- LOGIC HIỂN THỊ SKELETON ---
-                        if (trending.isEmpty()) {
-                            // Nếu đang tải hoặc chưa có dữ liệu -> Hiện 3 khung xương
-                            items(3) {
-                                RecipeCardSkeleton()
-                            }
+                        if (trending.isEmpty() || isRefreshing) {
+                            items(3) { RecipeCardSkeleton() }
                         } else {
-                            // Có dữ liệu -> Hiện món thật
                             items(trending, key = { it.id }) { recipe ->
                                 RecipeCard(
                                     imageUrl = recipe.imageUrl,
@@ -274,8 +291,8 @@ fun Home(
                     Spacer(modifier = Modifier.height(20.dp))
                 }
 
-                // ====== GỢI Ý CHO BẠN ======
-                if (suggestions.isNotEmpty()) {
+                // ====== TÌM KIẾM GẦN ĐÂY ======
+                if (suggestions.isNotEmpty() || isRefreshing) {
                     item {
                         SectionHeader(title = "Tìm kiếm gần đây", onViewAll = {
                             navController.currentBackStackEntry?.savedStateHandle?.set("suggestions", suggestions)
@@ -283,29 +300,33 @@ fun Home(
                         })
                         Spacer(Modifier.height(8.dp))
                     }
-                    items(suggestions, key = { it.keyword + "_" + it.timestamp }) { item ->
-                        SuggestKeywordCard(
-                            keyword = item.keyword,
-                            time = item.timestamp,
-                            imageUrl = item.imageUrl,
-                            onClick = { onSearchDetail(item.keyword) }
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
+                    if (isRefreshing) {
+                        items(2) {
+                            SuggestKeywordCardSkeleton()
+                            Spacer(modifier = Modifier.height(10.dp))
+                        }
+                    } else {
+                        items(suggestions, key = { it.keyword + "_" + it.timestamp }) { item ->
+                            SuggestKeywordCard(
+                                keyword = item.keyword,
+                                time = item.timestamp,
+                                imageUrl = item.imageUrl,
+                                onClick = { onSearchDetail(item.keyword) }
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                        }
                     }
                     item { Spacer(Modifier.height(20.dp)) }
                 }
 
-                // ======== MỚI LÊN SÓNG GẦN ĐÂY (CÓ SKELETON) ========
+
+                // ======== MỚI LÊN SÓNG GẦN ĐÂY ========
                 item {
                     SectionHeader(title = "Món mới lên sóng gần đây", onViewAll = { onCategoryRecipes("NEW", "Món mới lên sóng gần đây") })
                     Spacer(modifier = Modifier.height(8.dp))
-
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        // --- LOGIC HIỂN THỊ SKELETON ---
-                        if (newDishes.isEmpty()) {
-                            items(3) {
-                                RecipeCardSkeleton()
-                            }
+                        if (newDishes.isEmpty() || isRefreshing) {
+                            items(3) { RecipeCardSkeleton() }
                         } else {
                             items(newDishes, key = { it.id }) { recipe ->
                                 RecipeCard(
@@ -325,21 +346,5 @@ fun Home(
                 }
             }
         }
-
-        // --- DEBUG OVERLAY (tắt trước khi release) ---
-        Box(modifier = Modifier
-            .fillMaxSize(), contentAlignment = Alignment.TopEnd) {
-            Column(modifier = Modifier
-                .padding(8.dp)
-                .background(Color.White.copy(alpha = 0.85f), shape = RoundedCornerShape(8.dp))
-                .padding(6.dp)) {
-                Text(text = "FavIds: ${favoriteIds.size}", style = MaterialTheme.typography.labelSmall)
-                Text(text = favoriteIds.joinToString(", ") { it.take(6) }, style = MaterialTheme.typography.bodySmall)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(text = "InFlight: ${inFlightIds.size}", style = MaterialTheme.typography.labelSmall)
-                Text(text = inFlightIds.joinToString(", ") { it.take(6) }, style = MaterialTheme.typography.bodySmall)
-            }
-        }
-
     }
 }

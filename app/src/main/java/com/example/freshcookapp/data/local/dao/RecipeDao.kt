@@ -44,6 +44,9 @@ interface RecipeDao {
     @Query("SELECT * FROM recipes WHERE id = :id")
     suspend fun getRecipeById(id: String): RecipeEntity?
 
+    @Query("SELECT * FROM recipes WHERE id IN (:ids)")
+    suspend fun getRecipesByIds(ids: List<String>): List<RecipeEntity>
+
     // Live flow for a single recipe so screens can observe updates from Room
     @Query("SELECT * FROM recipes WHERE id = :id")
     fun getRecipeByIdFlow(id: String): kotlinx.coroutines.flow.Flow<RecipeEntity?>

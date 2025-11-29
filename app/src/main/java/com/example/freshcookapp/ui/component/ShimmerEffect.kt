@@ -1,61 +1,62 @@
 package com.example.freshcookapp.ui.component
 
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
+import kotlin.math.max
 
-// 1. Modifier mở rộng để gắn hiệu ứng Shimmer vào bất kỳ Box nào
 fun Modifier.shimmerEffect(): Modifier = composed {
-    var size by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
-    val transition = rememberInfiniteTransition(label = "Shimmer")
-    val startOffsetX by transition.animateFloat(
-        initialValue = -2 * size.width.toFloat(),
-        targetValue = 2 * size.width.toFloat(),
+    val transition = rememberInfiniteTransition(label = "shimmer")
+    val alpha by transition.animateFloat(
+        initialValue = 0.2f,
+        targetValue = 0.9f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000)
+            animation = tween(durationMillis = 1000),
         ),
-        label = "ShimmerOffset"
+        label = "shimmer"
     )
-
     background(
         brush = Brush.linearGradient(
             colors = listOf(
-                Color(0xFFE0E0E0), // Màu xám nền
-                Color(0xFFF5F5F5), // Màu sáng lấp lánh
-                Color(0xFFE0E0E0), // Màu xám nền
-            ),
-            start = Offset(startOffsetX, 0f),
-            end = Offset(startOffsetX + size.width.toFloat(), size.height.toFloat())
+                Color.LightGray.copy(alpha = alpha),
+                Color.LightGray.copy(alpha = 0.4f),
+                Color.LightGray.copy(alpha = alpha),
+            )
         )
-    ).onGloballyPositioned {
-        size = it.size
-    }
+    )
 }
 
-// 2. Component Skeleton cơ bản (Hình chữ nhật bo góc)
 @Composable
-fun SkeletonBox(
-    modifier: Modifier = Modifier,
-    width: Dp = 100.dp,
-    height: Dp = 20.dp,
-    cornerRadius: Dp = 8.dp
-) {
-    Box(
-        modifier = modifier
-            .width(width)
-            .height(height)
-            .clip(RoundedCornerShape(cornerRadius))
-            .shimmerEffect()
-    )
+fun ShimmerRecipeList() {
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+    val cardWidth = 160.dp
+    val spacing = 16.dp
+    val itemsPerRow = max(2, (screenWidth / (cardWidth + spacing)).toInt())
+    
+    Column(modifier = Modifier.fillMaxSize()) {
+        repeat(3) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                repeat(itemsPerRow) {
+                    RecipeCardSkeleton()
+                }
+            }
+        }
+    }
 }

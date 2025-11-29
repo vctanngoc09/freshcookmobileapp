@@ -186,6 +186,7 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
 
         composable<Destination.Notification> {
             NotificationScreen(
+                navController = navController, // TRUYỀN navCOntroller VÀO ĐÂY
                 onBackClick = { navController.navigateUp() }
             )
         }

@@ -13,8 +13,6 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.outlined.RestaurantMenu
 import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox // 🔥 Import Refresh
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState // 🔥 Import Refresh
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,10 +37,7 @@ import com.example.freshcookapp.data.repository.RecipeRepository
 import com.example.freshcookapp.domain.model.Recipe
 import com.example.freshcookapp.ui.component.ScreenContainer
 import com.example.freshcookapp.ui.theme.Cinnabar500
-// 🔥 IMPORT SKELETON TỪ FILE BẠN ĐÃ TẠO (Sửa lại package nếu cần)
 import com.example.freshcookapp.ui.component.FavoriteItemSkeleton
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 @Composable
 fun getFavoriteViewModel(): FavoriteViewModel {
@@ -68,18 +63,7 @@ fun Favorite(
 ) {
     val viewModel = getFavoriteViewModel()
     val recipes by viewModel.favoriteRecipes.collectAsState()
-    var initialLoadComplete by remember { mutableStateOf(false) }
-
-    // --- CẤU HÌNH REFRESH ---
-    var isRefreshing by remember { mutableStateOf(false) }
-    val refreshState = rememberPullToRefreshState()
-    val scope = rememberCoroutineScope()
-
-    LaunchedEffect(recipes) {
-        if (recipes.isNotEmpty() || viewModel.favoriteRecipes.value.isEmpty()) {
-            initialLoadComplete = true
-        }
-    }
+    val isLoading by viewModel.isLoading.collectAsState()
 
     ScreenContainer {
         Column(
@@ -105,26 +89,14 @@ fun Favorite(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // 🔥 BỌC LIST TRONG PULL TO REFRESH BOX 🔥
-            PullToRefreshBox(
-                isRefreshing = isRefreshing,
-                state = refreshState,
-                onRefresh = {
-                    isRefreshing = true
-                    scope.launch {
-                        // Giả lập loading (vì Room tự động cập nhật nên không cần gọi hàm load)
-                        delay(1000)
-                        isRefreshing = false
-                    }
-                },
+            Box(
                 modifier = Modifier.fillMaxSize() // Chiếm hết không gian còn lại
             ) {
-                // LOGIC HIỂN THỊ NỘI DUNG
-                if (recipes.isEmpty() && !initialLoadComplete) {
-                    // Đang tải lần đầu -> Hiện Skeleton
+                if (isLoading) {
+                    // Đang tải -> Hiện Skeleton
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         items(3) {
-                            FavoriteItemSkeleton() // Gọi Skeleton từ file bạn tạo
+                            FavoriteItemSkeleton()
                         }
                     }
                 } else if (recipes.isEmpty()) {

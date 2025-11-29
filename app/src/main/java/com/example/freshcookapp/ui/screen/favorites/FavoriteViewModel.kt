@@ -11,6 +11,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -21,13 +22,17 @@ class FavoriteViewModel(private val repository: RecipeRepository) : ViewModel() 
     private val auth = FirebaseAuth.getInstance()
 
     private val _favoriteRecipes = MutableStateFlow<List<Recipe>>(emptyList())
-    val favoriteRecipes: StateFlow<List<Recipe>> = _favoriteRecipes
+    val favoriteRecipes: StateFlow<List<Recipe>> = _favoriteRecipes.asStateFlow()
+
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     init {
         loadFavorites()
     }
 
     private fun loadFavorites() {
+        _isLoading.value = true
         val userId = auth.currentUser?.uid
 
         if (userId != null) {
@@ -45,16 +50,17 @@ class FavoriteViewModel(private val repository: RecipeRepository) : ViewModel() 
                     // 2. ĐỒNG BỘ DỮ LIỆU
                     if (favoriteIds.isNotEmpty()) {
                         withContext(Dispatchers.IO) {
-                            favoriteIds.forEach { recipeId ->
-                                // Nếu đã có bản ghi trong Room thì chỉ cần đánh dấu is_favorite = true
-                                val local = repository.getRecipeById(recipeId)
-                                if (local != null) {
-                                    // Chỉ update flag (không thay đổi likeCount tại bước sync này)
-                                    repository.toggleFavorite(recipeId, true)
-                                } else {
-                                    // Nếu chưa có trong local -> tải chi tiết từ Firestore rồi lưu (đã set isFavorite = true khi lưu)
-                                    fetchAndSaveRecipeFromFirestore(recipeId)
-                                }
+                            val localRecipes = repository.getRecipesByIds(favoriteIds).associateBy { it.id }
+                            val recipesToFetch = favoriteIds.filter { it !in localRecipes }
+
+                            // Update local recipes
+                            localRecipes.values.forEach {
+                                repository.toggleFavorite(it.id, true)
+                            }
+
+                            // Fetch new recipes
+                            if (recipesToFetch.isNotEmpty()) {
+                                fetchAndSaveRecipesFromFirestore(recipesToFetch)
                             }
                         }
                     }
@@ -62,6 +68,7 @@ class FavoriteViewModel(private val repository: RecipeRepository) : ViewModel() 
                     // 3. Sau khi đồng bộ xong, lắng nghe dữ liệu từ Room để hiển thị
                     repository.getFavoriteRecipes().collect { localFavorites ->
                         _favoriteRecipes.value = localFavorites.map { it.toUiModel() }
+                        _isLoading.value = false
                     }
 
                 } catch (e: Exception) {
@@ -75,15 +82,11 @@ class FavoriteViewModel(private val repository: RecipeRepository) : ViewModel() 
         }
     }
 
-    // Hàm phụ: Tải chi tiết món ăn từ bộ sưu tập "recipes" trên Firestore
-    private suspend fun fetchAndSaveRecipeFromFirestore(recipeId: String) {
+    private suspend fun fetchAndSaveRecipesFromFirestore(recipeIds: List<String>) {
         try {
-            val document = firestore.collection("recipes").document(recipeId).get().await()
-
-            if (document.exists()) {
-                // Parse dữ liệu từ Firestore thành RecipeEntity
-                // Lưu ý: Tên trường (field) phải khớp với trên Firestore của bạn
-                val entity = RecipeEntity(
+            val documents = firestore.collection("recipes").whereIn("id", recipeIds).get().await()
+            val recipesToInsert = documents.map { document ->
+                RecipeEntity(
                     id = document.id,
                     name = document.getString("name") ?: "Món ăn chưa đặt tên",
                     description = document.getString("description"),
@@ -93,21 +96,14 @@ class FavoriteViewModel(private val repository: RecipeRepository) : ViewModel() 
                     userId = document.getString("userId") ?: "",
                     categoryId = document.getString("categoryId") ?: "",
                     createdAt = document.getLong("createdAt") ?: System.currentTimeMillis(),
-
-                    // Xử lý mảng (List)
                     ingredients = (document.get("ingredients") as? List<String>) ?: emptyList(),
                     steps = (document.get("steps") as? List<String>) ?: emptyList(),
-
-                    // Quan trọng: Đánh dấu là yêu thích luôn khi lưu vào
                     isFavorite = true
                 )
-
-                // Lưu vào Room
-                repository.insertRecipe(entity)
-                Log.d("FavoriteViewModel", "Đã tải và lưu món: ${entity.name}")
             }
+            repository.insertRecipes(recipesToInsert)
         } catch (e: Exception) {
-            Log.e("FavoriteViewModel", "Không thể tải món $recipeId: ${e.message}")
+            Log.e("FavoriteViewModel", "Không thể tải món: ${e.message}")
         }
     }
 
@@ -115,6 +111,7 @@ class FavoriteViewModel(private val repository: RecipeRepository) : ViewModel() 
         viewModelScope.launch {
             repository.getFavoriteRecipes().collect { entities ->
                 _favoriteRecipes.value = entities.map { it.toUiModel() }
+                _isLoading.value = false
             }
         }
     }

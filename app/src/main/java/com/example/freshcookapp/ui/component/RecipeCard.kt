@@ -145,7 +145,8 @@ fun RecipeCard(
                         Text(
                             text = "$timeCook phút",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray
+                            color = Color.Gray,
+                            maxLines = 1 // 🔥 SỬA LỖI: Thêm maxLines = 1
                         )
                     }
 

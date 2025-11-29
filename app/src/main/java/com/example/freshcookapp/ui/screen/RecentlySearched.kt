@@ -22,6 +22,7 @@ import com.example.freshcookapp.data.local.AppDatabase
 import com.example.freshcookapp.data.repository.RecipeRepository
 import com.example.freshcookapp.data.mapper.toRecipe
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,9 +49,13 @@ fun RecentlySearchedScreen(
         } else {
             // Query DB off main thread
             val entities = withContext(Dispatchers.IO) {
-                suggestions.flatMap { item -> repo.searchByNameLocal(item.keyword) }
+                suggestions.flatMap { item ->
+                    // 🔥 SỬA LỖI: Gọi đúng hàm searchRecipes và dùng .first() để lấy kết quả từ Flow
+                    repo.searchRecipes(item.keyword).first()
+                }
             }
-            val unique = entities.distinctBy { it.id }.map { it.toRecipe() }
+            // 🔥 SỬA LỖI: Thêm kiểu dữ liệu rõ ràng cho lambda
+            val unique = entities.distinctBy { recipeEntity -> recipeEntity.id }.map { recipeEntity -> recipeEntity.toRecipe() }
             recipes = unique
         }
     }
@@ -85,28 +90,40 @@ fun RecentlySearchedScreen(
         Spacer(Modifier.height(16.dp))
 
         // ===== EMPTY STATE =====
-        if (recipes.isEmpty()) {
-            Text(
+        if (recipes.isEmpty() && suggestions.isNotEmpty()) { // Thêm điều kiện để không hiển thị "Không có kết quả" khi đang tải
+             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else if (recipes.isEmpty() && suggestions.isEmpty()) {
+             Text(
+                text = "Không có lịch sử tìm kiếm",
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color.Gray,
+                modifier = Modifier.fillMaxSize().wrapContentSize(Alignment.Center)
+            )
+        }
+        else if(recipes.isEmpty()){
+             Text(
                 text = "Không có kết quả tìm kiếm",
                 style = MaterialTheme.typography.bodyLarge,
                 color = Color.Gray,
                 modifier = Modifier.fillMaxSize().wrapContentSize(Alignment.Center)
             )
-            return
         }
-
-        // ===== LIST =====
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            items(recipes) { recipe ->
-                CategoryRecipeCard(
-                    recipe = recipe,
-                    onClick = {
-                        navController.navigate(com.example.freshcookapp.ui.nav.Destination.RecipeDetail(recipeId = recipe.id))
-                    }
-                )
+        else {
+             // ===== LIST =====
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(recipes) { recipe ->
+                    CategoryRecipeCard(
+                        recipe = recipe,
+                        onClick = {
+                            navController.navigate(com.example.freshcookapp.ui.nav.Destination.RecipeDetail(recipeId = recipe.id))
+                        }
+                    )
+                }
             }
         }
     }

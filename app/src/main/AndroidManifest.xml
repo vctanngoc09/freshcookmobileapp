@@ -30,6 +30,16 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            
+            <!-- 🔥 INTENT FILTER CHO FIREBASE DYNAMIC LINKS 🔥 -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <!-- Thay 'freshcook.page.link' bằng URL prefix bạn đã tạo ở Bước 2 -->
+                <data android:scheme="https" android:host="freshcook.page.link" />
+                <data android:scheme="http" />
+            </intent-filter>
 
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />

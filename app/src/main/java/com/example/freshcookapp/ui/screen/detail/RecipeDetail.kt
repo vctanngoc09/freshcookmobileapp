@@ -2,6 +2,7 @@ package com.example.freshcookapp.ui.screen.detail
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -9,17 +10,20 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Comment
 import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox // 🔥 Import mới
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState // 🔥 Import mới
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,6 +37,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -51,14 +56,17 @@ import com.example.freshcookapp.data.local.AppDatabase
 import com.example.freshcookapp.data.repository.RecipeRepository
 import com.example.freshcookapp.data.repository.CommentRepository
 import com.example.freshcookapp.domain.model.*
-// Đảm bảo bạn đã tạo file RecipeDetailSkeleton trong ui/component
+import com.example.freshcookapp.ui.component.RecipeCard
 import com.example.freshcookapp.ui.component.RecipeDetailSkeleton
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.google.firebase.auth.FirebaseAuth
 import com.example.freshcookapp.ui.nav.Destination
+import com.google.firebase.ktx.Firebase
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecipeDetail(
     recipeId: String?,
@@ -87,33 +95,55 @@ fun RecipeDetail(
     val recipeToShow by viewModel.recipe.collectAsState()
     val isFollowingAuthor by viewModel.isFollowingAuthor.collectAsState()
     val hasUnreadNotifications by viewModel.hasUnreadNotifications.collectAsState()
+    val comments by viewModel.comments.collectAsState()
 
     var expandedImageUrl by remember { mutableStateOf<String?>(null) }
+    var isRefreshing by remember { mutableStateOf(false) }
+    val refreshState = rememberPullToRefreshState()
+    val scope = rememberCoroutineScope()
+    val lazyListState = rememberLazyListState()
 
-    // 1. Nếu chưa có dữ liệu -> Hiện Skeleton
-    if (recipeToShow == null) {
-        RecipeDetailSkeleton()
-    } else {
-        // 2. Có dữ liệu -> Hiện nội dung (Đã tích hợp Pull to Refresh bên trong)
-        RecipeDetailView(
-            recipe = recipeToShow!!,
-            isFollowingAuthor = isFollowingAuthor,
-            hasUnreadNotifications = hasUnreadNotifications,
-            viewModel = viewModel,
-            onBackClick = { navController.navigateUp() },
-            onFavoriteClick = { viewModel.toggleFavorite() },
-            onAuthorClick = { authorId -> navController.navigate("user_profile/$authorId") },
-            onFollowClick = { viewModel.toggleFollowAuthor() },
-            onImageClick = { url -> expandedImageUrl = url },
-            onNotificationClick = onNotificationClick,
-            navController = navController
-        )
-
-        if (expandedImageUrl != null) {
-            FullScreenImageViewer(
-                imageUrl = expandedImageUrl!!,
-                onDismiss = { expandedImageUrl = null }
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        state = refreshState,
+        onRefresh = {
+            isRefreshing = true
+            scope.launch {
+                if (recipeId != null) {
+                    viewModel.loadRecipe(recipeId)
+                }
+                delay(1000)
+                isRefreshing = false
+            }
+        },
+        modifier = Modifier.fillMaxSize()
+    ) {
+        if (recipeToShow == null || isRefreshing) {
+            RecipeDetailSkeleton()
+        } else {
+            RecipeDetailView(
+                recipe = recipeToShow!!,
+                commentsCount = comments.size,
+                isFollowingAuthor = isFollowingAuthor,
+                hasUnreadNotifications = hasUnreadNotifications,
+                viewModel = viewModel,
+                lazyListState = lazyListState,
+                scope = scope,
+                onBackClick = { navController.navigateUp() },
+                onFavoriteClick = { viewModel.toggleFavorite() },
+                onAuthorClick = { authorId -> navController.navigate("user_profile/$authorId") },
+                onFollowClick = { viewModel.toggleFollowAuthor() },
+                onImageClick = { url -> expandedImageUrl = url },
+                onNotificationClick = onNotificationClick,
+                navController = navController
             )
+
+            if (expandedImageUrl != null) {
+                FullScreenImageViewer(
+                    imageUrl = expandedImageUrl!!,
+                    onDismiss = { expandedImageUrl = null }
+                )
+            }
         }
     }
 }
@@ -122,9 +152,12 @@ fun RecipeDetail(
 @Composable
 private fun RecipeDetailView(
     recipe: Recipe,
+    commentsCount: Int,
     isFollowingAuthor: Boolean,
     hasUnreadNotifications: Boolean,
     viewModel: RecipeDetailViewModel,
+    lazyListState: LazyListState,
+    scope: CoroutineScope,
     onBackClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     onAuthorClick: (String) -> Unit,
@@ -133,51 +166,28 @@ private fun RecipeDetailView(
     onNotificationClick: () -> Unit,
     navController: NavHostController
 ) {
-    // --- CẤU HÌNH PULL TO REFRESH ---
-    var isRefreshing by remember { mutableStateOf(false) }
-    val refreshState = rememberPullToRefreshState()
-    val scope = rememberCoroutineScope()
-
     Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
+        RecipeDetailContent(
+            recipe = recipe,
+            commentsCount = commentsCount,
+            isFollowingAuthor = isFollowingAuthor,
+            viewModel = viewModel,
+            lazyListState = lazyListState,
+            scope = scope,
+            modifier = Modifier.fillMaxSize(),
+            onAuthorClick = onAuthorClick,
+            onFavoriteClick = onFavoriteClick,
 
-        // 🔥 BỌC NỘI DUNG TRONG PullToRefreshBox
-        PullToRefreshBox(
-            isRefreshing = isRefreshing,
-            state = refreshState,
-            onRefresh = {
-                isRefreshing = true
-                scope.launch {
-                    // Gọi hàm load lại dữ liệu
-                    viewModel.loadRecipe(recipe.id)
-                    // Delay giả lập một chút để người dùng thấy vòng xoay (UX)
-                    delay(1000)
-                    isRefreshing = false
-                }
-            },
-            modifier = Modifier.fillMaxSize()
-        ) {
-            RecipeDetailContent(
-                recipe = recipe,
-                isFollowingAuthor = isFollowingAuthor,
-                viewModel = viewModel,
-                modifier = Modifier.fillMaxSize(),
-                onAuthorClick = onAuthorClick,
-                onFavoriteClick = onFavoriteClick,
-                onFollowClick = onFollowClick,
-                onImageClick = onImageClick,
-                navController = navController
-            )
-        }
-
-        // Header Gradient (Để đè lên trên list khi cuộn)
+            onFollowClick = onFollowClick,
+            onImageClick = onImageClick,
+            navController = navController
+        )
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(100.dp)
                 .background(Brush.verticalGradient(colors = listOf(Color.Black.copy(alpha = 0.6f), Color.Transparent)))
         )
-
-        // Top Bar (Luôn nổi trên cùng)
         RecipeDetailTopBar(
             recipeName = recipe.name,
             recipeId = recipe.id,
@@ -189,11 +199,7 @@ private fun RecipeDetailView(
         )
     }
 }
-
-// ... (Giữ nguyên TOÀN BỘ các hàm phía dưới: RecipeDetailTopBar, shareRecipe, LiveTimeText, RecipeDetailContent, etc.)
-// Bạn copy lại các hàm đó từ file cũ hoặc file trước đó để code đầy đủ nhé.
-// Dưới đây là phần còn lại để bạn tiện copy paste trọn vẹn file:
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RecipeDetailTopBar(
     recipeName: String,
@@ -275,10 +281,15 @@ private fun RecipeDetailTopBar(
     }
 }
 
+// 🔥 HÀM SHARE ĐƯỢC CẬP NHẬT 🔥
 fun shareRecipe(context: Context, title: String, id: String) {
+    // 🔥 THAY BẰNG TÊN MIỀN FIREBASE HOSTING CỦA BẠN 🔥
+    val domain = "your-project-id.web.app"
+    val link = "https://$domain/recipe/$id"
+
     val sendIntent = Intent().apply {
         action = Intent.ACTION_SEND
-        putExtra(Intent.EXTRA_TEXT, "Món ngon này tuyệt vời lắm: $title\nXem chi tiết tại: https://freshcook.com/recipe/$id")
+        putExtra(Intent.EXTRA_TEXT, "Món ngon này tuyệt vời lắm: $title\nXem chi tiết tại: $link")
         type = "text/plain"
     }
     val shareIntent = Intent.createChooser(sendIntent, "Chia sẻ món ăn")
@@ -317,7 +328,10 @@ fun LiveTimeText(
 @Composable
 private fun RecipeDetailContent(
     recipe: Recipe,
+    commentsCount: Int,
     isFollowingAuthor: Boolean,
+    lazyListState: LazyListState,
+    scope: CoroutineScope,
     modifier: Modifier = Modifier,
     onAuthorClick: (String) -> Unit,
     onFavoriteClick: () -> Unit,
@@ -326,53 +340,34 @@ private fun RecipeDetailContent(
     viewModel: RecipeDetailViewModel,
     navController: NavHostController
 ) {
-    LazyColumn(modifier = modifier) {
-        item {
+    LazyColumn(modifier = modifier, state = lazyListState) {
+        item { // index 0
             RecipeHeader(
                 recipe = recipe,
                 onImageClick = { recipe.imageUrl?.let { onImageClick(it) } }
             )
         }
-        item { RecipeInfoSection(recipe) }
-        item { RecipeIngredients(recipe.ingredients) }
-        item {
+        item { // index 1
+            RecipeInfoSection(
+                recipe = recipe,
+                commentsCount = commentsCount,
+                onFavoriteClick = onFavoriteClick,
+                onCommentClick = {
+                    scope.launch {
+                        // Scroll to the comment section (index 4)
+                        lazyListState.animateScrollToItem(4)
+                    }
+                }
+            )
+        }
+        item { RecipeIngredients(recipe.ingredients) } // index 2
+        item { // index 3
             RecipeInstructions(
                 steps = recipe.instructions,
                 onImageClick = onImageClick
             )
         }
-        item {
-            Button(
-                onClick = onFavoriteClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .height(50.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if(recipe.isFavorite) Cinnabar500.copy(alpha = 0.1f) else Color(0xFFF5F5F5),
-                    contentColor = if(recipe.isFavorite) Cinnabar500 else Color.Gray
-                ),
-                shape = RoundedCornerShape(12.dp),
-                elevation = ButtonDefaults.buttonElevation(0.dp)
-            ) {
-                Icon(
-                    imageVector = if (recipe.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                    contentDescription = null
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = if (recipe.isFavorite) "Đã thích món này" else "Thêm vào yêu thích",
-                    style = MaterialTheme.typography.labelLarge
-                )
-                Spacer(Modifier.weight(1f))
-                Text(
-                    text = "${recipe.likeCount} lượt thích",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
-                )
-            }
-        }
-        item {
+        item { // index 4
             AuthorInfoSection(
                 author = recipe.author,
                 isFollowing = isFollowingAuthor,
@@ -380,7 +375,7 @@ private fun RecipeDetailContent(
                 onFollowClick = onFollowClick
             )
         }
-        item { CommentSection(viewModel) }
+        item { CommentSection(viewModel) } // index 5
         item {
             if (recipe.relatedRecipes.isNotEmpty()) {
                 RelatedRecipesSection(recipes = recipe.relatedRecipes, navController = navController)
@@ -413,31 +408,24 @@ private fun RecipeHeader(recipe: Recipe, onImageClick: () -> Unit) {
 }
 
 @Composable
-private fun RecipeInfoSection(recipe: Recipe) {
+private fun RecipeInfoSection(
+    recipe: Recipe,
+    commentsCount: Int,
+    onFavoriteClick: () -> Unit,
+    onCommentClick: () -> Unit
+) {
     Column(modifier = Modifier.padding(16.dp)) {
-        Text(
-            text = recipe.name,
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Spacer(Modifier.height(8.dp))
-        if (recipe.description.isNotBlank()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(
-                text = recipe.description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.Gray
+                text = recipe.name,
+                style = MaterialTheme.typography.headlineMedium,
+                color = Color.Black,
+                modifier = Modifier.weight(1f)
             )
-            Spacer(Modifier.height(12.dp))
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Schedule, null, tint = Cinnabar500, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(4.dp))
-            Text(
-                text = "${recipe.timeCook} phút",
-                style = MaterialTheme.typography.labelLarge,
-                color = Color.Gray
-            )
-            Spacer(Modifier.width(16.dp))
             Surface(
                 color = Cinnabar500.copy(alpha = 0.1f),
                 shape = RoundedCornerShape(8.dp)
@@ -450,6 +438,68 @@ private fun RecipeInfoSection(recipe: Recipe) {
                     fontWeight = FontWeight.SemiBold
                 )
             }
+        }
+        Spacer(Modifier.height(12.dp))
+        if (recipe.description.isNotBlank()) {
+            Text(
+                text = recipe.description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray
+            )
+            Spacer(Modifier.height(16.dp))
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onFavoriteClick() }
+                    .padding(4.dp)
+            ) {
+                Icon(
+                    imageVector = if (recipe.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = "Like",
+                    tint = if (recipe.isFavorite) Cinnabar500 else Color.Gray,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = "${recipe.likeCount} yêu thích",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Color.Gray
+                )
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onCommentClick() }
+                    .padding(4.dp)
+            ) {
+                Icon(Icons.Outlined.Comment, null, tint = Color.Gray, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = "$commentsCount bình luận",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Color.Gray
+                )
+            }
+        }
+        Spacer(Modifier.height(16.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Schedule, null, tint = Color.Gray, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = "${recipe.timeCook} phút",
+                style = MaterialTheme.typography.labelLarge,
+                color = Color.Gray,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -649,6 +699,7 @@ fun AuthorInfoSection(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommentSection(viewModel: RecipeDetailViewModel) {
     val comments by viewModel.comments.collectAsState()
@@ -771,8 +822,6 @@ fun CommentItem(comment: Comment, isOwner: Boolean, onDelete: () -> Unit) {
         }
     }
 }
-
-// Hàm tiện ích tính thời gian
 fun getRelativeTimeAgo(timestamp: Long): String {
     val now = System.currentTimeMillis()
     val diff = now - timestamp
@@ -787,7 +836,6 @@ fun getRelativeTimeAgo(timestamp: Long): String {
 
 @Composable
 fun RelatedRecipesSection(recipes: List<RecipePreview>, navController: NavHostController) {
-    val defaultImage = R.drawable.ic_launcher_background
     val ctx = LocalContext.current
     Column(modifier = Modifier.padding(top = 16.dp)) {
         Text(
@@ -801,36 +849,18 @@ fun RelatedRecipesSection(recipes: List<RecipePreview>, navController: NavHostCo
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(recipes) { item ->
-                Card(
-                    modifier = Modifier.width(160.dp).height(210.dp)
-                        .shadow(4.dp, RoundedCornerShape(16.dp))
-                        .clickable {
-                            if (item.id.isNotBlank()) navController.navigate(Destination.RecipeDetail(recipeId = item.id))
-                            else Toast.makeText(ctx, "Món ăn không hợp lệ", Toast.LENGTH_SHORT).show()
-                        },
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(0.dp)
-                ) {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        Image(
-                            painter = rememberAsyncImagePainter(model = item.imageUrl ?: defaultImage),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxWidth().height(130.dp).align(Alignment.TopCenter)
-                        )
-                        Column(
-                            modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter).background(Color.White).padding(10.dp).height(80.dp)
-                        ) {
-                            Text(
-                                text = item.title,
-                                style = MaterialTheme.typography.labelLarge,
-                                color = Color.Black,
-                                maxLines = 2,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
+                Box(modifier = Modifier.clickable {
+                    if (item.id.isNotBlank()) navController.navigate(Destination.RecipeDetail(recipeId = item.id))
+                    else Toast.makeText(ctx, "Món ăn không hợp lệ", Toast.LENGTH_SHORT).show()
+                }) {
+                    RecipeCard(
+                        imageUrl = item.imageUrl,
+                        name = item.title,
+                        timeCook = item.time.replace(" phút", "").toIntOrNull() ?: 0,
+                        difficulty = "Dễ",
+                        isFavorite = false, // Not tracked here
+                        onFavoriteClick = {} // No action
+                    )
                 }
             }
         }

@@ -39,6 +39,10 @@ class RecipeRepository(private val db: AppDatabase) {
         return db.recipeDao().getRecipeById(id)
     }
 
+    suspend fun getRecipesByIds(ids: List<String>): List<RecipeEntity> {
+        return db.recipeDao().getRecipesByIds(ids)
+    }
+
     // Live flow for a single recipe
     fun getRecipeFlow(id: String) = db.recipeDao().getRecipeByIdFlow(id)
 
@@ -153,6 +157,10 @@ class RecipeRepository(private val db: AppDatabase) {
         db.recipeDao().insert(recipe)
     }
 
+    suspend fun insertRecipes(recipes: List<RecipeEntity>) {
+        db.recipeDao().insertAll(recipes)
+    }
+
     // Xóa 1 món khỏi lịch sử
     suspend fun removeFromHistory(recipeId: String) {
         db.recipeDao().removeFromHistory(recipeId)
@@ -166,7 +174,11 @@ class RecipeRepository(private val db: AppDatabase) {
 
     fun getTrendingRecipes() = db.recipeDao().getTrendingRecipes()
 
-    fun searchByNameLocal(keyword: String): List<RecipeEntity> {
+    fun searchRecipes(keyword: String): Flow<List<RecipeEntity>> {
+        return db.recipeDao().searchRecipes(keyword)
+    }
+
+    fun searchRecipesByName(keyword: String): List<RecipeEntity> {
         return db.recipeDao().searchByName(keyword)
     }
 
