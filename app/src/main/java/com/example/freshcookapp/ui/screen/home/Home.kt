@@ -297,10 +297,12 @@ fun Home(
                 // ====== TÌM KIẾM GẦN ĐÂY ======
                 if (suggestions.isNotEmpty() || isRefreshing) {
                     item {
-                        SectionHeader(title = "Tìm kiếm gần đây", onViewAll = {
-                            navController.currentBackStackEntry?.savedStateHandle?.set("suggestions", suggestions)
-                            navController.navigate(Destination.RecentlySearched)
-                        })
+                        SectionHeader(
+                            title = "Tìm kiếm gần đây",
+                            onViewAll = {
+                                navController.navigate(Destination.RecentlySearched)
+                            }
+                        )
                         Spacer(Modifier.height(8.dp))
                     }
                     if (isRefreshing) {

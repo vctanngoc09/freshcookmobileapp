@@ -1,54 +1,76 @@
-package com.example.freshcookapp.ui.screen.home
+package com.example.freshcookapp.ui.screen.search
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.outlined.RestaurantMenu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.*
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import com.example.freshcookapp.ui.component.CategoryRecipeCard
+import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.example.freshcookapp.FreshCookAppRoom
 import com.example.freshcookapp.data.local.AppDatabase
 import com.example.freshcookapp.data.repository.RecipeRepository
-import com.example.freshcookapp.ui.component.CategoryRecipeCard
+import com.example.freshcookapp.data.mapper.toRecipe
+import com.example.freshcookapp.data.repository.SearchRepository
+import com.example.freshcookapp.domain.model.Recipe
 import com.example.freshcookapp.ui.component.shimmerEffect
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
+// Import Destination
 import com.example.freshcookapp.ui.nav.Destination
-import com.example.freshcookapp.ui.theme.Cinnabar500
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CategoryRecipesScreen(
+fun RecentlySearchedScreen(
     navController: NavHostController,
-    categoryId: String,
-    categoryName: String
+    onBackClick: () -> Unit,
+    onSearchDetail: (String) -> Unit
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as FreshCookAppRoom
-    val db = AppDatabase.getDatabase(app)
-    val repo = RecipeRepository(db)
+    val db = remember { AppDatabase.getDatabase(app) }
 
-    val viewModel: CategoryRecipesViewModel = viewModel(
-        factory = CategoryRecipesViewModel.Factory(repo)
+    val viewModel: RecentlySearchedViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return RecentlySearchedViewModel(
+                    searchRepo = SearchRepository(db.recipeDao(), db.searchHistoryDao()),
+                    recipeRepo = RecipeRepository(db)
+                ) as T
+            }
+        }
     )
 
-    val recipes by viewModel.recipes.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val endReached by viewModel.endReached.collectAsState()
+    val history by viewModel.fullHistory.collectAsState()
 
-    LaunchedEffect(categoryId) {
-        viewModel.start(categoryId)
+    // Convert SuggestItem → Recipe (lấy từ search local hoặc từ DB)
+    var recipes by remember { mutableStateOf<List<Recipe>>(emptyList()) }
+
+    LaunchedEffect(history) {
+        val repo = RecipeRepository(db)
+        val result = history.flatMap { item ->
+            repo.searchRecipes(item.keyword).first().map { it.toRecipe() }
+        }.distinctBy { it.id }
+
+        recipes = result
     }
 
     Column(
@@ -63,16 +85,16 @@ fun CategoryRecipesScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Icon(
-                imageVector = Icons.Default.ArrowBack,
+                imageVector = Icons.Filled.ArrowBack,
                 contentDescription = null,
                 tint = Cinnabar500,
                 modifier = Modifier
                     .size(26.dp)
-                    .clickable { navController.popBackStack() }
+                    .clickable { onBackClick() }
             )
             Spacer(Modifier.width(12.dp))
             Text(
-                text = categoryName,
+                text = "Tìm kiếm gần đây",
                 style = MaterialTheme.typography.titleLarge,
                 color = Cinnabar500
             )
@@ -81,12 +103,21 @@ fun CategoryRecipesScreen(
         Spacer(Modifier.height(16.dp))
 
         when {
-            recipes.isEmpty() && isLoading -> {
+            history.isEmpty() -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Không có lịch sử tìm kiếm", color = Color.Gray)
+                }
+            }
+
+            recipes.isEmpty() -> {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(5) {
+                    items(5) {     // Hiển thị 5 skeleton
                         CategoryRecipeCardSkeleton(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -96,16 +127,12 @@ fun CategoryRecipesScreen(
                 }
             }
 
-            recipes.isEmpty() && !isLoading -> {
-                CategoryEmptyState()
-            }
-
             else -> {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    itemsIndexed(recipes) { index, recipe ->
+                    items(recipes) { recipe ->
                         CategoryRecipeCard(
                             recipe = recipe,
                             onClick = {
@@ -114,30 +141,6 @@ fun CategoryRecipesScreen(
                                 )
                             }
                         )
-
-                        // Khi render tới item cuối -> load page tiếp theo
-                        if (index == recipes.lastIndex && !endReached && !isLoading) {
-                            LaunchedEffect(key1 = index) {
-                                viewModel.loadNextPage()
-                            }
-                        }
-                    }
-
-                    // Footer loading khi load thêm
-                    item {
-                        if (isLoading && recipes.isNotEmpty()) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 16.dp),
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp),
-                                    color = Cinnabar500
-                                )
-                            }
-                        }
                     }
                 }
             }
@@ -146,45 +149,11 @@ fun CategoryRecipesScreen(
 }
 
 @Composable
-fun CategoryEmptyState() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-
-        Icon(
-            imageVector = Icons.Outlined.RestaurantMenu,
-            contentDescription = null,
-            tint = Color.LightGray,
-            modifier = Modifier.size(90.dp)
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Chưa có món nào trong danh mục này",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = Color.Gray
-        )
-
-        Text(
-            text = "Hãy khám phá thêm các công thức ngon nhé!",
-            style = MaterialTheme.typography.bodySmall,
-            color = Color.LightGray
-        )
-    }
-}
-
-@Composable
 fun CategoryRecipeCardSkeleton(modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .height(120.dp)
+            .height(120.dp) // cao tương tự Card thật
             .clip(RoundedCornerShape(12.dp))
             .shimmerEffect()
             .background(Color.LightGray.copy(alpha = 0.3f))

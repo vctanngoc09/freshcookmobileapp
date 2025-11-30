@@ -6,7 +6,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
-import com.example.freshcookapp.ui.screen.RecentlySearchedScreen
+import com.example.freshcookapp.ui.screen.search.RecentlySearchedScreen
 import com.example.freshcookapp.util.FilterStore
 // --- CÁC IMPORT PHẢI ĐẦY ĐỦ NHƯ DƯỚI ---
 import com.example.freshcookapp.ui.screen.auth.ForgotPassword
@@ -217,7 +217,10 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
         composable<Destination.RecentlySearched> {
             RecentlySearchedScreen(
                 navController = navController,
-                onBackClick = { navController.navigateUp() }
+                onBackClick = { navController.navigateUp() },
+                onSearchDetail = { keyword ->
+                    navController.navigate(Destination.Search(keyword))
+                }
             )
         }
 

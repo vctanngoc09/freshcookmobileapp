@@ -286,4 +286,18 @@ class RecipeRepository(private val db: AppDatabase) {
         db.recipeDao().clearAllFavorites()
         db.recipeDao().clearHistory()
     }
+
+    // ===== PHÂN TRANG CHO CATEGORY / TRENDING / NEW =====
+
+    suspend fun getTrendingPage(limit: Int, offset: Int) =
+        db.recipeDao().getTrendingRecipesPage(limit, offset)
+
+    suspend fun getNewDishesPage(limit: Int, offset: Int) =
+        db.recipeDao().getNewDishesPage(limit, offset)
+
+    suspend fun getRecipesByCategoryPage(
+        categoryId: String,
+        limit: Int,
+        offset: Int
+    ) = db.recipeDao().getRecipesByCategoryPage(categoryId, limit, offset)
 }

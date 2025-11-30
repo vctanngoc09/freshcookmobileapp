@@ -69,15 +69,16 @@ class HomeViewModel(
     val inFlightIds = _inFlightIds.asStateFlow()
 
     // ======= SUGGESTIONS =======
-    val suggestedSearch = searchRepo.getAllHistory()
-        .flatMapLatest { historyList ->
+    val suggestedSearch = searchRepo.getRecent3History()
+        .flatMapLatest { list ->
             flow {
-                val finalList = historyList.map { historyItem ->
-                    val matchedRecipes = recipeRepo.searchRecipesByName(historyItem.query)
+                val finalList = list.map { query ->
+                    val matchedRecipes = recipeRepo.searchRecipesByName(query)
                     val randomImage = matchedRecipes.randomOrNull()?.imageUrl
+
                     SuggestItem(
-                        keyword = historyItem.query,
-                        timestamp = historyItem.timestamp,
+                        keyword = query,
+                        timestamp = System.currentTimeMillis(),
                         imageUrl = randomImage
                     )
                 }

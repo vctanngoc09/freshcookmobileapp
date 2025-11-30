@@ -119,5 +119,49 @@ interface RecipeDao {
     @Query("SELECT * FROM recipes WHERE name LIKE '%' || :keyword || '%' LIMIT 10")
     fun searchByName(keyword: String): List<RecipeEntity>
 
+    // ===== PHÂN TRANG CHO "XEM TẤT CẢ" =====
+
+    // Xu hướng: sắp theo like_count, phân trang
+    @Query(
+        """
+        SELECT * FROM recipes
+        ORDER BY like_count DESC
+        LIMIT :limit OFFSET :offset
+    """
+    )
+    suspend fun getTrendingRecipesPage(
+        limit: Int,
+        offset: Int
+    ): List<RecipeEntity>
+
+    // Món mới: sắp theo created_at, phân trang
+    @Query(
+        """
+        SELECT * FROM recipes
+        ORDER BY created_at DESC
+        LIMIT :limit OFFSET :offset
+    """
+    )
+    suspend fun getNewDishesPage(
+        limit: Int,
+        offset: Int
+    ): List<RecipeEntity>
+
+    // Phân trang theo category
+    @Query(
+        """
+        SELECT * FROM recipes
+        WHERE category_id = :categoryId
+        ORDER BY created_at DESC
+        LIMIT :limit OFFSET :offset
+    """
+    )
+    suspend fun getRecipesByCategoryPage(
+        categoryId: String,
+        limit: Int,
+        offset: Int
+    ): List<RecipeEntity>
+
+
 
 }
