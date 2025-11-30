@@ -4,10 +4,12 @@ import com.example.freshcookapp.data.local.AppDatabase
 import com.example.freshcookapp.data.local.entity.RecipeEntity
 import com.example.freshcookapp.domain.model.Ingredient
 import com.example.freshcookapp.domain.model.Instruction
+import com.example.freshcookapp.util.TextUtils
 import kotlinx.coroutines.flow.Flow
 import java.util.UUID
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FieldValue
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlinx.coroutines.sync.Mutex
@@ -181,6 +183,19 @@ class RecipeRepository(private val db: AppDatabase) {
     fun searchRecipesByName(keyword: String): List<RecipeEntity> {
         return db.recipeDao().searchByName(keyword)
     }
+
+    fun searchLocal(keyword: String): Flow<List<RecipeEntity>> {
+        val norm = TextUtils.normalizeKey(keyword)
+
+        return db.recipeDao().getAllRecipes().map { list ->
+            list.filter { recipe ->
+                recipe.searchTokens.any { token ->
+                    token.contains(norm)
+                }
+            }
+        }
+    }
+
 
 
     // --- HÀM TẠO MÓN ---

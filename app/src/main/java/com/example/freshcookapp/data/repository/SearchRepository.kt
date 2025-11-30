@@ -14,19 +14,32 @@ class SearchRepository(
 ) {
 
     fun suggestNames(keyword: String): Flow<List<String>> {
-        return recipeDao.searchRecipes(keyword).map { list ->
-            val seen = linkedSetOf<String>()
-            val out = mutableListOf<String>()
-            for (recipe in list) {
-                val name = recipe.name.trim()
-                val key = TextUtils.normalizeKey(name)
-                if (seen.add(key)) {
-                    out.add(name)
+        val norm = TextUtils.normalizeKey(keyword)
+
+        return recipeDao.getAllRecipes().map { list ->
+            list
+                .filter { recipe ->
+                    recipe.searchTokens.any { it.contains(norm) }
                 }
-            }
-            out
+                .map { it.name.trim() }
+                .distinct()
+                .take(10)
         }
     }
+
+
+    fun searchLocal(keyword: String): Flow<List<RecipeEntity>> {
+        val norm = TextUtils.normalizeKey(keyword)
+
+        return recipeDao.getAllRecipes().map { list ->
+            list.filter { recipe ->
+                recipe.searchTokens.any { token ->
+                    token.contains(norm)
+                }
+            }
+        }
+    }
+
 
     fun searchRecipes(keyword: String): Flow<List<RecipeEntity>> {
         return recipeDao.searchRecipes(keyword)

@@ -13,6 +13,10 @@ data class RecipeEntity(
     @ColumnInfo(name = "name")
     val name: String,
 
+    @ColumnInfo(name = "search_tokens")
+    val searchTokens: List<String> = emptyList(),
+
+
     @ColumnInfo(name = "description")
     val description: String? = null,
 

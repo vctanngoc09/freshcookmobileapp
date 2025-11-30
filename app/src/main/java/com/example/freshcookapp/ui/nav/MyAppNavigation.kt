@@ -1,13 +1,12 @@
 package com.example.freshcookapp.ui.nav
 
-import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
-import androidx.navigation.navDeepLink // <-- QUAN TRỌNG: Đừng quên import cái này
+import com.example.freshcookapp.ui.screen.RecentlySearchedScreen
 import com.example.freshcookapp.util.FilterStore
 // --- CÁC IMPORT PHẢI ĐẦY ĐỦ NHƯ DƯỚI ---
 import com.example.freshcookapp.ui.screen.auth.ForgotPassword
@@ -30,7 +29,6 @@ import com.example.freshcookapp.ui.screen.home.CategoryRecipesScreen
 import com.example.freshcookapp.ui.screen.newcook.NewCook
 import com.example.freshcookapp.ui.screen.search.Search
 import com.example.freshcookapp.ui.screen.search.SearchResultScreen
-import com.example.freshcookapp.ui.screen.RecentlySearchedScreen
 import com.google.firebase.auth.FirebaseAuth
 
 @Composable
@@ -128,7 +126,7 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
             val args = backStackEntry.toRoute<Destination.Search>()
             Search(
                 keyword = args.keyword,
-                onBackClick = { navController.popBackStack() },
+                onBackClick = { navController.navigate(Destination.Home) },
                 onFilterClick = { navController.navigate(Destination.Filter) },
                 onSuggestionClick = { keyword ->
                     navController.navigate(Destination.SearchResult(keyword))

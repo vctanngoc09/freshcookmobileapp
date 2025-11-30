@@ -258,7 +258,7 @@ fun NewCook(onBackClick: () -> Unit) {
                         Spacer(Modifier.height(16.dp))
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("Thời gian nấu", style = MaterialTheme.typography.bodyMedium)
-                            UnderlineTextField(value = cookTime, onValueChange = { cookTime = it }, placeholder = "1 tiếng 30 phút", modifier = Modifier.width(160.dp))
+                            UnderlineTextField(value = cookTime, onValueChange = { cookTime = it }, placeholder = "30 phút", modifier = Modifier.width(160.dp))
                         }
                         Spacer(Modifier.height(16.dp))
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

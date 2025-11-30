@@ -175,12 +175,38 @@ class NewCookViewModel(
             Locale.getDefault()
         ).format(java.util.Date())
 
-        val searchTokens =
-            (listOf(name) + ingredients.map { it.name })
-                .map { normalizeText(it) }
-                .flatMap { it.split(" ") }
-                .filter { it.isNotBlank() }
-                .distinct()
+//        val searchTokens =
+//            (listOf(name) + ingredients.map { it.name })
+//                .map { normalizeText(it) }
+//                .flatMap { it.split(" ") }
+//                .filter { it.isNotBlank() }
+//                .distinct()
+        val normName = normalizeText(name)
+        val nameParts = normName.split(" ").filter { it.isNotBlank() }
+
+        // Token 1 từ
+        val singleTokens = nameParts
+
+        // Token 2 từ (“bun bo”, “bo hue”)
+        val pairTokens = nameParts.windowed(size = 2, step = 1)
+            .map { it.joinToString(" ") }
+
+        // Token full cụm (“bun bo hue”)
+        val fullToken = listOf(normName)
+
+        // Token liền không dấu (“bunbohue”)
+        val compactToken = listOf(normName.replace(" ", ""))
+
+        // Token nguyên liệu như cũ
+        val ingTokens = ingredients
+            .map { normalizeText(it.name) }
+            .flatMap { it.split(" ") }
+            .filter { it.isNotBlank() }
+
+        // Gom tất cả
+        val searchTokens = (singleTokens + pairTokens + fullToken + compactToken + ingTokens)
+            .distinct()
+
 
         val recipeData = hashMapOf(
             "id" to recipeId,

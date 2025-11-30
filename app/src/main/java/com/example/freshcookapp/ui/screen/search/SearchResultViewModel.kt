@@ -38,7 +38,7 @@ class SearchResultViewModel(
     private fun loadResults() {
         viewModelScope.launch {
             _isLoading.value = true
-            recipeRepository.searchRecipes(keyword ?: "")
+            recipeRepository.searchLocal(keyword ?: "")
                 .map { entityList ->
                     // 1. Chuyển đổi List<RecipeEntity> sang List<Recipe>
                     entityList.map { it.toRecipe() }

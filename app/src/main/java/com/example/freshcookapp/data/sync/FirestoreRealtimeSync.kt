@@ -98,6 +98,8 @@ class FirestoreRealtimeSync(
 
                             val finalIsFavorite = existingLocal?.isFavorite ?: false
 
+                            val tokens = doc.get("searchTokens") as? List<String> ?: emptyList()
+
                             val entity = RecipeEntity(
                                 id = doc.id,
                                 name = name,
@@ -119,7 +121,8 @@ class FirestoreRealtimeSync(
 
                                 // preserve values
                                 isFavorite = finalIsFavorite,
-                                likeCount = finalLikeCount
+                                likeCount = finalLikeCount,
+                                searchTokens = tokens
                             )
 
                             listEntities.add(entity)

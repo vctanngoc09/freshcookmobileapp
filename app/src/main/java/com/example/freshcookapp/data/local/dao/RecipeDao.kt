@@ -41,6 +41,10 @@ interface RecipeDao {
     """)
     fun searchRecipes(keyword: String): Flow<List<RecipeEntity>>
 
+    @Query("SELECT * FROM recipes")
+    fun getAllRecipes(): Flow<List<RecipeEntity>>
+
+
     @Query("SELECT * FROM recipes WHERE id = :id")
     suspend fun getRecipeById(id: String): RecipeEntity?
 

@@ -99,6 +99,8 @@ class FirestoreSyncRepository(
                     val authorName = userSnap.getString("name") ?: "Người dùng"
                     val authorAvatar = userSnap.getString("photoUrl") ?: ""
 
+                    val tokens = doc.get("searchTokens") as? List<String> ?: emptyList()
+
 
                     val entity = RecipeEntity(
                         id = doc.id,
@@ -114,7 +116,8 @@ class FirestoreSyncRepository(
                         categoryId = catId,
                         createdAt = createdAt,
                         authorName = authorName,
-                        authorAvatar = authorAvatar
+                        authorAvatar = authorAvatar,
+                        searchTokens = tokens
                     )
 
 
