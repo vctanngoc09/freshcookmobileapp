@@ -5,6 +5,7 @@ import com.example.freshcookapp.data.local.dao.SearchHistoryDao
 import com.example.freshcookapp.data.local.entity.RecipeEntity
 import com.example.freshcookapp.data.local.entity.SearchHistoryEntity
 import com.example.freshcookapp.util.TextUtils
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -27,7 +28,6 @@ class SearchRepository(
         }
     }
 
-
     fun searchLocal(keyword: String): Flow<List<RecipeEntity>> {
         val norm = TextUtils.normalizeKey(keyword)
 
@@ -40,34 +40,42 @@ class SearchRepository(
         }
     }
 
-
     fun searchRecipes(keyword: String): Flow<List<RecipeEntity>> {
         return recipeDao.searchRecipes(keyword)
     }
 
+    // ⭐⭐ SỬA ĐÚNG CHUẨN — Lấy lịch sử của user hiện tại
     fun getSearchHistory(): Flow<List<String>> {
-        return historyDao.getSearchHistory()
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        return historyDao.getSearchHistory(uid)
     }
 
     fun getAllHistory(): Flow<List<SearchHistoryEntity>> {
-        return historyDao.getAllHistory()
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        return historyDao.getAllHistory(uid)
     }
 
     suspend fun saveSearchQuery(query: String) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
         if (query.isNotBlank()) {
             val entity = SearchHistoryEntity(
                 query = query.trim(),
-                timestamp = System.currentTimeMillis()
+                timestamp = System.currentTimeMillis(),
+                userId = uid
             )
             historyDao.insert(entity)
         }
     }
 
+    // ⭐⭐ Sửa để chỉ xóa query của user hiện tại
     suspend fun deleteSearchQuery(query: String) {
-        historyDao.deleteByQuery(query)
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        historyDao.deleteByQuery(query, uid)
     }
 
+    // ⭐⭐ Sửa để chỉ xóa lịch sử của user hiện tại
     suspend fun clearAllHistory() {
-        historyDao.clearAll()
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        historyDao.clearAll(uid)
     }
 }

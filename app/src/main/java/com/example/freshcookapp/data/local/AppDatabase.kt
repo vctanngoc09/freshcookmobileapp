@@ -17,9 +17,10 @@ import com.example.freshcookapp.data.local.entity.*
         InstructionEntity::class,
         CategoryEntity::class,
         NewDishEntity::class,
-        SearchHistoryEntity::class
+        SearchHistoryEntity::class,
+        RecentViewedEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -31,6 +32,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun categoryDao(): CategoryDao
     abstract fun newDishDao(): NewDishDao
     abstract fun recipeIndexDao(): RecipeIndexDao
+
+    abstract fun recentViewedDao(): RecentViewedDao
 
     // Giữ nguyên SearchDao cũ (nếu dùng cho FTS/tìm kiếm món ăn)
     abstract fun searchDao(): SearchDao

@@ -45,9 +45,6 @@ interface RecipeDao {
     fun getAllRecipes(): Flow<List<RecipeEntity>>
 
 
-    @Query("SELECT * FROM recipes WHERE id = :id")
-    suspend fun getRecipeById(id: String): RecipeEntity?
-
     @Query("SELECT * FROM recipes WHERE id IN (:ids)")
     suspend fun getRecipesByIds(ids: List<String>): List<RecipeEntity>
 
@@ -55,6 +52,9 @@ interface RecipeDao {
     @Query("SELECT * FROM recipes WHERE id = :id")
     fun getRecipeByIdFlow(id: String): kotlinx.coroutines.flow.Flow<RecipeEntity?>
 
+    // Lấy 1 món theo id (dùng trong coroutine, KHÔNG chạy trên main thread)
+    @Query("SELECT * FROM recipes WHERE id = :id LIMIT 1")
+    suspend fun getRecipeById(id: String): RecipeEntity?
 
     // --- SỬA Lỗi: isFavorite -> is_favorite ---
     @Query("SELECT * FROM recipes WHERE is_favorite = 1")

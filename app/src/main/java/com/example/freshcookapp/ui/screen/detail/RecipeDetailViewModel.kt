@@ -70,7 +70,7 @@ class RecipeDetailViewModel(
                 val localEntity = repository.getRecipeById(recipeId)
 
                 if (localEntity != null) {
-                    repository.addToHistory(recipeId)
+                    repository.addToRecentlyViewed(recipeId)
 
                     val relatedEntities = repository.getRelatedRecipes(localEntity.categoryId, localEntity.id).first()
 

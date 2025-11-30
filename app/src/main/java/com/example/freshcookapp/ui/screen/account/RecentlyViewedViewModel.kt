@@ -11,7 +11,6 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -25,29 +24,31 @@ class RecentlyViewedViewModel(private val repository: RecipeRepository) : ViewMo
 
     private val firestore = FirebaseFirestore.getInstance()
 
-    // --- SỬA LẠI LOGIC MAP Ở ĐÂY ---
-    val recentlyViewedList: StateFlow<List<ViewedRecipeModel>> = repository.getRecentlyViewed()
-        // Sử dụng mapLatest để xử lý suspend function một cách an toàn
-        .mapLatest { entities ->
-            // Chạy việc chuyển đổi trên Coroutine Worker
-            withContext(Dispatchers.IO) {
-                entities.map { entity ->
-                    entity.toViewedModel()
+    // --- LIST HIỂN THỊ RA UI ---
+    val recentlyViewedList: StateFlow<List<ViewedRecipeModel>> =
+        repository.getRecentlyViewed()
+            .mapLatest { entities ->
+                // chạy trên IO để không block main
+                withContext(Dispatchers.IO) {
+                    entities.map { entity ->
+                        entity.toViewedModel()
+                    }
                 }
             }
-        }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptyList()
+            )
 
-    fun removeFromHistory(id: String) {
+    // Xóa 1 item khỏi lịch sử (theo recipeId)
+    fun removeFromHistory(recentId: Int) {
         viewModelScope.launch(Dispatchers.IO) {
-            repository.removeFromHistory(id)
+            repository.removeFromRecentlyViewedByRecentId(recentId)
         }
     }
 
+    // Nếu sau này muốn fetch tên thật từ Firestore vẫn dùng được
     private suspend fun fetchAuthorName(userId: String): String {
         return try {
             val doc = firestore.collection("users").document(userId).get().await()
@@ -58,22 +59,24 @@ class RecentlyViewedViewModel(private val repository: RecipeRepository) : ViewMo
         }
     }
 
-    private suspend fun RecipeEntity.toViewedModel(): ViewedRecipeModel {
+    // Map từ RecipeEntity (Room) sang ViewedRecipeModel (UI)
+    private suspend fun RecipeRepository.ViewedWithTime.toViewedModel(): ViewedRecipeModel {
         val sdf = SimpleDateFormat("HH:mm dd/MM", Locale.getDefault())
-        val timeString = this.lastViewedTime?.let { sdf.format(Date(it)) } ?: "Vừa xong"
+        val timeString = sdf.format(Date(timestamp))
 
-        val authorName = fetchAuthorName(this.userId)
+        val authorName = fetchAuthorName(recipe.userId)
 
         return ViewedRecipeModel(
-            id = this.id,
-            title = this.name,
+            recentId = this.recentId,   // INT
+            id = recipe.id,             // String
+            title = recipe.name,
             authorName = authorName,
             timeViewed = timeString,
-            imageUrl = this.imageUrl
+            imageUrl = recipe.imageUrl
         )
     }
 
-    // --- THÊM FACTORY ---
+    // --- FACTORY ---
     companion object {
         fun provideFactory(db: AppDatabase): ViewModelProvider.Factory {
             return object : ViewModelProvider.Factory {

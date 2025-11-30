@@ -1,14 +1,18 @@
 package com.example.freshcookapp.data.repository
 
 import com.example.freshcookapp.data.local.AppDatabase
+import com.example.freshcookapp.data.local.entity.RecentViewedEntity
 import com.example.freshcookapp.data.local.entity.RecipeEntity
 import com.example.freshcookapp.domain.model.Ingredient
 import com.example.freshcookapp.domain.model.Instruction
 import com.example.freshcookapp.util.TextUtils
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.Flow
 import java.util.UUID
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FieldValue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
@@ -151,9 +155,6 @@ class RecipeRepository(private val db: AppDatabase) {
     }
 
     // Gọi hàm này ở trang Xem gần đây
-    fun getRecentlyViewed(): Flow<List<RecipeEntity>> {
-        return db.recipeDao().getRecentlyViewedRecipes()
-    }
 
     suspend fun insertRecipe(recipe: RecipeEntity) {
         db.recipeDao().insert(recipe)
@@ -163,10 +164,62 @@ class RecipeRepository(private val db: AppDatabase) {
         db.recipeDao().insertAll(recipes)
     }
 
+    // ------------------- RECENTLY VIEWED (NEW) -------------------
+
+    // ------------------- RECENTLY VIEWED (NEW) -------------------
+    suspend fun addToRecentlyViewed(recipeId: String) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+
+        // 1) Xóa bản cũ (nếu có) của cùng user + recipe
+        db.recentViewedDao().remove(recipeId, uid)
+
+        // 2) Thêm bản mới với timestamp mới nhất
+        val item = RecentViewedEntity(
+            recipeId = recipeId,
+            userId = uid,
+            timestamp = System.currentTimeMillis()
+        )
+        db.recentViewedDao().insert(item)
+    }
+
+    data class ViewedWithTime(
+        val recentId: Int,            // ID từ bảng recent_viewed
+        val recipe: RecipeEntity,
+        val timestamp: Long
+    )
+
+
+
+    fun getRecentlyViewed(): Flow<List<ViewedWithTime>> {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+
+        return db.recentViewedDao().getRecent(uid).map { list ->
+            list.map { recent ->
+                ViewedWithTime(
+                    recentId = recent.id,              // ⭐ id thật từ Room recent_viewed
+                    recipe = db.recipeDao().getRecipeById(recent.recipeId)!!,
+                    timestamp = recent.timestamp
+                )
+            }
+        }
+    }
+
+
+    suspend fun removeFromRecentlyViewed(recipeId: String) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        db.recentViewedDao().remove(recipeId, uid)
+    }
+
+
     // Xóa 1 món khỏi lịch sử
     suspend fun removeFromHistory(recipeId: String) {
         db.recipeDao().removeFromHistory(recipeId)
     }
+
+    suspend fun removeFromRecentlyViewedByRecentId(recentId: Int) {
+        db.recentViewedDao().removeByRecentId(recentId)
+    }
+
 
     // --- SỬA LỖI Ở ĐÂY ---
     // Thêm cặp ngoặc () sau recipeDao

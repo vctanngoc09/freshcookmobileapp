@@ -32,7 +32,7 @@ class CategoryRecipesViewModel(
                 }
                 "RECENTLY_VIEWED" -> {
                     repo.getRecentlyViewed().collect { list ->
-                        _recipes.value = list.map { it.toRecipe() }
+                        _recipes.value = list.map { it.recipe.toRecipe() }
                     }
                 }
                 else -> {

@@ -35,7 +35,8 @@ import com.example.freshcookapp.ui.theme.WorkSans
 
 // Model dữ liệu UI
 data class ViewedRecipeModel(
-    val id: String,
+    val recentId: Int,      // ⭐ KEY để LazyColumn không crash
+    val id: String,         // ⭐ id món ăn (recipeId) giữ nguyên UI cũ
     val title: String,
     val authorName: String,
     val timeViewed: String,
@@ -131,11 +132,11 @@ fun RecentlyViewedScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(filteredList, key = { it.id }) { item ->
+                    items(filteredList, key = { it.recentId }) { item ->
                         RecentlyViewedItem(
                             item = item,
                             onRemoveClick = {
-                                viewModel.removeFromHistory(item.id)
+                                viewModel.removeFromHistory(item.recentId)
                             },
                             onClick = {
                                 onRecipeClick(item.id)
