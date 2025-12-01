@@ -12,8 +12,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect // <-- Import này
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -29,13 +30,12 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.FirebaseAuth
-import androidx.compose.runtime.remember
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FreshCookApp(
     auth: FirebaseAuth,
     googleSignInClient: GoogleSignInClient,
-    // --- THÊM 2 THAM SỐ NÀY ĐỂ NHẬN DỮ LIỆU TỪ THÔNG BÁO ---
     deepLinkRecipeId: String? = null,
     deepLinkUserId: String? = null
 ) {
@@ -45,7 +45,6 @@ fun FreshCookApp(
 
     val context = LocalContext.current
 
-    // Logic xác định màn hình bắt đầu (Giữ nguyên)
     val startDestination = remember {
         if (auth.currentUser != null) {
             Destination.Home
@@ -54,9 +53,7 @@ fun FreshCookApp(
         }
     }
 
-    // --- XỬ LÝ CHUYỂN TRANG KHI BẤM THÔNG BÁO (Deep Link) ---
     LaunchedEffect(deepLinkRecipeId, deepLinkUserId) {
-        // Chỉ chuyển trang nếu người dùng ĐÃ ĐĂNG NHẬP
         if (auth.currentUser != null) {
             if (deepLinkRecipeId != null) {
                 navController.navigate(Destination.RecipeDetail(deepLinkRecipeId))
@@ -65,7 +62,6 @@ fun FreshCookApp(
             }
         }
     }
-    // --------------------------------------------------------
 
     val googleSignInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -91,17 +87,18 @@ fun FreshCookApp(
         }
     }
 
-    // Logic ẩn hiện BottomBar (Giữ nguyên)
+    // 🔥 CẬP NHẬT: THÊM PhoneLogin VÀO DANH SÁCH ẨN BOTTOM BAR
     val noBottomBarDestinations = listOf(
         Destination.Splash::class.qualifiedName,
         Destination.Welcome::class.qualifiedName,
         Destination.Login::class.qualifiedName,
         Destination.Register::class.qualifiedName,
         Destination.ForgotPassword::class.qualifiedName,
+        Destination.PhoneLogin::class.qualifiedName, // <-- THÊM DÒNG NÀY
         Destination.Search::class.qualifiedName,
         Destination.Filter::class.qualifiedName,
         Destination.Notification::class.qualifiedName,
-        Destination.Settings::class.qualifiedName, // Chú ý: Cái này có thể bỏ nếu dùng Drawer
+        Destination.Settings::class.qualifiedName,
         Destination.Follow::class.qualifiedName,
         Destination.RecentlyViewed::class.qualifiedName,
         Destination.MyDishes::class.qualifiedName,

@@ -3,7 +3,6 @@ package com.example.freshcookapp.ui.screen.newcook
 import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
-import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.freshcookapp.data.repository.RecipeRepository
@@ -11,16 +10,14 @@ import com.example.freshcookapp.domain.model.Ingredient
 import com.example.freshcookapp.domain.model.Instruction
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.SetOptions
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
-import java.text.SimpleDateFormat
-import java.util.Locale
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import java.text.Normalizer
-
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 class NewCookViewModel(
     private val recipeRepository: RecipeRepository
@@ -35,37 +32,29 @@ class NewCookViewModel(
             .trim()
     }
 
-    /**
-     * Hàm public duy nhất UI gọi khi bấm "Lên sóng"
-     */
     fun saveRecipe(
         name: String,
         description: String,
-        timeCook: Int?,               // phút
-        people: Int?,                        // số người ăn
-        imageUri: Uri?,                      // ảnh đại diện món ăn (có thể null)
-        hashtags: List<String>,              // list hashtag người dùng nhập
-        difficultyUi: String,                // "Dễ" / "Trung" / "Khó"
+        timeCook: Int?,
+        people: Int?,
+        imageUri: Uri?,
+        videoUri: Uri?,
+        hashtags: List<String>,
+        difficultyUi: String,
         categoryId: String?,
-        ingredients: List<Ingredient>,       // list nguyên liệu
-        instructions: List<Instruction>,     // list bước làm
+        ingredients: List<Ingredient>,
+        // Giữ UI State này để xử lý đa ảnh
+        instructionsUi: List<InstructionUiState>,
         onSuccess: () -> Unit,
         onError: (Throwable) -> Unit
     ) {
         viewModelScope.launch {
             try {
                 isUploading.value = true
-                val currentUserId =
-                    FirebaseAuth.getInstance().currentUser?.uid ?: "admin"
-
-                // 1. TẠO ID DUY NHẤT VÀ DÙNG NÓ CHO CẢ DỰ ÁN (Storage/Room/Firestore)
+                val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: "admin"
                 val recipeId = FirebaseFirestore.getInstance().collection("recipes").document().id
+                val finalCategoryId = categoryId ?: "other"
 
-
-                // 3. Upload ảnh đại diện (nếu có) lên Firebase Storage
-                val imageUrl = uploadRecipeImageIfNeeded(recipeId, imageUri)
-
-                // 4. Map difficulty từ UI -> Firestore
                 val difficulty = when (difficultyUi) {
                     "Dễ" -> "easy"
                     "Trung" -> "medium"
@@ -73,19 +62,32 @@ class NewCookViewModel(
                     else -> "medium"
                 }
 
-                // 5. CategoryId
-                val finalCategoryId = categoryId ?: "other"
+                // 🔥 TỐI ƯU HÓA: CHẠY SONG SONG
+                // 1. Task Up Ảnh Đại Diện
+                val imageTask = async { uploadRecipeImageIfNeeded(recipeId, imageUri) }
 
-                // 7. Lưu lên Firestore đúng cấu trúc
+                // 2. Task Up Video (Tính năng của bản mới)
+                val videoTask = async { uploadVideoIfNeeded(recipeId, videoUri) }
+
+                // 3. Task Up Ảnh các bước (Đã tối ưu song song bên trong)
+                val stepsTask = async { convertAndUploadInstructions(recipeId, instructionsUi) }
+
+                // Đợi tất cả xong
+                val imageUrl = imageTask.await()
+                val videoUrl = videoTask.await()
+                val processedInstructions = stepsTask.await()
+
+                // 4. Lưu Firestore (Kèm Search Token xịn của bản cũ)
                 saveRecipeToFirestore(
-                    recipeId = recipeId, // Dùng ID đã tạo
+                    recipeId = recipeId,
                     name = name, description = description, timeCook = timeCook,
-                    people = people, imageUrl = imageUrl, userId = currentUserId,
-                    categoryId = finalCategoryId, hashtags = hashtags, difficulty = difficulty,
-                    ingredients = ingredients, instructions = instructions
+                    people = people, imageUrl = imageUrl, videoUrl = videoUrl,
+                    userId = currentUserId, categoryId = finalCategoryId,
+                    hashtags = hashtags, difficulty = difficulty,
+                    ingredients = ingredients, instructions = processedInstructions
                 )
 
-                isUploading.value = false   // 🔥 DONE
+                isUploading.value = false
                 onSuccess()
             } catch (e: Throwable) {
                 isUploading.value = false
@@ -95,58 +97,60 @@ class NewCookViewModel(
         }
     }
 
-    /**
-     * Upload ảnh đại diện (nếu có) lên Storage:
-     */
-    private suspend fun uploadRecipeImageIfNeeded(
-        recipeId: String,
-        imageUri: Uri?
-    ): String {
+    private suspend fun uploadRecipeImageIfNeeded(recipeId: String, imageUri: Uri?): String {
         if (imageUri == null) return ""
-
         return try {
-            val storage = FirebaseStorage.getInstance()
-
-            val ref = storage.reference
-                .child("recpies_img/$recipeId/main.jpg")
-
+            val ref = FirebaseStorage.getInstance().reference.child("recpies_img/$recipeId/main.jpg")
             ref.putFile(imageUri).await()
             ref.downloadUrl.await().toString()
-
-        } catch (e: Exception) {
-            Log.e("NewCookViewModel", "Upload ảnh đại diện thất bại", e)
-            ""
-        }
+        } catch (e: Exception) { "" }
     }
 
-    //    hàm thêm ảnh từng bước của món ăn vào đúng chuẩn
-    private suspend fun uploadStepImage(
-        recipeId: String,
-        stepIndex: Int,
-        imageUri: String?
-    ): String {
-        if (imageUri.isNullOrEmpty()) return ""
-
+    private suspend fun uploadVideoIfNeeded(recipeId: String, videoUri: Uri?): String {
+        if (videoUri == null) return ""
         return try {
-            val uri = imageUri.toUri()
-            val storage = FirebaseStorage.getInstance()
-
-            val ref = storage.reference
-                .child("recpies_img/$recipeId/steps/step_${stepIndex + 1}.jpg")
-
-            ref.putFile(uri).await()
+            val ref = FirebaseStorage.getInstance().reference.child("recipes_video/$recipeId/video.mp4")
+            ref.putFile(videoUri).await()
             ref.downloadUrl.await().toString()
-
-        } catch (e: Exception) {
-            Log.e("NewCookViewModel", "Upload step image failed", e)
-            ""
-        }
+        } catch (e: Exception) { "" }
     }
 
+    // Hàm chuyển đổi từ UI State (List Uri) sang Domain Model (Instruction)
+    private suspend fun convertAndUploadInstructions(
+        recipeId: String,
+        uiStates: List<InstructionUiState>
+    ): List<Instruction> {
+        return uiStates.mapIndexed { index, uiState ->
+            viewModelScope.async {
+                val imageUrls = mutableListOf<String>()
 
-    /**
-     * Lưu recipe vào Firestore
-     */
+                // Chạy song song upload từng ảnh nhỏ trong bước này
+                val uploadJobs = uiState.imageUris.mapIndexed { imgIndex, uri ->
+                    async {
+                        try {
+                            val ref = FirebaseStorage.getInstance().reference
+                                .child("recpies_img/$recipeId/steps/step_${index}_img_$imgIndex.jpg")
+                            ref.putFile(uri).await()
+                            ref.downloadUrl.await().toString()
+                        } catch (e: Exception) {
+                            ""
+                        }
+                    }
+                }
+
+                imageUrls.addAll(uploadJobs.awaitAll().filter { it.isNotEmpty() })
+                val mainImage = imageUrls.firstOrNull() ?: ""
+
+                Instruction(
+                    stepNumber = index + 1,
+                    description = uiState.description,
+                    imageUrl = mainImage,
+                    imageUrls = imageUrls // Sửa ở đây
+                )
+            }
+        }.awaitAll()
+    }
+
     private suspend fun saveRecipeToFirestore(
         recipeId: String,
         name: String,
@@ -154,6 +158,7 @@ class NewCookViewModel(
         timeCook: Int?,
         people: Int?,
         imageUrl: String,
+        videoUrl: String,
         userId: String,
         categoryId: String,
         hashtags: List<String>,
@@ -162,51 +167,23 @@ class NewCookViewModel(
         instructions: List<Instruction>
     ) {
         val db = FirebaseFirestore.getInstance()
-        val storage = FirebaseStorage.getInstance()
-
         val recipeDoc = db.collection("recipes").document(recipeId)
 
-        // ====== 1️⃣ LƯU DOCUMENT CHÍNH — NHANH NHẤT ======
-        val safeTime = timeCook ?: 0
-        val safePeople = people ?: 1
+        val createdAt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).format(java.util.Date())
 
-        val createdAt = SimpleDateFormat(
-            "yyyy-MM-dd'T'HH:mm:ss",
-            Locale.getDefault()
-        ).format(java.util.Date())
-
-//        val searchTokens =
-//            (listOf(name) + ingredients.map { it.name })
-//                .map { normalizeText(it) }
-//                .flatMap { it.split(" ") }
-//                .filter { it.isNotBlank() }
-//                .distinct()
+        // 🔥 MERGE: LOGIC SEARCH TOKEN XỊN TỪ BẢN PULL
         val normName = normalizeText(name)
         val nameParts = normName.split(" ").filter { it.isNotBlank() }
-
-        // Token 1 từ
         val singleTokens = nameParts
-
-        // Token 2 từ (“bun bo”, “bo hue”)
-        val pairTokens = nameParts.windowed(size = 2, step = 1)
-            .map { it.joinToString(" ") }
-
-        // Token full cụm (“bun bo hue”)
+        val pairTokens = nameParts.windowed(size = 2, step = 1).map { it.joinToString(" ") }
         val fullToken = listOf(normName)
-
-        // Token liền không dấu (“bunbohue”)
         val compactToken = listOf(normName.replace(" ", ""))
-
-        // Token nguyên liệu như cũ
         val ingTokens = ingredients
             .map { normalizeText(it.name) }
             .flatMap { it.split(" ") }
             .filter { it.isNotBlank() }
 
-        // Gom tất cả
-        val searchTokens = (singleTokens + pairTokens + fullToken + compactToken + ingTokens)
-            .distinct()
-
+        val searchTokens = (singleTokens + pairTokens + fullToken + compactToken + ingTokens).distinct()
 
         val recipeData = hashMapOf(
             "id" to recipeId,
@@ -217,61 +194,42 @@ class NewCookViewModel(
             "difficulty" to difficulty,
             "hashtagId" to hashtags,
             "imageUrl" to imageUrl,
+            "videoUrl" to videoUrl, // Có video URL
             "likeCount" to 0,
-            "people" to safePeople,
-            "timeCook" to safeTime,
+            "people" to (people ?: 1),
+            "timeCook" to (timeCook ?: 0),
             "userId" to userId,
-            "searchTokens" to searchTokens
+            "searchTokens" to searchTokens // Có search tokens
         )
 
         recipeDoc.set(recipeData).await()
 
+        val tasks = mutableListOf<kotlinx.coroutines.Deferred<Any>>()
 
-        // ====== 2️⃣ UPLOAD ẢNH STEP + LƯU INSTRUCTION SONG SONG ======
-
-        val instructionCol = recipeDoc.collection("instruction")
-
-        val instructionTasks = instructions.mapIndexed { index, step ->
-
-            viewModelScope.async {
-                // Upload ảnh step (nếu có)
-                val uploadedUrl =
-                    if (step.imageUrl.isNullOrBlank()) ""
-                    else uploadStepImage(recipeId, index, step.imageUrl)
-
-                // Build data
+        instructions.forEach { step ->
+            tasks.add(viewModelScope.async {
                 val stepData = hashMapOf(
                     "step" to step.stepNumber,
                     "description" to step.description,
-                    "imageUrl" to uploadedUrl
+                    "imageUrl" to step.imageUrl,
+                    "imageUrls" to step.imageUrls // Sửa ở đây
                 )
-
-                instructionCol.add(stepData).await()
-            }
+                recipeDoc.collection("instruction").add(stepData).await()
+            })
         }
 
-        // CHẠY TẤT CẢ CÙNG LÚC
-        instructionTasks.awaitAll()
-
-
-        // ====== 3️⃣ LƯU INGREDIENT SONG SONG ======
-
-        val ingCol = recipeDoc.collection("recipeIngredients")
-
-        val ingredientTasks = ingredients.map { ing ->
-            viewModelScope.async {
+        ingredients.forEach { ing ->
+            tasks.add(viewModelScope.async {
                 val data = hashMapOf(
                     "name" to ing.name,
                     "quantity" to ing.quantity,
                     "unit" to ing.unit,
                     "note" to ing.notes
                 )
-                ingCol.add(data).await()
-            }
+                recipeDoc.collection("recipeIngredients").add(data).await()
+            })
         }
 
-        ingredientTasks.awaitAll()
-
-        Log.d("NewCookViewModel", "🔥 Tối ưu: Lưu Firestore nhanh hoàn tất cho ID: $recipeId")
+        tasks.awaitAll()
     }
 }

@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
@@ -36,7 +37,9 @@ fun Register(
     onRegisterSuccess: () -> Unit,
     onBackClick: () -> Unit,
     onLoginClick: () -> Unit,
-    onGoogleSignInClick: () -> Unit
+    onGoogleSignInClick: () -> Unit,
+    onGithubSignInClick: () -> Unit, // Mới
+    onPhoneSignInClick: () -> Unit   // Mới
 ) {
     var fullName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -66,90 +69,64 @@ fun Register(
     ScreenContainer {
         Box(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-                    .imePadding(),
+                modifier = Modifier.fillMaxSize().statusBarsPadding().imePadding(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 20.dp)
             ) {
                 item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp)
-                    ) {
-                        IconButton(
-                            onClick = onBackClick,
-                            modifier = Modifier
-                                .align(Alignment.CenterStart)
-                                .offset(x = (-12).dp)
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_back),
-                                contentDescription = "Back",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
+                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                        IconButton(onClick = onBackClick, modifier = Modifier.align(Alignment.CenterStart).offset(x = (-12).dp)) {
+                            Icon(painter = painterResource(R.drawable.ic_back), contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
                         }
-                        Text(
-                            text = "Tạo tài khoản",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = Cinnabar500,
-                            modifier = Modifier.align(Alignment.Center)
-                        )
+                        Text(text = "Tạo tài khoản", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Cinnabar500, modifier = Modifier.align(Alignment.Center))
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
 
                     InputField(label = "Họ và tên", value = fullName, onValueChange = { fullName = it }, placeholder = "Nhập họ tên")
                     InputField(label = "Email", value = email, onValueChange = { email = it }, placeholder = "example@gmail.com")
-                    PasswordField(
-                        label = "Mật khẩu",
-                        value = password,
-                        onValueChange = { password = it },
-                        isVisible = passwordVisible,
-                        onToggleVisibility = { passwordVisible = !passwordVisible }
-                    )
-                    PasswordField(
-                        label = "Nhập lại mật khẩu",
-                        value = confirmPassword,
-                        onValueChange = { confirmPassword = it },
-                        isVisible = confirmPasswordVisible,
-                        onToggleVisibility = { confirmPasswordVisible = !confirmPasswordVisible }
-                    )
+                    PasswordField(label = "Mật khẩu", value = password, onValueChange = { password = it }, isVisible = passwordVisible, onToggleVisibility = { passwordVisible = !passwordVisible })
+                    PasswordField(label = "Nhập lại mật khẩu", value = confirmPassword, onValueChange = { confirmPassword = it }, isVisible = confirmPasswordVisible, onToggleVisibility = { confirmPasswordVisible = !confirmPasswordVisible })
 
                     Spacer(modifier = Modifier.height(24.dp))
 
                     PrimaryButton(
                         text = "Đăng ký",
                         onClick = {
-                            if (password != confirmPassword) {
-                                Toast.makeText(context, "Mật khẩu không khớp!", Toast.LENGTH_SHORT).show()
-                            } else {
-                                authViewModel.register(fullName, email, password)
-                            }
+                            if (password != confirmPassword) Toast.makeText(context, "Mật khẩu không khớp!", Toast.LENGTH_SHORT).show()
+                            else authViewModel.register(fullName, email, password)
                         },
                         enabled = authState !is AuthUiState.Loading
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Text(text = "Hoặc", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                        Text(text = "Hoặc tiếp tục với", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    IconButton(
-                        onClick = onGoogleSignInClick,
-                        modifier = Modifier.size(44.dp)
+                    // --- CỤM NÚT SOCIAL ---
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Image(painterResource(R.drawable.ic_google_logo), contentDescription = "Google", modifier = Modifier.fillMaxSize())
+                        // Google
+                        IconButton(onClick = onGoogleSignInClick, modifier = Modifier.size(44.dp)) {
+                            Image(painterResource(R.drawable.ic_google_logo), contentDescription = "Google", modifier = Modifier.fillMaxSize())
+                        }
+                        Spacer(modifier = Modifier.width(20.dp))
+                        // GitHub
+                        IconButton(onClick = onGithubSignInClick, modifier = Modifier.size(44.dp)) {
+                            Icon(painter = painterResource(R.drawable.ic_launcher_foreground), contentDescription = "Github", tint = Color.Black, modifier = Modifier.fillMaxSize())
+                        }
+                        Spacer(modifier = Modifier.width(20.dp))
+                        // Phone
+                        IconButton(onClick = onPhoneSignInClick, modifier = Modifier.size(44.dp)) {
+                            Icon(imageVector = Icons.Default.Phone, contentDescription = "Phone", tint = Cinnabar500, modifier = Modifier.fillMaxSize().padding(6.dp))
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -157,22 +134,13 @@ fun Register(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(text = "Đã có tài khoản?", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Đăng nhập",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Cinnabar500,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.clickable(onClick = onLoginClick)
-                        )
+                        Text(text = "Đăng nhập", style = MaterialTheme.typography.bodyMedium, color = Cinnabar500, fontWeight = FontWeight.Bold, modifier = Modifier.clickable(onClick = onLoginClick))
                     }
                 }
             }
 
             if (authState is AuthUiState.Loading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center),
-                    color = Cinnabar500
-                )
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = Cinnabar500)
             }
         }
     }
@@ -181,12 +149,7 @@ fun Register(
 @Composable
 fun InputField(label: String, value: String, onValueChange: (String) -> Unit, placeholder: String) {
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        Text(text = label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
         Spacer(modifier = Modifier.height(4.dp))
         CustomTextField(value = value, onValueChange = onValueChange, placeholder = placeholder)
     }
@@ -195,12 +158,7 @@ fun InputField(label: String, value: String, onValueChange: (String) -> Unit, pl
 @Composable
 fun PasswordField(label: String, value: String, onValueChange: (String) -> Unit, isVisible: Boolean, onToggleVisibility: () -> Unit) {
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        Text(text = label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
         Spacer(modifier = Modifier.height(4.dp))
         CustomTextField(
             value = value,
@@ -209,11 +167,7 @@ fun PasswordField(label: String, value: String, onValueChange: (String) -> Unit,
             visualTransformation = if (isVisible) VisualTransformation.None else PasswordVisualTransformation(),
             trailingIcon = {
                 IconButton(onClick = onToggleVisibility) {
-                    Icon(
-                        imageVector = if (isVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                        contentDescription = "Toggle password",
-                        tint = Color.Gray
-                    )
+                    Icon(imageVector = if (isVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, contentDescription = "Toggle password", tint = Color.Gray)
                 }
             }
         )

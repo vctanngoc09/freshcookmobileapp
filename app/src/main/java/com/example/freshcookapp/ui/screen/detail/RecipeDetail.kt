@@ -2,7 +2,11 @@ package com.example.freshcookapp.ui.screen.detail
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.widget.MediaController
+import android.widget.VideoView
 import android.widget.Toast
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -13,6 +17,8 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -38,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.ViewModel
@@ -106,9 +113,7 @@ fun RecipeDetail(
         onRefresh = {
             isRefreshing = true
             scope.launch {
-                if (recipeId != null) {
-                    viewModel.loadRecipe(recipeId)
-                }
+                if (recipeId != null) viewModel.loadRecipe(recipeId)
                 delay(1000)
                 isRefreshing = false
             }
@@ -133,7 +138,6 @@ fun RecipeDetail(
                 onImageClick = { url -> expandedImageUrl = url },
                 onNotificationClick = onNotificationClick,
                 navController = navController,
-                // Gọi hàm toggleRelatedFavorite từ ViewModel
                 onRelatedFavoriteClick = { id -> viewModel.toggleRelatedFavorite(id) }
             )
 
@@ -147,7 +151,6 @@ fun RecipeDetail(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RecipeDetailView(
     recipe: Recipe,
@@ -182,6 +185,7 @@ private fun RecipeDetailView(
             navController = navController,
             onRelatedFavoriteClick = onRelatedFavoriteClick
         )
+        // Gradient che mờ phần Header để nút Back dễ nhìn
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -200,129 +204,86 @@ private fun RecipeDetailView(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+// --- HEADER MỚI: HỖ TRỢ VIDEO VÀ ẢNH ---
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun RecipeDetailTopBar(
-    recipeName: String,
-    recipeId: String,
-    isFavorite: Boolean,
-    hasUnreadNotifications: Boolean,
-    onBackClick: () -> Unit,
-    onFavoriteClick: () -> Unit,
-    onNotificationClick: () -> Unit
+private fun RecipeMediaCarousel(
+    imageUrl: String?,
+    videoUrl: String?,
+    onImageClick: () -> Unit
 ) {
-    val context = LocalContext.current
+    // Tạo list chứa các media có tồn tại. Thứ tự: Ảnh trước, Video sau (hoặc ngược lại tùy bạn)
+    val mediaItems = remember(imageUrl, videoUrl) {
+        val list = mutableListOf<Pair<String, String>>() // Pair<Type, Url>
+        if (!imageUrl.isNullOrBlank()) list.add("image" to imageUrl)
+        if (!videoUrl.isNullOrBlank()) list.add("video" to videoUrl)
+        list
+    }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        IconButton(
-            onClick = onBackClick,
-            modifier = Modifier.background(Color.Black.copy(alpha = 0.4f), CircleShape)
-        ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
-        }
+    if (mediaItems.isEmpty()) {
+        Image(
+            painter = painterResource(R.drawable.ic_launcher_background),
+            contentDescription = null,
+            modifier = Modifier.fillMaxWidth().height(350.dp),
+            contentScale = ContentScale.Crop
+        )
+    } else {
+        val pagerState = rememberPagerState(pageCount = { mediaItems.size })
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(
-                onClick = { shareRecipe(context, recipeName, recipeId) },
-                modifier = Modifier
-                    .background(Color.Black.copy(alpha = 0.4f), CircleShape)
-                    .size(40.dp)
-            ) {
-                Icon(Icons.Default.Share, contentDescription = "Share", tint = Color.White, modifier = Modifier.size(20.dp))
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            IconButton(
-                onClick = onNotificationClick,
-                modifier = Modifier
-                    .background(Color.Black.copy(alpha = 0.4f), CircleShape)
-                    .size(40.dp)
-            ) {
-                Box {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_notifications),
-                        contentDescription = "Notifications",
-                        tint = Color.White,
-                        modifier = Modifier.size(22.dp).align(Alignment.Center)
+        Box {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxWidth().height(350.dp)
+            ) { page ->
+                val (type, url) = mediaItems[page]
+                if (type == "image") {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(url)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize().clickable { onImageClick() },
+                        contentScale = ContentScale.Crop
                     )
-                    if (hasUnreadNotifications) {
-                        Badge(
-                            containerColor = Cinnabar500,
-                            modifier = Modifier
-                                .size(8.dp)
-                                .align(Alignment.TopEnd)
-                        )
-                    }
+                } else {
+                    VideoPlayer(videoUrl = url)
                 }
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
-
-            IconButton(
-                onClick = onFavoriteClick,
-                modifier = Modifier
-                    .background(Color.Black.copy(alpha = 0.4f), CircleShape)
-                    .size(40.dp)
-            ) {
-                Icon(
-                    imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                    contentDescription = "Favorite",
-                    tint = if (isFavorite) Cinnabar500 else Color.White,
-                    modifier = Modifier.size(22.dp)
-                )
+            // Indicator (Số trang)
+            if (mediaItems.size > 1) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(16.dp)
+                        .background(Color.Black.copy(0.6f), RoundedCornerShape(16.dp))
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = "${pagerState.currentPage + 1}/${mediaItems.size}",
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }
-}
-
-fun shareRecipe(context: Context, title: String, id: String) {
-    // Tạo link đúng chuẩn domain của bạn
-    val deepLink = "https://freshcookapp-b376c.web.app/recipe/$id"
-
-    val sendIntent = Intent().apply {
-        action = Intent.ACTION_SEND
-        // Nội dung tin nhắn sẽ gửi đi
-        putExtra(Intent.EXTRA_TEXT, "Món '$title' này ngon lắm, xem công thức ở đây nhé: $deepLink")
-        type = "text/plain"
-    }
-
-    val shareIntent = Intent.createChooser(sendIntent, "Chia sẻ món ăn")
-    context.startActivity(shareIntent)
 }
 
 @Composable
-fun LiveTimeText(
-    timestamp: Long,
-    color: Color = Color.Gray,
-    style: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.labelSmall
-) {
-    var timeText by remember { mutableStateOf(getRelativeTimeAgo(timestamp)) }
-
-    LaunchedEffect(timestamp) {
-        while (true) {
-            val newText = getRelativeTimeAgo(timestamp)
-            if (newText != timeText) {
-                timeText = newText
+fun VideoPlayer(videoUrl: String) {
+    val context = LocalContext.current
+    AndroidView(
+        factory = { ctx ->
+            VideoView(ctx).apply {
+                setVideoURI(Uri.parse(videoUrl))
+                setMediaController(MediaController(ctx))
+                // start() // Bỏ comment nếu muốn tự động phát
             }
-            val now = System.currentTimeMillis()
-            val diff = now - timestamp
-            val delayMillis = if (diff < 3600000) 60000L else 3600000L
-            kotlinx.coroutines.delay(delayMillis)
-        }
-    }
-
-    Text(
-        text = timeText,
-        color = color,
-        style = style,
-        fontSize = 11.sp
+        },
+        modifier = Modifier.fillMaxSize().background(Color.Black)
     )
 }
 
@@ -343,9 +304,11 @@ private fun RecipeDetailContent(
     navController: NavHostController
 ) {
     LazyColumn(modifier = modifier, state = lazyListState) {
+        // HEADER: Sử dụng Carousel thay vì chỉ Image
         item {
-            RecipeHeader(
-                recipe = recipe,
+            RecipeMediaCarousel(
+                imageUrl = recipe.imageUrl,
+                videoUrl = recipe.videoUrl, // Đã có trong Model cập nhật
                 onImageClick = { recipe.imageUrl?.let { onImageClick(it) } }
             )
         }
@@ -354,14 +317,12 @@ private fun RecipeDetailContent(
                 recipe = recipe,
                 commentsCount = commentsCount,
                 onFavoriteClick = onFavoriteClick,
-                onCommentClick = {
-                    scope.launch {
-                        lazyListState.animateScrollToItem(4)
-                    }
-                }
+                onCommentClick = { scope.launch { lazyListState.animateScrollToItem(4) } }
             )
         }
         item { RecipeIngredients(recipe.ingredients) }
+
+        // INSTRUCTION: Sử dụng hàm mới hỗ trợ nhiều ảnh
         item {
             RecipeInstructions(
                 steps = recipe.instructions,
@@ -390,25 +351,86 @@ private fun RecipeDetailContent(
     }
 }
 
+// --- CẬP NHẬT: HIỂN THỊ NHIỀU ẢNH TRONG BƯỚC LÀM ---
 @Composable
-private fun RecipeHeader(recipe: Recipe, onImageClick: () -> Unit) {
-    val defaultImage = R.drawable.ic_launcher_background
+private fun RecipeInstructions(steps: List<InstructionStep>, onImageClick: (String) -> Unit) {
+    val context = LocalContext.current
+    Column(modifier = Modifier.padding(16.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "Các bước làm",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(Modifier.weight(1f))
+            Icon(painter = painterResource(R.drawable.ic_launcher_foreground), contentDescription = null, modifier = Modifier.size(24.dp), tint = Color.LightGray)
+        }
+        Spacer(Modifier.height(12.dp))
+        if (steps.isEmpty()) {
+            Text("Đang cập nhật...", color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
+        } else {
+            steps.forEach { step ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .background(Color.Black, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "${step.stepNumber}",
+                            color = Color.White,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = step.description,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Black,
+                            lineHeight = 22.sp
+                        )
+                        Spacer(Modifier.height(8.dp))
 
-    AsyncImage(
-        model = ImageRequest.Builder(LocalContext.current)
-            .data(recipe.imageUrl ?: defaultImage)
-            .crossfade(true)
-            .build(),
-        contentDescription = null,
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 280.dp, max = 400.dp)
-            .clickable { onImageClick() },
-        contentScale = ContentScale.Crop,
-        placeholder = painterResource(defaultImage),
-        error = painterResource(defaultImage)
-    )
+                        // Gộp ảnh đơn và danh sách ảnh lại
+                        val images = mutableListOf<String>()
+                        if (!step.imageUrl.isNullOrBlank()) images.add(step.imageUrl!!)
+                        images.addAll(step.imageUrls)
+                        val uniqueImages = images.distinct()
+
+                        if (uniqueImages.isNotEmpty()) {
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(uniqueImages) { imgUrl ->
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(context)
+                                            .data(imgUrl)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = "Step image",
+                                        modifier = Modifier
+                                            .height(120.dp)
+                                            .width(150.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(Color(0xFFF0F0F0))
+                                            .clickable { onImageClick(imgUrl) },
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
+
+// ... CÁC HÀM CŨ GIỮ NGUYÊN (RecipeInfoSection, RecipeIngredients, v.v...) ...
 
 @Composable
 private fun RecipeInfoSection(
@@ -525,77 +547,6 @@ private fun RecipeIngredients(ingredients: List<String>) {
                     modifier = Modifier.padding(bottom = 6.dp),
                     style = MaterialTheme.typography.bodyMedium
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun RecipeInstructions(steps: List<InstructionStep>, onImageClick: (String) -> Unit) {
-    val context = LocalContext.current
-    Column(modifier = Modifier.padding(16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = "Các bước làm",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(Modifier.weight(1f))
-            Icon(painter = painterResource(R.drawable.ic_launcher_foreground), contentDescription = null, modifier = Modifier.size(24.dp), tint = Color.LightGray)
-        }
-        Spacer(Modifier.height(12.dp))
-        if (steps.isEmpty()) {
-            Text("Đang cập nhật...", color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
-        } else {
-            steps.forEach { step ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Top
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .background(Color.Black, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "${step.stepNumber}",
-                            color = Color.White,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = step.description,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Black,
-                            lineHeight = 22.sp
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        if (!step.imageUrl.isNullOrEmpty()) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(context)
-                                    .data(step.imageUrl)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = "Step image",
-                                modifier = Modifier
-                                    .height(120.dp)
-                                    .width(150.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(Color(0xFFF0F0F0))
-                                    .clickable { onImageClick(step.imageUrl) },
-                                contentScale = ContentScale.Crop,
-                                placeholder = painterResource(R.drawable.ic_launcher_background)
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                        } else {
-                            Spacer(modifier = Modifier.height(8.dp))
-                        }
-                    }
-                }
             }
         }
     }
@@ -824,6 +775,100 @@ fun CommentItem(comment: Comment, isOwner: Boolean, onDelete: () -> Unit) {
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RecipeDetailTopBar(
+    recipeName: String,
+    recipeId: String,
+    isFavorite: Boolean,
+    hasUnreadNotifications: Boolean,
+    onBackClick: () -> Unit,
+    onFavoriteClick: () -> Unit,
+    onNotificationClick: () -> Unit
+) {
+    val context = LocalContext.current
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        IconButton(
+            onClick = onBackClick,
+            modifier = Modifier.background(Color.Black.copy(alpha = 0.4f), CircleShape)
+        ) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(
+                onClick = { shareRecipe(context, recipeName, recipeId) },
+                modifier = Modifier
+                    .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+                    .size(40.dp)
+            ) {
+                Icon(Icons.Default.Share, contentDescription = "Share", tint = Color.White, modifier = Modifier.size(20.dp))
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            IconButton(
+                onClick = onNotificationClick,
+                modifier = Modifier
+                    .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+                    .size(40.dp)
+            ) {
+                Box {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_notifications),
+                        contentDescription = "Notifications",
+                        tint = Color.White,
+                        modifier = Modifier.size(22.dp).align(Alignment.Center)
+                    )
+                    if (hasUnreadNotifications) {
+                        Badge(
+                            containerColor = Cinnabar500,
+                            modifier = Modifier
+                                .size(8.dp)
+                                .align(Alignment.TopEnd)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            IconButton(
+                onClick = onFavoriteClick,
+                modifier = Modifier
+                    .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+                    .size(40.dp)
+            ) {
+                Icon(
+                    imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = "Favorite",
+                    tint = if (isFavorite) Cinnabar500 else Color.White,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+    }
+}
+
+fun shareRecipe(context: Context, title: String, id: String) {
+    val deepLink = "https://freshcookapp-b376c.web.app/recipe/$id"
+    val sendIntent = Intent().apply {
+        action = Intent.ACTION_SEND
+        putExtra(Intent.EXTRA_TEXT, "Món '$title' này ngon lắm, xem công thức ở đây nhé: $deepLink")
+        type = "text/plain"
+    }
+    val shareIntent = Intent.createChooser(sendIntent, "Chia sẻ món ăn")
+    context.startActivity(shareIntent)
+}
+
 fun getRelativeTimeAgo(timestamp: Long): String {
     val now = System.currentTimeMillis()
     val diff = now - timestamp
@@ -836,7 +881,25 @@ fun getRelativeTimeAgo(timestamp: Long): String {
     }
 }
 
-// 🔥 SỬA MỤC NÀY ĐỂ BẤM TIM ĐƯỢC 🔥
+@Composable
+fun LiveTimeText(
+    timestamp: Long,
+    color: Color = Color.Gray,
+    style: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.labelSmall
+) {
+    var timeText by remember { mutableStateOf(getRelativeTimeAgo(timestamp)) }
+    LaunchedEffect(timestamp) {
+        while (true) {
+            val newText = getRelativeTimeAgo(timestamp)
+            if (newText != timeText) {
+                timeText = newText
+            }
+            delay(60000L) // Cập nhật mỗi phút
+        }
+    }
+    Text(text = timeText, color = color, style = style, fontSize = 11.sp)
+}
+
 @Composable
 fun RelatedRecipesSection(
     recipes: List<RecipePreview>,
@@ -856,17 +919,13 @@ fun RelatedRecipesSection(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(recipes) { item ->
-                // 🔥 ĐÃ XÓA CÁI BOX CLICKABLE BAO NGOÀI 🔥
-                // Thay vào đó, gán click chuyển trang vào modifier của RecipeCard
                 RecipeCard(
                     imageUrl = item.imageUrl,
                     name = item.title,
                     timeCook = item.time.replace(" phút", "").toIntOrNull() ?: 0,
                     difficulty = "Dễ",
                     isFavorite = item.isFavorite,
-                    onFavoriteClick = { onFavoriteClick(item.id) }, // Bấm tim thì gọi hàm này
-
-                    // Gán sự kiện chuyển trang vào đây
+                    onFavoriteClick = { onFavoriteClick(item.id) },
                     modifier = Modifier.clickable {
                         if (item.id.isNotBlank()) navController.navigate(Destination.RecipeDetail(recipeId = item.id))
                         else Toast.makeText(ctx, "Món ăn không hợp lệ", Toast.LENGTH_SHORT).show()

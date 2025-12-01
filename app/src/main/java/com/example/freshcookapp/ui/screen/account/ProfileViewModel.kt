@@ -1,6 +1,8 @@
 package com.example.freshcookapp.ui.screen.account
 
 import androidx.lifecycle.ViewModel
+import com.example.freshcookapp.domain.model.Author
+import com.example.freshcookapp.domain.model.Recipe
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
@@ -15,7 +17,8 @@ data class UserProfileUIState(
     val followerCount: Int = 0,
     val followingCount: Int = 0,
     val recipeCount: Int = 0,
-    val isCurrentUser: Boolean = false
+    val isCurrentUser: Boolean = false,
+    val userRecipes: List<Recipe> = emptyList()
 )
 
 class ProfileViewModel : ViewModel() {
@@ -28,17 +31,14 @@ class ProfileViewModel : ViewModel() {
     private val _hasUnreadNotifications = MutableStateFlow(false)
     val hasUnreadNotifications: StateFlow<Boolean> = _hasUnreadNotifications
 
-    // Các biến để quản lý lắng nghe
     private var userListener: ListenerRegistration? = null
-    private var recipeCountListener: ListenerRegistration? = null
     private var followerListener: ListenerRegistration? = null
     private var followingListener: ListenerRegistration? = null
+    private var recipesListener: ListenerRegistration? = null
     private var unreadListener: ListenerRegistration? = null
 
     fun loadProfile(targetUserId: String?) {
         val currentUserId = auth.currentUser?.uid ?: return
-
-        // Xác định xem đang load profile của ai
         val userIdToLoad = if (targetUserId == null || targetUserId == currentUserId || targetUserId == "{userId}") {
             currentUserId
         } else {
@@ -48,11 +48,10 @@ class ProfileViewModel : ViewModel() {
 
         removeListeners()
 
-        // 1. Lắng nghe thông tin người dùng (Của userIdToLoad)
+        // 1. User Info
         userListener = firestore.collection("users").document(userIdToLoad)
             .addSnapshotListener { document, _ ->
                 if (document != null && document.exists()) {
-                    // SỬA LỖI 1: Ưu tiên lấy username từ DB, nếu null mới fallback sang email
                     val dbUsername = document.getString("username")
                     val emailUsername = document.getString("email")?.substringBefore("@") ?: ""
 
@@ -66,16 +65,36 @@ class ProfileViewModel : ViewModel() {
                 }
             }
 
-        // 2. Lắng nghe số lượng món ăn (Của userIdToLoad)
-        recipeCountListener = firestore.collection("recipes")
+        // 2. User Recipes (FIX LỖI MAPPING TẠI ĐÂY)
+        recipesListener = firestore.collection("recipes")
             .whereEqualTo("userId", userIdToLoad)
             .addSnapshotListener { snapshot, e ->
                 if (e == null && snapshot != null) {
-                    _uiState.value = _uiState.value.copy(recipeCount = snapshot.size())
+                    val recipeList = snapshot.documents.mapNotNull { doc ->
+                        try {
+                            // Map thủ công từng trường để tránh lỗi Crash
+                            Recipe(
+                                id = doc.id,
+                                name = doc.getString("name") ?: "",
+                                imageUrl = doc.getString("imageUrl"),
+                                timeCook = doc.getLong("timeCook")?.toInt() ?: 0,
+                                difficulty = doc.getString("difficulty") ?: "Dễ",
+                                author = Author(id = userIdToLoad, name = "", avatarUrl = null),
+                                description = "", ingredients = emptyList(), instructions = emptyList(), relatedRecipes = emptyList(), isFavorite = false
+                            )
+                        } catch (e: Exception) {
+                            null // Bỏ qua item lỗi
+                        }
+                    }
+
+                    _uiState.value = _uiState.value.copy(
+                        recipeCount = snapshot.size(),
+                        userRecipes = recipeList
+                    )
                 }
             }
 
-        // 3. Lắng nghe Follower (Của userIdToLoad)
+        // 3. Follower
         followerListener = firestore.collection("users").document(userIdToLoad)
             .collection("followers")
             .addSnapshotListener { snapshot, _ ->
@@ -84,7 +103,7 @@ class ProfileViewModel : ViewModel() {
                 }
             }
 
-        // 4. Lắng nghe Following (Của userIdToLoad)
+        // 4. Following
         followingListener = firestore.collection("users").document(userIdToLoad)
             .collection("following")
             .addSnapshotListener { snapshot, _ ->
@@ -93,23 +112,24 @@ class ProfileViewModel : ViewModel() {
                 }
             }
 
-        // 5. SỬA LỖI 2: LẮNG NGHE THÔNG BÁO CHƯA ĐỌC (LUÔN CỦA CURRENT USER)
-        // Dù đang xem profile người khác, badge thông báo vẫn phải là của MÌNH
-        unreadListener = firestore.collection("users").document(currentUserId) // <-- Luôn là currentUserId
-            .collection("notifications")
-            .whereEqualTo("isRead", false)
-            .addSnapshotListener { snapshot, e ->
-                if (e == null && snapshot != null) {
-                    _hasUnreadNotifications.value = snapshot.size() > 0
+        // 5. Notifications (Only for current user)
+        if (isMe) {
+            unreadListener = firestore.collection("users").document(currentUserId)
+                .collection("notifications")
+                .whereEqualTo("isRead", false)
+                .addSnapshotListener { snapshot, e ->
+                    if (e == null && snapshot != null) {
+                        _hasUnreadNotifications.value = snapshot.size() > 0
+                    }
                 }
-            }
+        }
     }
 
     private fun removeListeners() {
         userListener?.remove()
-        recipeCountListener?.remove()
         followerListener?.remove()
         followingListener?.remove()
+        recipesListener?.remove()
         unreadListener?.remove()
     }
 

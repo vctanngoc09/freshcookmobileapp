@@ -2,8 +2,10 @@ package com.example.freshcookapp.ui.screen.account
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -55,8 +57,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.rememberAsyncImagePainter
-import coil.request.ImageRequest // <--- QUAN TRỌNG: Import cái này
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.freshcookapp.FreshCookAppRoom
 import com.example.freshcookapp.R
 import com.example.freshcookapp.data.local.AppDatabase
@@ -65,18 +67,8 @@ import com.example.freshcookapp.ui.component.ProfileSkeleton
 import com.example.freshcookapp.ui.component.ScreenContainer
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.example.freshcookapp.ui.theme.WorkSans
-import com.google.firebase.firestore.PropertyName
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-data class RecipeInfo(
-    val id: String = "",
-    val name: String = "",
-    val imageUrl: String? = null,
-    @get:PropertyName("timeCook")
-    val timeCookMinutes: Int = 0,
-    val userId: String = ""
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -118,7 +110,6 @@ fun ProfileScreen(
     val uiState by viewModel.uiState.collectAsState()
     val hasUnreadNotifications by viewModel.hasUnreadNotifications.collectAsState()
 
-    // --- CẤU HÌNH TRẠNG THÁI REFRESH ---
     var isRefreshing by remember { mutableStateOf(false) }
     val refreshState = rememberPullToRefreshState()
 
@@ -172,7 +163,6 @@ fun ProfileScreen(
                     }
                 }
 
-                // 🔥 BỌC PHẦN NỘI DUNG CHÍNH TRONG PULL TO REFRESH 🔥
                 PullToRefreshBox(
                     isRefreshing = isRefreshing,
                     state = refreshState,
@@ -201,24 +191,21 @@ fun ProfileScreen(
                                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 24.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
-                                    // --- SỬA Ở ĐÂY: Dùng ImageRequest để mượt mà hơn ---
-                                    Image(
-                                        painter = rememberAsyncImagePainter(
-                                            model = ImageRequest.Builder(LocalContext.current)
-                                                .data(uiState.photoUrl)
-                                                .placeholder(R.drawable.avatar1) // Hiện ngay lập tức
-                                                .error(R.drawable.avatar1)       // Nếu lỗi thì hiện cái này
-                                                .crossfade(true)                 // Hiệu ứng hiện dần
-                                                .build()
-                                        ),
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(uiState.photoUrl)
+                                            .placeholder(R.drawable.avatar1)
+                                            .error(R.drawable.avatar1)
+                                            .crossfade(true)
+                                            .build(),
                                         contentDescription = "Profile",
+                                        contentScale = ContentScale.Crop,
                                         modifier = Modifier
                                             .size(140.dp)
                                             .clip(CircleShape)
-                                            .clickable { onEditProfileClick() },
-                                        contentScale = ContentScale.Crop
+                                            .border(1.5.dp, Cinnabar500, CircleShape)
+                                            .clickable { onEditProfileClick() }
                                     )
-                                    // ----------------------------------------------------
 
                                     Spacer(modifier = Modifier.height(16.dp))
                                     Text(uiState.fullName, fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = WorkSans, color = Color.Black)
@@ -227,18 +214,38 @@ fun ProfileScreen(
                                 }
                             }
 
-                            // THỐNG KÊ (STATS)
+                            // THỐNG KÊ (STATS) - ĐÃ CẬP NHẬT ĐỂ SỬA LỖI BẤM
                             item {
                                 Row(
-                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Cinnabar500).padding(vertical = 16.dp),
-                                    horizontalArrangement = Arrangement.SpaceEvenly,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(20.dp))
+                                        .background(Cinnabar500)
+                                        .padding(vertical = 16.dp),
+                                    horizontalArrangement = Arrangement.Center, // Canh giữa tổng thể
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    StatItem(count = uiState.followerCount.toString(), label = "Follower", onClick = { onFollowerClick(uiState.uid) })
+                                    // Dùng modifier.weight(1f) để chia đều không gian bấm
+                                    StatItem(
+                                        count = uiState.followerCount.toString(),
+                                        label = "Follower",
+                                        modifier = Modifier.weight(1f),
+                                        onClick = { onFollowerClick(uiState.uid) }
+                                    )
                                     Divider(modifier = Modifier.width(1.dp).height(40.dp), color = Color.White.copy(alpha = 0.5f))
-                                    StatItem(count = uiState.recipeCount.toString(), label = "Món", onClick = onMyDishesClick)
+                                    StatItem(
+                                        count = uiState.recipeCount.toString(),
+                                        label = "Món",
+                                        modifier = Modifier.weight(1f),
+                                        onClick = onMyDishesClick
+                                    )
                                     Divider(modifier = Modifier.width(1.dp).height(40.dp), color = Color.White.copy(alpha = 0.5f))
-                                    StatItem(count = uiState.followingCount.toString(), label = "Following", onClick = { onFollowingClick(uiState.uid) })
+                                    StatItem(
+                                        count = uiState.followingCount.toString(),
+                                        label = "Following",
+                                        modifier = Modifier.weight(1f),
+                                        onClick = { onFollowingClick(uiState.uid) }
+                                    )
                                 }
                             }
 
@@ -275,6 +282,11 @@ fun ProfileScreen(
                                     }
                                 }
                             }
+
+                            // ĐÃ XÓA PHẦN HIỂN THỊ DANH SÁCH MÓN ĂN Ở ĐÂY
+
+                            // Padding cuối trang để không bị che bởi BottomBar
+                            item { Spacer(modifier = Modifier.height(80.dp)) }
                         }
                     }
                 }
@@ -283,9 +295,15 @@ fun ProfileScreen(
     }
 }
 
+// Hàm StatItem hỗ trợ modifier từ bên ngoài để mở rộng vùng bấm
 @Composable
-fun StatItem(count: String, label: String, onClick: () -> Unit = {}) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable(onClick = onClick)) {
+fun StatItem(count: String, label: String, modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp)
+    ) {
         Text(count, fontSize = 24.sp, fontWeight = FontWeight.Bold, fontFamily = WorkSans, color = Color.White)
         Text(label, fontSize = 14.sp, fontFamily = WorkSans, color = Color.White)
     }

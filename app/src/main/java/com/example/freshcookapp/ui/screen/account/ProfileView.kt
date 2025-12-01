@@ -1,12 +1,14 @@
 package com.example.freshcookapp.ui.screen.account
 
 import android.widget.Toast
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -17,17 +19,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.rememberAsyncImagePainter
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.freshcookapp.R
+import com.example.freshcookapp.ui.component.ProfileSkeleton
+import com.example.freshcookapp.ui.component.RecipeCard // Đảm bảo import đúng
 import com.example.freshcookapp.ui.theme.Cinnabar500
+import com.example.freshcookapp.ui.theme.WorkSans
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FieldValue
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ktx.toObject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,92 +40,16 @@ fun AuthorProfileScreen(
     userId: String,
     onBackClick: () -> Unit,
     onRecipeClick: (String) -> Unit,
-    // --- THÊM 2 HÀNH ĐỘNG CLICK MỚI ---
     onFollowerClick: (String) -> Unit,
     onFollowingClick: (String) -> Unit
 ) {
-    val context = LocalContext.current
-    val firestore = FirebaseFirestore.getInstance()
+    val viewModel: AuthorProfileViewModel = viewModel()
+    val uiState by viewModel.uiState.collectAsState()
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
 
-    // Dữ liệu hiển thị
-    var fullName by remember { mutableStateOf("Đang tải...") }
-    var username by remember { mutableStateOf("") }
-    var photoUrl by remember { mutableStateOf<String?>(null) }
-    var followerCount by remember { mutableIntStateOf(0) }
-    var followingCount by remember { mutableIntStateOf(0) }
-    var recipeCount by remember { mutableIntStateOf(0) }
-    var isFollowing by remember { mutableStateOf(false) }
-    var isLoading by remember { mutableStateOf(true) }
-    var authorRecipes by remember { mutableStateOf<List<RecipeInfo>>(emptyList()) }
-
-    // 1. LẤY THÔNG TIN USER (Tên, Ảnh...)
+    // Load dữ liệu khi vào màn hình
     LaunchedEffect(userId) {
-        firestore.collection("users").document(userId).addSnapshotListener { snapshot, _ ->
-            if (snapshot != null && snapshot.exists()) {
-                fullName = snapshot.getString("fullName") ?: "Người dùng"
-                username = snapshot.getString("username") ?: ""
-                photoUrl = snapshot.getString("photoUrl")
-                isLoading = false
-            }
-        }
-    }
-
-    // 2. TỰ ĐẾM SỐ LIỆU & LẤY DANH SÁCH MÓN
-    LaunchedEffect(userId) {
-        // Đếm Follower
-        firestore.collection("users").document(userId).collection("followers")
-            .addSnapshotListener { s, _ -> if (s != null) followerCount = s.size() }
-
-        // Đếm Following
-        firestore.collection("users").document(userId).collection("following")
-            .addSnapshotListener { s, _ -> if (s != null) followingCount = s.size() }
-
-        // Lấy danh sách Món ăn
-        firestore.collection("recipes").whereEqualTo("userId", userId)
-            .addSnapshotListener { s, _ ->
-                if (s != null) {
-                    recipeCount = s.size()
-                    authorRecipes = s.documents.mapNotNull { doc ->
-                        doc.toObject<RecipeInfo>()?.copy(id = doc.id)
-                    }
-                }
-            }
-    }
-
-    // 3. CHECK FOLLOW
-    DisposableEffect(currentUserId, userId) {
-        val listener = if (currentUserId != null) {
-            firestore.collection("users").document(currentUserId)
-                .collection("following").document(userId)
-                .addSnapshotListener { document, _ ->
-                    isFollowing = document != null && document.exists()
-                }
-        } else { null }
-        onDispose { listener?.remove() }
-    }
-
-    // 4. LOGIC FOLLOW
-    val onFollowClick: () -> Unit = {
-        if (currentUserId == null) {
-            Toast.makeText(context, "Bạn cần đăng nhập", Toast.LENGTH_SHORT).show()
-        } else if (currentUserId != userId) {
-            val currentUserRef = firestore.collection("users").document(currentUserId)
-            val viewedUserRef = firestore.collection("users").document(userId)
-            val followingRef = currentUserRef.collection("following").document(userId)
-            val followerRef = viewedUserRef.collection("followers").document(currentUserId)
-
-            firestore.runTransaction { transaction ->
-                val isCurrentlyFollowing = transaction.get(followingRef).exists()
-                if (isCurrentlyFollowing) {
-                    transaction.delete(followingRef)
-                    transaction.delete(followerRef)
-                } else {
-                    transaction.set(followingRef, mapOf("timestamp" to FieldValue.serverTimestamp()))
-                    transaction.set(followerRef, mapOf("timestamp" to FieldValue.serverTimestamp()))
-                }
-            }
-        }
+        viewModel.loadAuthorProfile(userId)
     }
 
     Scaffold(
@@ -128,16 +57,17 @@ fun AuthorProfileScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = fullName,
+                        text = if(uiState.fullName != "Đang tải...") uiState.fullName else "",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        fontFamily = WorkSans
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Cinnabar500)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
@@ -145,51 +75,65 @@ fun AuthorProfileScreen(
         },
         containerColor = Color.White
     ) { paddingValues ->
-        if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Cinnabar500)
+        if (uiState.fullName == "Đang tải...") {
+            Box(modifier = Modifier.padding(paddingValues)) {
+                ProfileSkeleton()
             }
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(paddingValues),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // INFO
+                // 1. INFO
                 item {
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Image(
-                        painter = rememberAsyncImagePainter(model = photoUrl ?: R.drawable.avatar1),
-                        contentDescription = "Profile Image",
-                        modifier = Modifier.size(120.dp).clip(CircleShape),
-                        contentScale = ContentScale.Crop
+                    Spacer(modifier = Modifier.height(16.dp))
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(uiState.photoUrl)
+                            .placeholder(R.drawable.avatar1)
+                            .error(R.drawable.avatar1)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Avatar",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(120.dp)
+                            .clip(CircleShape)
+                            .border(1.5.dp, Cinnabar500, CircleShape)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text(fullName, fontWeight = FontWeight.Bold, fontSize = 22.sp)
-                    if (username.isNotBlank()) {
-                        Text("@$username", fontSize = 16.sp, color = Color.Gray)
+                    Text(uiState.fullName, fontWeight = FontWeight.Bold, fontSize = 22.sp, fontFamily = WorkSans, color = Color.Black)
+                    if (uiState.username.isNotBlank()) {
+                        Text("@${uiState.username}", fontSize = 16.sp, color = Color.Gray, fontFamily = WorkSans)
                     }
                     Spacer(modifier = Modifier.height(24.dp))
                 }
 
-                // --- STATS (THỐNG KÊ) ---
+                // 2. STATS (Thống kê)
                 item {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(Cinnabar500)
+                            .padding(vertical = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // --- SỬA Ở ĐÂY: Thêm onClick cho Followers ---
                         AuthorStatItem(
-                            count = followerCount.toString(),
+                            count = uiState.followerCount.toString(),
                             label = "Followers",
                             onClick = { onFollowerClick(userId) }
                         )
+                        Divider(modifier = Modifier.width(1.dp).height(30.dp), color = Color.White.copy(alpha = 0.5f))
+
+                        AuthorStatItem(count = uiState.recipeCount.toString(), label = "Món ăn") // Ko click
+
+                        Divider(modifier = Modifier.width(1.dp).height(30.dp), color = Color.White.copy(alpha = 0.5f))
+
                         AuthorStatItem(
-                            count = recipeCount.toString(),
-                            label = "Món ăn"
-                        ) // Món ăn không cần click
-                        // --- SỬA Ở ĐÂY: Thêm onClick cho Following ---
-                        AuthorStatItem(
-                            count = followingCount.toString(),
+                            count = uiState.followingCount.toString(),
                             label = "Following",
                             onClick = { onFollowingClick(userId) }
                         )
@@ -197,65 +141,86 @@ fun AuthorProfileScreen(
                     Spacer(modifier = Modifier.height(24.dp))
                 }
 
-                // BUTTON
-                if (currentUserId != userId) {
+                // 3. BUTTON FOLLOW (Chỉ hiện nếu xem người khác)
+                if (currentUserId != null && currentUserId != userId) {
                     item {
                         Button(
-                            onClick = onFollowClick,
-                            modifier = Modifier.fillMaxWidth(0.6f).height(48.dp),
+                            onClick = { viewModel.toggleFollow() },
+                            modifier = Modifier
+                                .fillMaxWidth(0.6f)
+                                .height(48.dp),
+                            shape = RoundedCornerShape(24.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isFollowing) Color.LightGray else Cinnabar500,
-                                contentColor = if (isFollowing) Color.Black else Color.White
-                            )
+                                containerColor = if (uiState.isFollowing) Color(0xFFEEEEEE) else Color.Black,
+                                contentColor = if (uiState.isFollowing) Color.Black else Color.White
+                            ),
+                            border = if(uiState.isFollowing) null else null
                         ) {
-                            Text(if (isFollowing) "Đang theo dõi" else "Theo dõi")
+                            Text(
+                                text = if (uiState.isFollowing) "Đang theo dõi" else "Theo dõi",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = WorkSans
+                            )
                         }
                         Spacer(modifier = Modifier.height(24.dp))
-                        Divider(thickness = 8.dp, color = Color(0xFFF5F5F5))
                     }
                 }
 
-                // LIST MÓN ĂN
-                if (authorRecipes.isEmpty()) {
+                // 4. LIST MÓN ĂN (GRID 2 CỘT)
+                item {
+                    Divider(thickness = 8.dp, color = Color(0xFFF9F9F9))
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Món ăn của ${uiState.fullName.substringBefore(" ")}",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = WorkSans,
+                        color = Color.Black,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+                }
+
+                if (uiState.authorRecipes.isEmpty()) {
                     item {
                         Box(modifier = Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
-                            Text("Người dùng này chưa đăng món nào.", color = Color.Gray)
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(painter = painterResource(R.drawable.ic_launcher_foreground), contentDescription = null, tint = Color.LightGray, modifier = Modifier.size(60.dp))
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("Chưa có món ăn nào.", color = Color.Gray, fontFamily = WorkSans)
+                            }
                         }
                     }
                 } else {
-                    items(authorRecipes) { recipe ->
-                        AuthorDishItem(
-                            recipe = recipe,
-                            onClick = { onRecipeClick(recipe.id) }
-                        )
+                    // Render Grid 2 cột
+                    items(uiState.authorRecipes.chunked(2)) { rowRecipes ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            for (recipe in rowRecipes) {
+                                Box(modifier = Modifier.weight(1f)) {
+                                    RecipeCard(
+                                        imageUrl = recipe.imageUrl,
+                                        name = recipe.name,
+                                        timeCook = recipe.timeCook,
+                                        difficulty = recipe.difficulty ?: "Dễ",
+                                        isFavorite = false, // Xem người khác thì ko cần tim ở đây
+                                        onFavoriteClick = {},
+                                        modifier = Modifier.clickable { onRecipeClick(recipe.id) }
+                                    )
+                                }
+                            }
+                            // Spacer nếu lẻ
+                            if (rowRecipes.size == 1) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
                     }
+                    item { Spacer(modifier = Modifier.height(40.dp)) }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-fun AuthorDishItem(recipe: RecipeInfo, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .height(100.dp)
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(2.dp)
-    ) {
-        Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-            Image(
-                painter = rememberAsyncImagePainter(model = recipe.imageUrl ?: R.drawable.img_food1),
-                contentDescription = null,
-                modifier = Modifier.size(100.dp),
-                contentScale = ContentScale.Crop
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(recipe.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
         }
     }
@@ -265,16 +230,13 @@ fun AuthorDishItem(recipe: RecipeInfo, onClick: () -> Unit) {
 private fun AuthorStatItem(
     count: String,
     label: String,
-    // --- SỬA Ở ĐÂY: Thêm tham số onClick, mặc định là không làm gì ---
     onClick: () -> Unit = {}
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        // --- SỬA Ở ĐÂY: Thêm modifier clickable ---
         modifier = Modifier.clickable(onClick = onClick)
     ) {
-        Text(text = count, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(text = label, fontSize = 14.sp, color = Color.Gray)
+        Text(text = count, fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = WorkSans, color = Color.White)
+        Text(text = label, fontSize = 14.sp, fontFamily = WorkSans, color = Color.White.copy(alpha = 0.9f))
     }
 }

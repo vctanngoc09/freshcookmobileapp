@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -38,25 +39,16 @@ fun ForgotPassword(
 
     ScreenContainer {
         Column(
-            modifier = Modifier
-                .fillMaxSize(),
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-
             Spacer(modifier = Modifier.height(24.dp))
 
             // Back button
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Start
-            ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
                 IconButton(onClick = onBackClick) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_back),
-                        contentDescription = "Back",
-                        tint = Black
-                    )
+                    Icon(painter = painterResource(R.drawable.ic_back), contentDescription = "Back", tint = Black)
                 }
             }
 
@@ -72,9 +64,19 @@ fun ForgotPassword(
             )
             Text(
                 modifier = Modifier.fillMaxWidth(),
-                text = "Đừng lo lắng, hãy nhập email của bạn và chúng tôi sẽ gửi cho bạn một liên kết để đặt lại mật khẩu của bạn.",
+                text = "Đừng lo lắng, hãy nhập email của bạn và chúng tôi sẽ gửi liên kết đặt lại mật khẩu.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Black,
+                textAlign = TextAlign.Left
+            )
+
+            // --- THÊM DÒNG NÀY ĐỂ GIẢI THÍCH CHO NGƯỜI DÙNG PHONE/SOCIAL ---
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                modifier = Modifier.fillMaxWidth(),
+                text = "Lưu ý: Nếu bạn đăng nhập bằng Số điện thoại hoặc Google/GitHub, bạn không cần dùng tính năng này.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray,
                 textAlign = TextAlign.Left
             )
 
@@ -96,7 +98,7 @@ fun ForgotPassword(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Login Button
+            // Send Button
             PrimaryButton(
                 text = "Gửi",
                 onClick = onSendClick

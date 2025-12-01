@@ -67,14 +67,12 @@ class RecipeDetailViewModel(
     fun loadRecipe(recipeId: String) {
         viewModelScope.launch {
             try {
+                // Lấy data từ Room (Local)
                 val localEntity = repository.getRecipeById(recipeId)
 
                 if (localEntity != null) {
                     repository.addToRecentlyViewed(recipeId)
-
                     val relatedEntities = repository.getRelatedRecipes(localEntity.categoryId, localEntity.id).first()
-
-                    // --- SỬA: Map thêm isFavorite từ entity sang RecipePreview ---
                     val relatedList = relatedEntities.map { entity ->
                         RecipePreview(
                             id = entity.id,
@@ -82,7 +80,7 @@ class RecipeDetailViewModel(
                             time = "${entity.timeCook} phút",
                             author = "",
                             imageUrl = entity.imageUrl,
-                            isFavorite = entity.isFavorite // Quan trọng
+                            isFavorite = entity.isFavorite
                         )
                     }
 
@@ -92,19 +90,18 @@ class RecipeDetailViewModel(
                         localEntity.likeCount
                     )
 
-                    // Lắng nghe thay đổi từ Room (để cập nhật real-time nếu có thay đổi ở màn hình khác)
+                    // Lắng nghe thay đổi từ Room
                     viewModelScope.launch {
                         repository.getRecipeFlow(recipeId).collect { updatedEntity ->
                             if (updatedEntity != null) {
                                 val currentAuthor = _recipe.value?.author ?: Author(updatedEntity.userId, "Đang tải...", null)
-                                // Lưu ý: relatedList ở đây đang là static từ lần load đầu,
-                                // nếu muốn related list cũng real-time favorite thì cần logic phức tạp hơn,
-                                // nhưng tạm thời giữ nguyên relatedList để tránh load lại nhiều lần.
+                                // Lưu ý: giữ videoUrl hiện tại vì Room chưa chắc có
+                                val currentVideoUrl = _recipe.value?.videoUrl
                                 _recipe.value = updatedEntity.toUiModel(
                                     currentAuthor,
-                                    relatedList, // Giữ danh sách cũ
+                                    relatedList,
                                     updatedEntity.likeCount
-                                )
+                                ).copy(videoUrl = currentVideoUrl)
                             }
                         }
                     }
@@ -114,18 +111,20 @@ class RecipeDetailViewModel(
                             _recipe.value = _recipe.value?.copy(author = author)
                             checkFollowStatus(localEntity.userId)
                         }
-                    } else {
-                        Log.e("RecipeDetailVM", "Author ID from Room is blank for recipe ID: $recipeId")
                     }
 
-                    // Listen Realtime Like Count & UserId from Firestore
+                    // --- 🔥 QUAN TRỌNG: LẮNG NGHE REALTIME FIRESTORE ĐỂ LẤY VIDEO URL ---
                     firestore.collection("recipes").document(recipeId)
                         .addSnapshotListener { snapshot, _ ->
                             if (snapshot != null && snapshot.exists()) {
                                 val liveLikeCount = snapshot.getLong("likeCount")?.toInt() ?: 0
                                 val firestoreUserId = snapshot.getString("userId")
+                                val liveVideoUrl = snapshot.getString("videoUrl") // Lấy Video URL
 
-                                _recipe.value = _recipe.value?.copy(likeCount = liveLikeCount)
+                                _recipe.value = _recipe.value?.copy(
+                                    likeCount = liveLikeCount,
+                                    videoUrl = liveVideoUrl // Cập nhật video
+                                )
 
                                 if (!firestoreUserId.isNullOrBlank() && (_recipe.value?.author?.id.isNullOrBlank() || _recipe.value?.author?.id != firestoreUserId)) {
                                     fetchAuthorInfo(firestoreUserId) { author ->
@@ -136,7 +135,7 @@ class RecipeDetailViewModel(
                             }
                         }
 
-                    // Load Instructions
+                    // --- 🔥 LOAD INSTRUCTION KÈM DANH SÁCH ẢNH ---
                     firestore.collection("recipes").document(recipeId)
                         .collection("instruction")
                         .orderBy("step", Query.Direction.ASCENDING)
@@ -144,10 +143,17 @@ class RecipeDetailViewModel(
                         .addOnSuccessListener { snapshot ->
                             if (!snapshot.isEmpty) {
                                 val fullSteps = snapshot.documents.map { doc ->
+                                    // Lấy danh sách ảnh nếu có (tùy theo cách NewCook lưu)
+                                    // Nếu lưu là Array: doc.get("imageUrls")
+                                    // Ở đây mình check cả 2 trường hợp cho chắc
+                                    val imgUrls = (doc.get("imageUrls") as? List<String>) ?: emptyList()
+                                    // 🔥 THÊM LOG ĐỂ KIỂM TRA:
+                                    Log.d("RecipeDebug", "Bước ${doc.getLong("step")}: Tìm thấy ${imgUrls.size} ảnh phụ. URL: $imgUrls")
                                     InstructionStep(
                                         stepNumber = doc.getLong("step")?.toInt() ?: 0,
                                         description = doc.getString("description") ?: "",
-                                        imageUrl = doc.getString("imageUrl")
+                                        imageUrl = doc.getString("imageUrl"), // Ảnh đại diện bước
+                                        imageUrls = imgUrls // List ảnh
                                     )
                                 }
                                 _recipe.value = _recipe.value?.copy(instructions = fullSteps)
@@ -207,7 +213,6 @@ class RecipeDetailViewModel(
             .addOnFailureListener { onResult(false) }
     }
 
-    // Toggle tim cho món CHÍNH
     fun toggleFavorite() {
         val currentRecipe = _recipe.value ?: return
         val currentUser = auth.currentUser ?: return
@@ -225,25 +230,20 @@ class RecipeDetailViewModel(
         }
     }
 
-    // --- MỚI: Toggle tim cho món TƯƠNG TỰ ---
     fun toggleRelatedFavorite(targetId: String) {
         val currentRecipe = _recipe.value ?: return
         val currentUser = auth.currentUser ?: return
 
-        // 1. Tìm item trong list
         val targetItem = currentRecipe.relatedRecipes.find { it.id == targetId } ?: return
         val newStatus = !targetItem.isFavorite
 
-        // 2. Cập nhật UI ngay lập tức (Optimistic Update)
         val updatedRelatedList = currentRecipe.relatedRecipes.map { item ->
             if (item.id == targetId) item.copy(isFavorite = newStatus) else item
         }
         _recipe.value = currentRecipe.copy(relatedRecipes = updatedRelatedList)
 
-        // 3. Gọi xuống Repository để đồng bộ DB & Firebase
         viewModelScope.launch {
             repository.toggleFavoriteWithRemote(currentUser.uid, targetId, newStatus)
-            // Có thể gửi thông báo nếu muốn (logic tương tự toggleFavorite)
         }
     }
 
@@ -287,7 +287,6 @@ class RecipeDetailViewModel(
         }
     }
 
-    // --- SỬA: Dùng key "targetId" để khớp với NotificationScreen ---
     private fun sendNotification(receiverId: String, message: String, recipeId: String?) {
         val currentUserId = auth.currentUser?.uid ?: return
         if (currentUserId == receiverId || receiverId.isBlank()) return
@@ -298,7 +297,7 @@ class RecipeDetailViewModel(
                 "senderName" to (doc.getString("fullName") ?: "Ai đó"),
                 "senderAvatar" to doc.getString("photoUrl"),
                 "message" to message,
-                "targetId" to recipeId, // <-- ĐỔI TỪ "recipeId" THÀNH "targetId"
+                "targetId" to recipeId,
                 "timestamp" to FieldValue.serverTimestamp(),
                 "isRead" to false,
                 "type" to if (recipeId != null) "like" else "follow"
@@ -341,7 +340,6 @@ class RecipeDetailViewModel(
                 if (commentRepository.addComment(comment)) {
                     _commentText.value = ""
                     _replyingToUser.value = null
-
                     sendNotification(authorId, "đã bình luận: ${recipe.name}", recipe.id)
                 }
             }

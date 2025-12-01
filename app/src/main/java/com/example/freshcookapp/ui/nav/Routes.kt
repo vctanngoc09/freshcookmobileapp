@@ -36,8 +36,10 @@ sealed class Destination(val route: String) {
 
     @Serializable
     data object Home : Destination("home")
+
     @Serializable
     data object New: Destination("Thêm món")
+
     @Serializable
     data object Favorites: Destination("Yêu thích")
 
@@ -61,6 +63,10 @@ sealed class Destination(val route: String) {
 
     @Serializable
     data object Settings: Destination("Quay lại")
+
+    // 🔥 ĐÃ SỬA: Thêm tham số "phone_login" vào constructor
+    @Serializable
+    data object PhoneLogin : Destination("phone_login")
 
     @Serializable
     data class SearchResult(
@@ -100,6 +106,7 @@ sealed class Destination(val route: String) {
     ) : Destination("category_recipes")
 
 }
+
 sealed class BottomNavigation(
     val label: String,
     val selectedIcon: ImageVector,

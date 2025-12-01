@@ -1,7 +1,10 @@
 package com.example.freshcookapp.ui.nav
 
+import android.app.Activity
+import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -13,6 +16,8 @@ import com.example.freshcookapp.ui.screen.auth.ForgotPassword
 import com.example.freshcookapp.ui.screen.auth.Login
 import com.example.freshcookapp.ui.screen.auth.Register
 import com.example.freshcookapp.ui.screen.auth.Welcome
+import com.example.freshcookapp.ui.screen.auth.PhoneLoginScreen // Màn hình mới
+import com.example.freshcookapp.ui.screen.auth.firebaseAuthWithGitHub // Hàm login Github
 import com.example.freshcookapp.ui.screen.home.Home
 import com.example.freshcookapp.ui.screen.splash.Splash
 import com.example.freshcookapp.ui.screen.account.ProfileScreen
@@ -224,31 +229,86 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
             )
         }
 
-        // Auth screens
+        // --- AUTH SCREENS ---
+
         composable<Destination.Welcome> {
+            val context = LocalContext.current
             Welcome(
                 onRegisterClick = { navController.navigate(Destination.Register) },
                 onLoginClick = { navController.navigate(Destination.Login) },
-                onGoogleSignInClick = onGoogleSignInClick
+                onGoogleSignInClick = onGoogleSignInClick,
+
+                // 🔥 Xử lý GitHub
+                onGithubSignInClick = {
+                    val activity = context as? Activity
+                    if (activity != null) {
+                        firebaseAuthWithGitHub(activity, FirebaseAuth.getInstance()) { success, msg ->
+                            if (success) {
+                                navController.navigate(Destination.Home) { popUpTo(0) { inclusive = true } }
+                            } else {
+                                Toast.makeText(context, "Lỗi GitHub: $msg", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                },
+
+                // 🔥 Xử lý Phone (Chuyển sang màn hình PhoneLogin)
+                onPhoneSignInClick = { navController.navigate(Destination.PhoneLogin) }
+            )
+        }
+
+        // 🔥 Màn hình PhoneLogin MỚI
+        composable<Destination.PhoneLogin> {
+            PhoneLoginScreen(
+                onLoginSuccess = {
+                    navController.navigate(Destination.Home) { popUpTo(0) { inclusive = true } }
+                },
+                onBackClick = { navController.navigateUp() }
             )
         }
 
         composable<Destination.Register> {
+            val context = LocalContext.current
             Register(
                 onRegisterSuccess = { navController.navigate(Destination.Login) },
                 onBackClick = { navController.navigateUp() },
                 onLoginClick = { navController.navigate(Destination.Login) },
-                onGoogleSignInClick = onGoogleSignInClick
+                onGoogleSignInClick = onGoogleSignInClick,
+
+                // 🔥 GitHub & Phone cho màn hình Register
+                onGithubSignInClick = {
+                    val activity = context as? Activity
+                    if (activity != null) {
+                        firebaseAuthWithGitHub(activity, FirebaseAuth.getInstance()) { success, msg ->
+                            if (success) navController.navigate(Destination.Home) { popUpTo(0) { inclusive = true } }
+                            else Toast.makeText(context, "Lỗi: $msg", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                },
+                onPhoneSignInClick = { navController.navigate(Destination.PhoneLogin) }
             )
         }
 
         composable<Destination.Login> {
+            val context = LocalContext.current
             Login(
                 onBackClick = { navController.navigateUp() },
                 onLoginSuccess = { navController.navigate(Destination.Home) { popUpTo(0){ inclusive = true } } },
                 onRegisterClick = { navController.navigate(Destination.Register) },
                 onForgotPassClick = { navController.navigate(Destination.ForgotPassword) },
-                onGoogleSignInClick = onGoogleSignInClick
+                onGoogleSignInClick = onGoogleSignInClick,
+
+                // 🔥 GitHub & Phone cho màn hình Login
+                onGithubSignInClick = {
+                    val activity = context as? Activity
+                    if (activity != null) {
+                        firebaseAuthWithGitHub(activity, FirebaseAuth.getInstance()) { success, msg ->
+                            if (success) navController.navigate(Destination.Home) { popUpTo(0) { inclusive = true } }
+                            else Toast.makeText(context, "Lỗi: $msg", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                },
+                onPhoneSignInClick = { navController.navigate(Destination.PhoneLogin) }
             )
         }
 
