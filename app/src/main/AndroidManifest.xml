@@ -8,6 +8,13 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- 🔥 QUERIES cho Facebook SDK (Android 11+) 🔥 -->
+    <queries>
+        <package android:name="com.facebook.katana" />
+        <package android:name="com.facebook.orca" />
+        <package android:name="com.facebook.lite" />
+    </queries>
+
     <application
         android:name=".FreshCookAppRoom"
         android:allowBackup="true"

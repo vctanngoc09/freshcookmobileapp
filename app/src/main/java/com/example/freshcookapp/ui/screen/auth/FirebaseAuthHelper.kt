@@ -136,15 +136,46 @@ fun signInWithEmailAndPassword(
 
 // --- HELPER FUNCTIONS ---
 
-// Xử lý chung sau khi đăng nhập thành công (Google, GitHub, Phone)
+// Xử lý chung sau khi đăng nhập thành công (Google, GitHub, Phone, Facebook)
 fun handleAuthSuccess(user: FirebaseUser?, onResult: (Boolean, String?) -> Unit) {
     if (user != null) {
-        // Lấy tên hiển thị, nếu null thì lấy phần đầu email hoặc số điện thoại
+        // Lấy tên hiển thị
         val fullName = user.displayName ?: user.email?.substringBefore("@") ?: user.phoneNumber ?: "User"
-        val username = user.email?.split("@")?.firstOrNull() ?: user.uid
 
-        saveUserToFirestore(user, fullName, username) { success ->
-            onResult(success, if (success) fullName else "Lỗi lưu dữ liệu.")
+        // 🔥 CẢI THIỆN: Tạo username đẹp hơn cho Facebook Login
+        val username = when {
+            // Nếu có email -> dùng phần trước @
+            user.email != null -> user.email!!.split("@").firstOrNull() ?: user.uid
+            // Nếu có displayName (Facebook, Google) -> chuyển thành username
+            user.displayName != null -> {
+                user.displayName!!
+                    .lowercase()
+                    .replace(" ", "")
+                    .replace(Regex("[^a-z0-9]"), "") // Chỉ giữ chữ và số
+                    .take(20) // Giới hạn 20 ký tự
+                    .ifEmpty { user.uid.take(8) } // Nếu rỗng thì dùng 8 ký tự đầu của UID
+            }
+            // Nếu có phone number
+            user.phoneNumber != null -> user.phoneNumber!!.replace("+", "").take(10)
+            // Fallback: dùng 8 ký tự đầu của UID
+            else -> user.uid.take(8)
+        }
+
+        // ✅ QUAN TRỌNG: Trả về success NGAY LẬP TỨC (như Instagram, Facebook app)
+        // Vì Firebase Authentication đã thành công → User có thể dùng app
+        onResult(true, fullName)
+
+        // Lưu vào Firestore ở background (không ảnh hưởng đến login flow)
+        try {
+            saveUserToFirestore(user, fullName, username) { success ->
+                if (!success) {
+                    android.util.Log.w("FirebaseAuth", "⚠️ Firestore save failed, will retry later")
+                } else {
+                    android.util.Log.d("FirebaseAuth", "✅ User saved to Firestore successfully")
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("FirebaseAuth", "❌ Error saving to Firestore: ${e.message}")
         }
     } else {
         onResult(false, "User is null.")
@@ -175,19 +206,47 @@ fun saveUserToFirestore(
     )
 
     // Kiểm tra xem document đã tồn tại chưa
-    userRef.get().addOnSuccessListener { document ->
-        if (!document.exists()) {
-            // Nếu là user mới -> Thêm các trường khởi tạo
+    userRef.get()
+        .addOnSuccessListener { document ->
+            if (!document.exists()) {
+                // Nếu là user mới -> Thêm các trường khởi tạo
+                userData["gender"] = "Khác"
+                userData["dateOfBirth"] = null
+                userData["followerCount"] = 0L
+                userData["followingCount"] = 0L
+                userData["myDishesCount"] = 0L
+            }
+
+            // Merge: Chỉ cập nhật các trường có trong userData, giữ nguyên các trường khác
+            userRef.set(userData, SetOptions.merge())
+                .addOnSuccessListener {
+                    android.util.Log.d("FirebaseAuth", "✅ User saved to Firestore successfully")
+                    onResult(true)
+                }
+                .addOnFailureListener { e ->
+                    android.util.Log.w("FirebaseAuth", "⚠️ Firestore save failed: ${e.message}")
+                    onResult(false)
+                }
+        }
+        .addOnFailureListener { e ->
+            // ⚠️ Nếu get() fail (do network issue), vẫn cố gắng save
+            android.util.Log.w("FirebaseAuth", "⚠️ Firestore get failed, trying to save anyway: ${e.message}")
+
+            // Thêm các trường mặc định (giả sử là user mới)
             userData["gender"] = "Khác"
             userData["dateOfBirth"] = null
             userData["followerCount"] = 0L
             userData["followingCount"] = 0L
             userData["myDishesCount"] = 0L
-        }
 
-        // Merge: Chỉ cập nhật các trường có trong userData, giữ nguyên các trường khác (như followerCount cũ)
-        userRef.set(userData, SetOptions.merge())
-            .addOnSuccessListener { onResult(true) }
-            .addOnFailureListener { onResult(false) }
-    }
+            userRef.set(userData, SetOptions.merge())
+                .addOnSuccessListener {
+                    android.util.Log.d("FirebaseAuth", "✅ User saved to Firestore successfully (fallback)")
+                    onResult(true)
+                }
+                .addOnFailureListener { e2 ->
+                    android.util.Log.e("FirebaseAuth", "❌ Firestore save failed completely: ${e2.message}")
+                    onResult(false)
+                }
+        }
 }

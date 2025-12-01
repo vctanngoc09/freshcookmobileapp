@@ -94,44 +94,39 @@ fun FreshCookApp(
         }
     }
 
-    // 🔥 FACEBOOK LOGIN LAUNCHER
+    // 🔥 FACEBOOK LOGIN - ĐÚNG CÁCH CHO FACEBOOK SDK 17+
     val callbackManager = remember { CallbackManager.Factory.create() }
-    val facebookLoginLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        callbackManager.onActivityResult(result.resultCode, result.resultCode, result.data)
-    }
 
-    val facebookLoginCallback = remember {
-        object : FacebookCallback<LoginResult> {
-            override fun onSuccess(result: LoginResult) {
-                Log.d("FacebookLogin", "Facebook login success: ${result.accessToken.token}")
-                firebaseAuthWithFacebook(result.accessToken, auth) { success, userName ->
-                    if (success) {
-                        Toast.makeText(context, "Đăng nhập Facebook thành công: ${userName ?: ""}", Toast.LENGTH_SHORT).show()
-                        navController.navigate(Destination.Home) {
-                            popUpTo(0)
+    // Đăng ký callback TRƯỚC KHI gọi logIn
+    LaunchedEffect(Unit) {
+        Log.d("FacebookLogin", "🔧 Registering Facebook callback...")
+        LoginManager.getInstance().registerCallback(callbackManager,
+            object : FacebookCallback<LoginResult> {
+                override fun onSuccess(result: LoginResult) {
+                    Log.d("FacebookLogin", "✅ Facebook login SUCCESS! Token: ${result.accessToken.token}")
+                    firebaseAuthWithFacebook(result.accessToken, auth) { success, userName ->
+                        if (success) {
+                            Toast.makeText(context, "Đăng nhập Facebook thành công: ${userName ?: ""}", Toast.LENGTH_SHORT).show()
+                            navController.navigate(Destination.Home) {
+                                popUpTo(0)
+                            }
+                        } else {
+                            Toast.makeText(context, "Đăng nhập Facebook thất bại: $userName", Toast.LENGTH_SHORT).show()
                         }
-                    } else {
-                        Toast.makeText(context, "Đăng nhập Facebook thất bại: $userName", Toast.LENGTH_SHORT).show()
                     }
                 }
-            }
 
-            override fun onCancel() {
-                Log.d("FacebookLogin", "Facebook login cancelled")
-                Toast.makeText(context, "Đăng nhập Facebook đã bị hủy", Toast.LENGTH_SHORT).show()
-            }
+                override fun onCancel() {
+                    Log.d("FacebookLogin", "❌ Facebook login CANCELLED")
+                    Toast.makeText(context, "Đăng nhập Facebook đã bị hủy", Toast.LENGTH_SHORT).show()
+                }
 
-            override fun onError(error: FacebookException) {
-                Log.e("FacebookLogin", "Facebook login error", error)
-                Toast.makeText(context, "Lỗi Facebook: ${error.message}", Toast.LENGTH_SHORT).show()
+                override fun onError(error: FacebookException) {
+                    Log.e("FacebookLogin", "❌ Facebook login ERROR: ${error.message}", error)
+                    Toast.makeText(context, "Lỗi Facebook: ${error.message}", Toast.LENGTH_SHORT).show()
+                }
             }
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        LoginManager.getInstance().registerCallback(callbackManager, facebookLoginCallback)
+        )
     }
 
     // 🔥 CẬP NHẬT: THÊM PhoneLogin VÀO DANH SÁCH ẨN BOTTOM BAR
@@ -191,11 +186,19 @@ fun FreshCookApp(
                     }
                 },
                 onFacebookSignInClick = {
-                    LoginManager.getInstance().logInWithReadPermissions(
-                        context as androidx.activity.ComponentActivity,
-                        callbackManager,
-                        listOf("email", "public_profile")
-                    )
+                    Log.d("FacebookLogin", "🚀 Starting Facebook login...")
+                    val activity = context as? androidx.activity.ComponentActivity
+                    if (activity != null) {
+                        // ✅ Sử dụng logInWithReadPermissions - method public của Facebook SDK
+                        LoginManager.getInstance().logInWithReadPermissions(
+                            activity,
+                            callbackManager,
+                            listOf("email", "public_profile")
+                        )
+                    } else {
+                        Log.e("FacebookLogin", "❌ Activity is null!")
+                        Toast.makeText(context, "Lỗi: Không thể khởi tạo Facebook Login", Toast.LENGTH_SHORT).show()
+                    }
                 }
             )
         }

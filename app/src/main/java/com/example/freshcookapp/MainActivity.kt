@@ -66,6 +66,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+
     private fun updateFcmToken() {
         val currentUser = auth.currentUser ?: return
 
