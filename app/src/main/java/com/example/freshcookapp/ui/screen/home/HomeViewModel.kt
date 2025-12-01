@@ -70,27 +70,23 @@ class HomeViewModel(
 
     // ======= SUGGESTIONS =======
     val suggestedSearch = searchRepo.getRecent3History()
-        .flatMapLatest { list ->
+        .flatMapLatest { items ->
             flow {
-                val finalList = list.map { query ->
-                    val matchedRecipes = recipeRepo.searchRecipesByName(query)
+                val finalList = items.map { history ->
+                    val matchedRecipes = recipeRepo.searchRecipesByName(history.query)
                     val randomImage = matchedRecipes.randomOrNull()?.imageUrl
 
                     SuggestItem(
-                        keyword = query,
-                        timestamp = System.currentTimeMillis(),
+                        keyword = history.query,
+                        timestamp = history.timestamp,
                         imageUrl = randomImage
                     )
                 }
                 emit(finalList)
             }
         }
-        .flowOn(Dispatchers.IO)
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5000),
-            emptyList()
-        )
+        .flowOn(Dispatchers.IO)    // 🔥 CHUYỂN FLOW SANG IO THREAD — KHÔNG CRASH NỮA
+
 
     // Notification Listener
     fun startNotificationListener() {

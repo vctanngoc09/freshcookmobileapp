@@ -98,7 +98,7 @@ fun Home(
         val categories by viewModel.categories.collectAsState()
         val userName by viewModel.userName.collectAsState()
         val userPhotoUrl by viewModel.userPhotoUrl.collectAsState()
-        val suggestions by viewModel.suggestedSearch.collectAsState()
+        val suggestions by viewModel.suggestedSearch.collectAsState(initial = emptyList())
         val hasUnreadNotifications by viewModel.hasUnreadNotifications.collectAsState()
         val trending by viewModel.trendingRecipes.collectAsState()
         val newDishes by viewModel.newDishes.collectAsState()

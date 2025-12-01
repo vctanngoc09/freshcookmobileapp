@@ -36,6 +36,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 // Import Destination
 import com.example.freshcookapp.ui.nav.Destination
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,12 +68,17 @@ fun RecentlySearchedScreen(
 
     LaunchedEffect(history) {
         val repo = RecipeRepository(db)
-        val result = history.flatMap { item ->
-            repo.searchRecipes(item.keyword).first().map { it.toRecipe() }
-        }.distinctBy { it.id }
 
+        val deferred = history.map { item ->
+            async {
+                repo.searchRecipes(item.keyword).first().map { it.toRecipe() }
+            }
+        }
+
+        val result = deferred.awaitAll().flatten().distinctBy { it.id }
         recipes = result
     }
+
 
     Column(
         modifier = Modifier

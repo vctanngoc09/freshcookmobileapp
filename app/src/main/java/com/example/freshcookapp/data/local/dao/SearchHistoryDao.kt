@@ -18,8 +18,9 @@ interface SearchHistoryDao {
     fun getSearchHistory(uid: String): Flow<List<String>>
 
     // Lấy 3 lịch sử mới nhất để hiển thị ở Home
-    @Query("SELECT query FROM search_history WHERE userId = :uid ORDER BY timestamp DESC LIMIT 3")
-    fun getRecent3(uid: String): Flow<List<String>>
+    @Query("SELECT * FROM search_history WHERE userId = :uid ORDER BY timestamp DESC LIMIT 3")
+    fun getRecent3(uid: String): Flow<List<SearchHistoryEntity>>
+
 
 
     // Lấy full lịch sử theo user

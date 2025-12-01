@@ -51,10 +51,11 @@ class SearchRepository(
     }
 
     // Lấy 3 lịch sử mới nhất cho Home
-    fun getRecent3History(): Flow<List<String>> {
+    fun getRecent3History(): Flow<List<SearchHistoryEntity>> {
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
         return historyDao.getRecent3(uid)
     }
+
 
     fun getAllHistory(): Flow<List<SearchHistoryEntity>> {
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
