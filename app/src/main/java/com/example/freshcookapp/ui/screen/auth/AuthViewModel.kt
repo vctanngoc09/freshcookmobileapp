@@ -2,6 +2,7 @@ package com.example.freshcookapp.ui.screen.auth
 
 import android.app.Activity
 import androidx.lifecycle.ViewModel
+import com.facebook.AccessToken
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.PhoneAuthCredential
 import com.google.firebase.auth.PhoneAuthOptions
@@ -118,6 +119,18 @@ class AuthViewModel : ViewModel() {
                     _authUiState.value = AuthUiState.Error(task.exception?.message ?: "Mã OTP không đúng.")
                 }
             }
+    }
+
+    // --- FACEBOOK AUTH (MỚI) ---
+    fun loginWithFacebook(token: AccessToken) {
+        _authUiState.value = AuthUiState.Loading
+        firebaseAuthWithFacebook(token, auth) { success, message ->
+            if (success) {
+                _authUiState.value = AuthUiState.Success
+            } else {
+                _authUiState.value = AuthUiState.Error(message ?: "Đăng nhập Facebook thất bại.")
+            }
+        }
     }
 
     fun resetState() {

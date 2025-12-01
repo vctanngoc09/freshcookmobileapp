@@ -37,7 +37,13 @@ import com.example.freshcookapp.ui.screen.search.SearchResultScreen
 import com.google.firebase.auth.FirebaseAuth
 
 @Composable
-fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifier, startDestination: Destination, onGoogleSignInClick: () -> Unit){
+fun MyAppNavgation(
+    navController: NavHostController,
+    modifier: Modifier = Modifier,
+    startDestination: Destination,
+    onGoogleSignInClick: () -> Unit,
+    onFacebookSignInClick: () -> Unit  // Thêm Facebook callback
+) {
     NavHost(
         navController = navController,
         startDestination = startDestination,
@@ -253,7 +259,10 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
                 },
 
                 // 🔥 Xử lý Phone (Chuyển sang màn hình PhoneLogin)
-                onPhoneSignInClick = { navController.navigate(Destination.PhoneLogin) }
+                onPhoneSignInClick = { navController.navigate(Destination.PhoneLogin) },
+
+                // 🔥 Xử lý Facebook
+                onFacebookSignInClick = onFacebookSignInClick
             )
         }
 
@@ -285,7 +294,10 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
                         }
                     }
                 },
-                onPhoneSignInClick = { navController.navigate(Destination.PhoneLogin) }
+                onPhoneSignInClick = { navController.navigate(Destination.PhoneLogin) },
+
+                // 🔥 Facebook
+                onFacebookSignInClick = onFacebookSignInClick
             )
         }
 
@@ -308,7 +320,10 @@ fun MyAppNavgation(navController: NavHostController, modifier: Modifier = Modifi
                         }
                     }
                 },
-                onPhoneSignInClick = { navController.navigate(Destination.PhoneLogin) }
+                onPhoneSignInClick = { navController.navigate(Destination.PhoneLogin) },
+
+                // 🔥 Facebook
+                onFacebookSignInClick = onFacebookSignInClick
             )
         }
 

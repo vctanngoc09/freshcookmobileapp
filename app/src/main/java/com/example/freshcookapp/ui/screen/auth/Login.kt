@@ -40,8 +40,9 @@ fun Login(
     onRegisterClick: () -> Unit,
     onForgotPassClick: () -> Unit,
     onGoogleSignInClick: () -> Unit,
-    onGithubSignInClick: () -> Unit, // Mới
-    onPhoneSignInClick: () -> Unit   // Mới
+    onGithubSignInClick: () -> Unit,
+    onPhoneSignInClick: () -> Unit,
+    onFacebookSignInClick: () -> Unit   // Mới - Thêm Facebook callback
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -136,6 +137,13 @@ fun Login(
                         // Google
                         IconButton(onClick = onGoogleSignInClick, modifier = Modifier.size(50.dp)) {
                             Image(painterResource(R.drawable.ic_google_logo), contentDescription = "Google", modifier = Modifier.fillMaxSize())
+                        }
+
+                        Spacer(modifier = Modifier.width(24.dp))
+
+                        // Facebook
+                        IconButton(onClick = onFacebookSignInClick, modifier = Modifier.size(50.dp)) {
+                            Icon(painter = painterResource(R.drawable.ic_launcher_foreground), contentDescription = "Facebook", tint = Color(0xFF1877F2), modifier = Modifier.fillMaxSize())
                         }
 
                         Spacer(modifier = Modifier.width(24.dp))

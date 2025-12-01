@@ -2,6 +2,8 @@ package com.example.freshcookapp.ui.screen.auth
 
 import android.app.Activity
 import android.net.Uri
+import com.facebook.AccessToken
+import com.google.firebase.auth.FacebookAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
@@ -17,6 +19,23 @@ fun firebaseAuthWithGoogle(
     onResult: (Boolean, String?) -> Unit
 ) {
     val credential = GoogleAuthProvider.getCredential(idToken, null)
+    auth.signInWithCredential(credential)
+        .addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                handleAuthSuccess(auth.currentUser, onResult)
+            } else {
+                onResult(false, task.exception?.message)
+            }
+        }
+}
+
+// --- FACEBOOK AUTH (MỚI) ---
+fun firebaseAuthWithFacebook(
+    token: AccessToken,
+    auth: FirebaseAuth,
+    onResult: (Boolean, String?) -> Unit
+) {
+    val credential = FacebookAuthProvider.getCredential(token.token)
     auth.signInWithCredential(credential)
         .addOnCompleteListener { task ->
             if (task.isSuccessful) {

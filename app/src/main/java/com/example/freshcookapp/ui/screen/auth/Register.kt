@@ -38,8 +38,9 @@ fun Register(
     onBackClick: () -> Unit,
     onLoginClick: () -> Unit,
     onGoogleSignInClick: () -> Unit,
-    onGithubSignInClick: () -> Unit, // Mới
-    onPhoneSignInClick: () -> Unit   // Mới
+    onGithubSignInClick: () -> Unit,
+    onPhoneSignInClick: () -> Unit,
+    onFacebookSignInClick: () -> Unit   // Thêm Facebook
 ) {
     var fullName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -118,11 +119,19 @@ fun Register(
                             Image(painterResource(R.drawable.ic_google_logo), contentDescription = "Google", modifier = Modifier.fillMaxSize())
                         }
                         Spacer(modifier = Modifier.width(20.dp))
+
+                        // Facebook
+                        IconButton(onClick = onFacebookSignInClick, modifier = Modifier.size(44.dp)) {
+                            Icon(painter = painterResource(R.drawable.ic_launcher_foreground), contentDescription = "Facebook", tint = Color(0xFF1877F2), modifier = Modifier.fillMaxSize())
+                        }
+                        Spacer(modifier = Modifier.width(20.dp))
+
                         // GitHub
                         IconButton(onClick = onGithubSignInClick, modifier = Modifier.size(44.dp)) {
                             Icon(painter = painterResource(R.drawable.ic_launcher_foreground), contentDescription = "Github", tint = Color.Black, modifier = Modifier.fillMaxSize())
                         }
                         Spacer(modifier = Modifier.width(20.dp))
+
                         // Phone
                         IconButton(onClick = onPhoneSignInClick, modifier = Modifier.size(44.dp)) {
                             Icon(imageVector = Icons.Default.Phone, contentDescription = "Phone", tint = Cinnabar500, modifier = Modifier.fillMaxSize().padding(6.dp))

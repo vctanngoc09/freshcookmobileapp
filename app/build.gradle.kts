@@ -92,6 +92,9 @@ dependencies {
     // Google Sign-In cũ (Nếu bạn vẫn dùng song song với Credential Manager)
     implementation("com.google.android.gms:play-services-auth:21.2.0")
 
+    // Facebook SDK
+    implementation("com.facebook.android:facebook-login:17.0.2")
+
     // Room Database
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")

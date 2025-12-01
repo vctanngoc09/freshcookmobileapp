@@ -25,8 +25,14 @@ import androidx.navigation.compose.rememberNavController
 import com.example.freshcookapp.ui.component.MyBottomBar
 import com.example.freshcookapp.ui.nav.Destination
 import com.example.freshcookapp.ui.nav.MyAppNavgation
+import com.example.freshcookapp.ui.screen.auth.firebaseAuthWithFacebook
 import com.example.freshcookapp.ui.screen.auth.firebaseAuthWithGoogle
 import com.example.freshcookapp.ui.theme.White
+import com.facebook.CallbackManager
+import com.facebook.FacebookCallback
+import com.facebook.FacebookException
+import com.facebook.login.LoginManager
+import com.facebook.login.LoginResult
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.common.api.ApiException
@@ -88,6 +94,46 @@ fun FreshCookApp(
         }
     }
 
+    // 🔥 FACEBOOK LOGIN LAUNCHER
+    val callbackManager = remember { CallbackManager.Factory.create() }
+    val facebookLoginLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        callbackManager.onActivityResult(result.resultCode, result.resultCode, result.data)
+    }
+
+    val facebookLoginCallback = remember {
+        object : FacebookCallback<LoginResult> {
+            override fun onSuccess(result: LoginResult) {
+                Log.d("FacebookLogin", "Facebook login success: ${result.accessToken.token}")
+                firebaseAuthWithFacebook(result.accessToken, auth) { success, userName ->
+                    if (success) {
+                        Toast.makeText(context, "Đăng nhập Facebook thành công: ${userName ?: ""}", Toast.LENGTH_SHORT).show()
+                        navController.navigate(Destination.Home) {
+                            popUpTo(0)
+                        }
+                    } else {
+                        Toast.makeText(context, "Đăng nhập Facebook thất bại: $userName", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+
+            override fun onCancel() {
+                Log.d("FacebookLogin", "Facebook login cancelled")
+                Toast.makeText(context, "Đăng nhập Facebook đã bị hủy", Toast.LENGTH_SHORT).show()
+            }
+
+            override fun onError(error: FacebookException) {
+                Log.e("FacebookLogin", "Facebook login error", error)
+                Toast.makeText(context, "Lỗi Facebook: ${error.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        LoginManager.getInstance().registerCallback(callbackManager, facebookLoginCallback)
+    }
+
     // 🔥 CẬP NHẬT: THÊM PhoneLogin VÀO DANH SÁCH ẨN BOTTOM BAR
     val noBottomBarDestinations = listOf(
         Destination.Splash::class.qualifiedName,
@@ -143,6 +189,13 @@ fun FreshCookApp(
                         val signInIntent = googleSignInClient.signInIntent
                         googleSignInLauncher.launch(signInIntent)
                     }
+                },
+                onFacebookSignInClick = {
+                    LoginManager.getInstance().logInWithReadPermissions(
+                        context as androidx.activity.ComponentActivity,
+                        callbackManager,
+                        listOf("email", "public_profile")
+                    )
                 }
             )
         }

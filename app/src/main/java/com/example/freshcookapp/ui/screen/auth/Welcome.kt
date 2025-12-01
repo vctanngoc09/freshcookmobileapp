@@ -26,8 +26,9 @@ fun Welcome(
     onRegisterClick: () -> Unit,
     onLoginClick: () -> Unit,
     onGoogleSignInClick: () -> Unit,
-    onGithubSignInClick: () -> Unit, // Mới
-    onPhoneSignInClick: () -> Unit   // Mới
+    onGithubSignInClick: () -> Unit,
+    onPhoneSignInClick: () -> Unit,
+    onFacebookSignInClick: () -> Unit   // Thêm Facebook
 ) {
     ScreenContainer {
         Column(
@@ -76,6 +77,18 @@ fun Welcome(
                 // Google
                 IconButton(onClick = onGoogleSignInClick, modifier = Modifier.size(50.dp)) {
                     Image(painterResource(R.drawable.ic_google_logo), contentDescription = "Google", modifier = Modifier.fillMaxSize())
+                }
+
+                Spacer(modifier = Modifier.width(24.dp))
+
+                // Facebook
+                IconButton(onClick = onFacebookSignInClick, modifier = Modifier.size(50.dp)) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_launcher_foreground),
+                        contentDescription = "Facebook",
+                        tint = Color(0xFF1877F2), // Màu xanh Facebook
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
 
                 Spacer(modifier = Modifier.width(24.dp))
