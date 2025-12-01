@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.freshcookapp.R
 import com.example.freshcookapp.ui.component.CustomTextField
+import com.example.freshcookapp.ui.component.ScreenContainer
 import com.example.freshcookapp.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,220 +35,221 @@ fun Filter(
     var includedInput by remember { mutableStateOf("") }
     var excludedInput by remember { mutableStateOf("") }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = Color.White,
-        topBar = {
-            TopAppBar(
-                title = {
+    ScreenContainer{
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = MaterialTheme.colorScheme.background,
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "Sàng lọc",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = Cinnabar500
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(
+                            onClick = onBackClick,
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_back),
+                                contentDescription = "Back",
+                                tint = Cinnabar500,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                    )
+                )
+            }
+        ) { innerPadding ->
+
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(top = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+
+                /** ==== NGUYÊN LIỆU BAO GỒM ==== */
+                item {
                     Text(
-                        text = "Sàng lọc",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = Cinnabar500
+                        "Hiển thị các món với:",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold
                     )
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = onBackClick,
-                        modifier = Modifier.size(28.dp)
+                    Spacer(Modifier.height(8.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.Bottom
                     ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_back),
-                            contentDescription = "Back",
-                            tint = Cinnabar500,
-                            modifier = Modifier.size(22.dp)
+                        CustomTextField(
+                            value = includedInput,
+                            onValueChange = { includedInput = it },
+                            placeholder = "Gõ vào tên các nguyên liệu...",
+                            modifier = Modifier.weight(1f)
                         )
+                        if (includedInput.isNotBlank()) {
+                            Spacer(Modifier.width(8.dp))
+                            Button(
+                                onClick = {
+                                    includedIngredients = includedIngredients + includedInput.trim()
+                                    includedInput = ""
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Cinnabar500),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Thêm", color = Color.White)
+                            }
+                        }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
-                )
-            )
-        }
-    ) { innerPadding ->
+                    Spacer(Modifier.height(10.dp))
 
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp)
-                .padding(top = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        includedIngredients.forEach { item ->
+                            FilterChip(text = item) {
+                                includedIngredients = includedIngredients - item
+                            }
+                        }
+                    }
+                }
 
-            /** ==== NGUYÊN LIỆU BAO GỒM ==== */
-            item {
-                Text(
-                    "Hiển thị các món với:",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(Modifier.height(8.dp))
-
-                Row(
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    CustomTextField(
-                        value = includedInput,
-                        onValueChange = { includedInput = it },
-                        placeholder = "Gõ vào tên các nguyên liệu...",
-                        modifier = Modifier.weight(1f)
+                /** ==== NGUYÊN LIỆU DỊ ỨNG ==== */
+                item {
+                    Text(
+                        "Loại trừ nguyên liệu:",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold
                     )
-                    if (includedInput.isNotBlank()) {
-                        Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.height(8.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        CustomTextField(
+                            value = excludedInput,
+                            onValueChange = { excludedInput = it },
+                            placeholder = "Gõ vào tên các nguyên liệu...",
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (excludedInput.isNotBlank()) {
+                            Spacer(Modifier.width(8.dp))
+                            Button(
+                                onClick = {
+                                    excludedIngredients = excludedIngredients + excludedInput.trim()
+                                    excludedInput = ""
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Cinnabar500),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Thêm", color = Color.White)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        excludedIngredients.forEach { item ->
+                            FilterChip(text = item) {
+                                excludedIngredients = excludedIngredients - item
+                            }
+                        }
+                    }
+                }
+
+                /** ==== ĐỘ KHÓ ==== */
+                item {
+                    Text(
+                        "Độ khó",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(Modifier.height(8.dp))
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        listOf("Dễ", "Trung", "Khó").forEach { level ->
+                            DifficultyChip(
+                                text = level,
+                                isSelected = difficulty == level,
+                                onClick = { difficulty = level }
+                            )
+                        }
+                    }
+                }
+
+                /** ==== THỜI GIAN ==== */
+                item {
+                    Text(
+                        "Thời gian nấu",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("${timeCook.toInt()} phút", color = Cinnabar500)
+                        Text("5–60 phút", color = Cinnabar400)
+                    }
+
+                    Slider(
+                        value = timeCook,
+                        onValueChange = { timeCook = it },
+                        valueRange = 5f..60f,
+                        colors = SliderDefaults.colors(
+                            thumbColor = Cinnabar500,
+                            activeTrackColor = Cinnabar500
+                        )
+                    )
+                }
+
+                /** ==== NÚT HÀNH ĐỘNG ==== */
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
                         Button(
                             onClick = {
-                                includedIngredients = includedIngredients + includedInput.trim()
+                                includedIngredients = emptyList()
+                                excludedIngredients = emptyList()
                                 includedInput = ""
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Cinnabar500),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text("Thêm", color = Color.White)
-                        }
-                    }
-                }
-                Spacer(Modifier.height(10.dp))
-
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    includedIngredients.forEach { item ->
-                        FilterChip(text = item) {
-                            includedIngredients = includedIngredients - item
-                        }
-                    }
-                }
-            }
-
-            /** ==== NGUYÊN LIỆU DỊ ỨNG ==== */
-            item {
-                Text(
-                    "Loại trừ nguyên liệu:",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(Modifier.height(8.dp))
-
-                Row(
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    CustomTextField(
-                        value = excludedInput,
-                        onValueChange = { excludedInput = it },
-                        placeholder = "Gõ vào tên các nguyên liệu...",
-                        modifier = Modifier.weight(1f)
-                    )
-                    if (excludedInput.isNotBlank()) {
-                        Spacer(Modifier.width(8.dp))
-                        Button(
-                            onClick = {
-                                excludedIngredients = excludedIngredients + excludedInput.trim()
                                 excludedInput = ""
+                                difficulty = "Dễ"
+                                timeCook = 5f
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = Cinnabar500),
-                            shape = RoundedCornerShape(8.dp)
+                            colors = ButtonDefaults.buttonColors(containerColor = Cinnabar50),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1f)
                         ) {
-                            Text("Thêm", color = Color.White)
+                            Text("Xóa", color = Cinnabar500)
+                        }
+
+                        Button(
+                            onClick = { onApply(includedIngredients, excludedIngredients, difficulty, timeCook) },
+                            colors = ButtonDefaults.buttonColors(containerColor = Cinnabar800),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Hiển thị món", color = White)
                         }
                     }
+
+                    Spacer(Modifier.height(20.dp))
                 }
-                Spacer(Modifier.height(10.dp))
-
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    excludedIngredients.forEach { item ->
-                        FilterChip(text = item) {
-                            excludedIngredients = excludedIngredients - item
-                        }
-                    }
-                }
-            }
-
-            /** ==== ĐỘ KHÓ ==== */
-            item {
-                Text(
-                    "Độ khó",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(Modifier.height(8.dp))
-
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    listOf("Dễ", "Trung", "Khó").forEach { level ->
-                        DifficultyChip(
-                            text = level,
-                            isSelected = difficulty == level,
-                            onClick = { difficulty = level }
-                        )
-                    }
-                }
-            }
-
-            /** ==== THỜI GIAN ==== */
-            item {
-                Text(
-                    "Thời gian nấu",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("${timeCook.toInt()} phút", color = Cinnabar500)
-                    Text("5–60 phút", color = Cinnabar400)
-                }
-
-                Slider(
-                    value = timeCook,
-                    onValueChange = { timeCook = it },
-                    valueRange = 5f..60f,
-                    colors = SliderDefaults.colors(
-                        thumbColor = Cinnabar500,
-                        activeTrackColor = Cinnabar500
-                    )
-                )
-            }
-
-            /** ==== NÚT HÀNH ĐỘNG ==== */
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            includedIngredients = emptyList()
-                            excludedIngredients = emptyList()
-                            includedInput = ""
-                            excludedInput = ""
-                            difficulty = "Dễ"
-                            timeCook = 5f
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = Cinnabar50),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Xóa", color = Cinnabar500)
-                    }
-
-                    Button(
-                        onClick = { onApply(includedIngredients, excludedIngredients, difficulty, timeCook) },
-                        colors = ButtonDefaults.buttonColors(containerColor = Cinnabar800),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Hiển thị món", color = White)
-                    }
-                }
-
-                Spacer(Modifier.height(20.dp))
             }
         }
     }

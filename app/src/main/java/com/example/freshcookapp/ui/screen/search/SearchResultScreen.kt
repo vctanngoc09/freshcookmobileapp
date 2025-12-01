@@ -13,8 +13,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.freshcookapp.R
 import com.example.freshcookapp.ui.component.RecipeCard
 import com.example.freshcookapp.ui.theme.Cinnabar500
 
@@ -46,20 +48,20 @@ fun SearchResultScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Kết quả", color = Color.Black) },
+                title = { Text("Kết quả", color = Cinnabar500) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            painterResource(R.drawable.ic_back),
                             contentDescription = "Back",
-                            tint = Color.Black
+                            tint = Cinnabar500
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         },
-        containerColor = Color.White
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         if (isLoading) {
             Box(

@@ -1,5 +1,6 @@
 package com.example.freshcookapp.ui.screen.account
 
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -30,6 +31,7 @@ import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -66,6 +68,7 @@ import com.example.freshcookapp.data.repository.RecipeRepository
 import com.example.freshcookapp.ui.component.ProfileSkeleton
 import com.example.freshcookapp.ui.component.ScreenContainer
 import com.example.freshcookapp.ui.theme.Cinnabar500
+import com.example.freshcookapp.ui.theme.ThemeViewModel
 import com.example.freshcookapp.ui.theme.WorkSans
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -94,6 +97,9 @@ fun ProfileScreen(
     val db = remember { AppDatabase.getDatabase(app) }
     val repo = remember { RecipeRepository(db) }
 
+    val activity = LocalContext.current as ComponentActivity
+    val themeViewModel: ThemeViewModel = viewModel(activity)
+
     val settingsViewModel: SettingsViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
@@ -117,6 +123,7 @@ fun ProfileScreen(
         drawerState = drawerState,
         drawerContent = {
             SettingsDrawerContent(
+                themeViewModel = themeViewModel,   // ⭐ BẮT BUỘC PHẢI CÓ
                 onCloseClick = { scope.launch { drawerState.close() } },
                 onEditProfileClick = { scope.launch { drawerState.close() }; onEditProfileClick() },
                 onRecentlyViewedClick = { scope.launch { drawerState.close() }; onRecentlyViewedClick() },
@@ -124,16 +131,14 @@ fun ProfileScreen(
                 onLogoutClick = {
                     scope.launch {
                         drawerState.close()
-                        settingsViewModel.logout {
-                            onLogoutClick()
-                        }
+                        settingsViewModel.logout { onLogoutClick() }
                     }
                 }
             )
         }
     ) {
         ScreenContainer {
-            Column(modifier = modifier.fillMaxSize().background(Color.White)) {
+            Column(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
                 // HEADER
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
@@ -208,7 +213,7 @@ fun ProfileScreen(
                                     )
 
                                     Spacer(modifier = Modifier.height(16.dp))
-                                    Text(uiState.fullName, fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = WorkSans, color = Color.Black)
+                                    Text(uiState.fullName, fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = WorkSans, color = MaterialTheme.colorScheme.onBackground)
                                     Spacer(modifier = Modifier.height(4.dp))
                                     if (uiState.username.isNotBlank()) Text("@${uiState.username}", fontSize = 14.sp, fontFamily = WorkSans, color = Color.Gray)
                                 }

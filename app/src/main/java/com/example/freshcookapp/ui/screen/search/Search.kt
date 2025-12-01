@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.freshcookapp.R
+import com.example.freshcookapp.ui.component.ScreenContainer
 import com.example.freshcookapp.ui.component.SearchBar
 import com.example.freshcookapp.ui.theme.Black
 import com.example.freshcookapp.ui.theme.Cinnabar400
@@ -50,6 +51,8 @@ fun Search(
     val suggestions by viewModel.suggestions.collectAsState()
 
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = {
@@ -68,21 +71,20 @@ fun Search(
                         Icon(
                             painterResource(R.drawable.ic_back),
                             contentDescription = "Back",
-                            tint = Color.Black
+                            tint = MaterialTheme.colorScheme.onBackground
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.background
                 )
             )
         },
-        containerColor = White
     ) { padding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(White)
+                .background(color = MaterialTheme.colorScheme.background)
                 .padding(padding)
                 .padding(top = 16.dp)
         ) {
@@ -115,7 +117,7 @@ fun Search(
                             viewModel.saveSearchQuery(item)
                             onSuggestionClick(item)
                         }
-                        .background(White)
+                        .background(MaterialTheme.colorScheme.background)
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -134,7 +136,7 @@ fun Search(
                     Text(
                         text = item,
                         fontSize = 16.sp,
-                        color = Black,
+                        color = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier.weight(1f)
                     )
 

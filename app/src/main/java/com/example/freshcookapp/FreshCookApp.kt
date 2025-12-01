@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -111,7 +112,7 @@ fun FreshCookApp(
     }
 
     Scaffold(
-        containerColor = White,
+        containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0.dp),
 
         bottomBar = {
@@ -132,7 +133,7 @@ fun FreshCookApp(
 
         Surface(
             modifier = modifier,
-            color = White
+            color = MaterialTheme.colorScheme.background
         ) {
             MyAppNavgation(
                 navController = navController,

@@ -6,7 +6,11 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.freshcookapp.ui.theme.FreshCookAppTheme
+import com.example.freshcookapp.ui.theme.ThemeViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -41,8 +45,10 @@ class MainActivity : ComponentActivity() {
         // --------------------------------
 
         setContent {
-            FreshCookAppTheme {
-                // Truyền dữ liệu vào FreshCookApp
+            val themeViewModel: ThemeViewModel = viewModel()
+            val isDark by themeViewModel.isDarkMode.collectAsState()
+
+            FreshCookAppTheme(darkTheme = isDark) {
                 FreshCookApp(
                     auth = auth,
                     googleSignInClient = googleSignInClient,
@@ -71,11 +77,13 @@ class MainActivity : ComponentActivity() {
     // Xử lý khi app đang chạy mà bấm thông báo (cập nhật lại UI)
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        setIntent(intent) // Cập nhật Intent mới cho Activity
+        setIntent(intent)
 
-        // Tái khởi động lại SetContent để Composable nhận tham số mới (Cách đơn giản nhất)
         setContent {
-            FreshCookAppTheme {
+            val themeViewModel: ThemeViewModel = viewModel()
+            val isDark by themeViewModel.isDarkMode.collectAsState()
+
+            FreshCookAppTheme(darkTheme = isDark) {
                 FreshCookApp(
                     auth = auth,
                     googleSignInClient = googleSignInClient,

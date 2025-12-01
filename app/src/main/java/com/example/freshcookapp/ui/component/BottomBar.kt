@@ -47,14 +47,27 @@ fun MyBottomBar(
         BottomNavigation.Profile
     )
 
+    val isDark = androidx.compose.foundation.isSystemInDarkTheme()
+
+    // ⭐ Màu nền theo mode
+    val barColor = if (isDark)
+        MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+    else
+        MaterialTheme.colorScheme.surface
+
+    // ⭐ Màu icon/text chưa chọn theo mode
+    val unselectedColor = if (isDark)
+        Color.LightGray.copy(alpha = 0.8f)
+    else
+        Color.Gray
+
     NavigationBar(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 10.dp),
-        containerColor = Color.White
+        modifier = Modifier.fillMaxWidth(),
+        containerColor = barColor
     ) {
         bottomItems.forEach { item ->
             val isSelected = currentDestination?.hasRoute(item.route::class) == true
+
             NavigationBarItem(
                 selected = isSelected,
                 onClick = {
@@ -82,139 +95,21 @@ fun MyBottomBar(
                         )
                     }
                 },
-                label = { Text(item.label,
-                    style = MaterialTheme.typography.labelSmall) },
+                label = {
+                    Text(
+                        item.label,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                },
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = Cinnabar500,
                     selectedTextColor = Cinnabar500,
-                    indicatorColor = Cinnabar500.copy(alpha = 0.1f),
-                    unselectedIconColor = Color.Gray,
-                    unselectedTextColor = Color.Gray
+//                    indicatorColor = Cinnabar500.copy(alpha = 0.12f),
+                    indicatorColor = Color.Transparent,
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             )
         }
     }
 }
-
-
-//@Composable
-//fun MyBottomBar(
-//    navController: NavHostController,
-//    currentDestination: NavDestination?
-//) {
-//    val bottomItems = listOf(
-//        BottomNavigation.Home,
-//        BottomNavigation.New,
-//        BottomNavigation.Favorites,
-//        BottomNavigation.Research,
-//        BottomNavigation.Profile
-//    )
-//
-//    NavigationBar(
-//        containerColor = Color.White,
-//        tonalElevation = 8.dp
-//    ) {
-//        NavigationBarItem(
-//            selected = false,
-//            onClick = { navController.navigate(Routes.home) },
-//            icon = { Icon(Icons.Outlined.Home, contentDescription = "Trang chủ") },
-//            label = { Text("Trang chủ") }
-//        )
-//        NavigationBarItem(
-//            selected = true,
-//            onClick = { },
-//            icon = { Icon(Icons.Filled.Search, contentDescription = "Tìm kiếm") },
-//            label = { Text("Tìm kiếm") },
-//            colors = NavigationBarItemDefaults.colors(
-//                selectedIconColor = Cinnabar500,
-//                selectedTextColor = Cinnabar500,
-//                indicatorColor = Cinnabar500.copy(alpha = 0.1f)
-//            )
-//        )
-//        NavigationBarItem(
-//            selected = false,
-//            onClick = { navController.navigate(Routes.newCook) },
-//            icon = { Icon(Icons.Filled.Add, contentDescription = "Thêm") },
-//            label = { Text("Thêm") }
-//        )
-//        NavigationBarItem(
-//            selected = false,
-//            onClick = { navController.navigate(Routes.favorite) },
-//            icon = { Icon(Icons.Outlined.FavoriteBorder, contentDescription = "Yêu thích") },
-//            label = { Text("Yêu thích") }
-//        )
-//        NavigationBarItem(
-//            selected = false,
-//            onClick = { navController.navigate(Routes.profile) },
-//            icon = { Icon(Icons.Outlined.Person, contentDescription = "Tài khoản") },
-//            label = { Text("Tài khoản") }
-//        )
-//    }
-//}
-
-//@Composable
-//fun CustomBottomBar(
-//    navController: NavHostController,
-//    currentDestination: NavDestination?
-//) {
-//    val bottomItems = listOf(
-//        BottomNavigation.Home,
-//        BottomNavigation.New,
-//        BottomNavigation.Favorites,
-//        BottomNavigation.Research,
-//        BottomNavigation.Profile
-//    )
-//
-//    Box(
-//        modifier = Modifier
-//            .fillMaxWidth()
-//            .padding(bottom = 10.dp)
-//            .background(Color.White)
-//            .padding(vertical = 12.dp)
-//    ) {
-//        Row(
-//            modifier = Modifier.fillMaxWidth(),
-//            horizontalArrangement = Arrangement.SpaceAround,
-//            verticalAlignment = Alignment.CenterVertically
-//        ) {
-//
-//            bottomItems.forEach { item ->
-//                val isSelected = currentDestination?.hasRoute(item.route::class) == true
-//
-//                Column(
-//                    modifier = Modifier
-//                        .clickable {
-//                            if (!isSelected) {
-//                                navController.navigate(item.route) {
-//                                    launchSingleTop = true
-//                                    restoreState = true
-//                                    popUpTo(navController.graph.startDestinationId) {
-//                                        saveState = true
-//                                    }
-//                                }
-//                            }
-//                        },
-//                    horizontalAlignment = Alignment.CenterHorizontally,
-//                    verticalArrangement = Arrangement.Center
-//                ) {
-//                    Icon(
-//                        painter = painterResource(
-//                            id = if (isSelected) item.selectedIcon else item.unselectedIcon
-//                        ),
-//                        contentDescription = item.label,
-//                        modifier = Modifier.size(26.dp),
-//                        tint = if (isSelected) Cinnabar500 else Color.Gray
-//                    )
-//
-//                    Spacer(modifier = Modifier.height(4.dp))
-//
-//                    Text(
-//                        text = item.label,
-//                        fontSize = 12.sp,
-//                        color = if (isSelected) Color.Black else Color.Gray
-//                    )
-//                }
-//            }
-//        }
-//    }
-//}

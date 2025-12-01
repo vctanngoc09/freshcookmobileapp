@@ -47,6 +47,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.example.freshcookapp.ui.theme.ThemeViewModel
 
 @Composable
 fun CategoryItemSkeleton(modifier: Modifier = Modifier) {

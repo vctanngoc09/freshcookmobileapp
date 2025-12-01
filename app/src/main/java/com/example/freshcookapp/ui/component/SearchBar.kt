@@ -54,7 +54,7 @@ fun SearchBar(
             value = value,
             onValueChange = onValueChange,
             singleLine = true,
-            textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.Black),
+            textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
             modifier = Modifier
                 .weight(1f)
                 .height(40.dp)
@@ -72,7 +72,7 @@ fun SearchBar(
                     Icon(
                         imageVector = Icons.Outlined.Search,
                         contentDescription = "Search",
-                        tint = Color.Black,
+                        tint = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
@@ -107,7 +107,7 @@ fun SearchBar(
                     painter = painterResource(R.drawable.ic_filter),
                     contentDescription = "Filter",
                     modifier = Modifier.size(22.dp),
-                    tint = Color.Black
+                    tint = MaterialTheme.colorScheme.onBackground
                 )
             }
         }

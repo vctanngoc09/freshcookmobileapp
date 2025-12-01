@@ -2,7 +2,9 @@ package com.example.freshcookapp.ui.component
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -35,12 +37,27 @@ fun SuggestKeywordCard(
     imageUrl: String?,
     onClick: () -> Unit
 ) {
+    val isDark = isSystemInDarkTheme()
+
+    val backgroundColor = if (isDark)
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    else
+        Color(0xFFF8F4F2)
+
+    val textPrimary = MaterialTheme.colorScheme.onSurface
+    val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
+
+    val borderColor = if (isDark)
+        MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+    else
+        Color(0x22000000)
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
             .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFFF8F4F2)), // Cinnabar50 nếu bạn có màu
+            .background(backgroundColor)
+            .border(0.5.dp, borderColor, RoundedCornerShape(12.dp)),
 
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -63,7 +80,7 @@ fun SuggestKeywordCard(
             Text(
                 text = keyword,
                 style = MaterialTheme.typography.bodyMedium.copy(
-                    color = Color.Black
+                    color = textPrimary,
                 ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -74,7 +91,7 @@ fun SuggestKeywordCard(
             Text(
                 text = convertTimestampToText(time),
                 style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray,
+                color = textSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )

@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,7 +55,29 @@ fun RecipeCard(
     enabled: Boolean = true
 ) {
 
-    // ⭐ Animation cho nút tim
+    val isDark = isSystemInDarkTheme()
+
+    val cardBackground = if (isDark)
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+    else
+        Cinnabar50
+
+    val borderColor = if (isDark)
+        MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+    else
+        Color(0x22000000)
+
+    val iconBgColor = if (isDark)
+        MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
+    else
+        Color.White.copy(alpha = 0.8f)
+
+    val textColorPrimary = MaterialTheme.colorScheme.onSurface
+    val textColorSecondary = MaterialTheme.colorScheme.onSurfaceVariant
+
+    val heartTint = if (isFavorite) Cinnabar500 else textColorSecondary
+
+    // Animation nút tim
     val scale by animateFloatAsState(
         targetValue = if (isFavorite) 1.2f else 1f,
         animationSpec = tween(durationMillis = 200),
@@ -65,11 +88,13 @@ fun RecipeCard(
         modifier = modifier
             .width(160.dp)
             .clip(RoundedCornerShape(16.dp))
-            .border(1.dp, Color(0x22000000), RoundedCornerShape(16.dp))
+            .border(0.5.dp, borderColor, RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surface)
     ) {
+
         Column {
 
-            // ====== ẢNH MÓN ĂN ======
+            // Hình món ăn
             Box(
                 modifier = Modifier
                     .height(115.dp)
@@ -77,7 +102,7 @@ fun RecipeCard(
             ) {
 
                 AsyncImage(
-                    model = imageUrl ?: "",
+                    model = imageUrl.orEmpty(),
                     contentDescription = name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
@@ -85,10 +110,8 @@ fun RecipeCard(
                         .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
                 )
 
-                // ====== NÚT TIM ANIMATION ======
                 IconButton(
                     onClick = { if (enabled) onFavoriteClick() },
-                    enabled = enabled,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(8.dp)
@@ -97,31 +120,29 @@ fun RecipeCard(
                             scaleX = scale
                             scaleY = scale
                         }
-                        .background(
-                            color = Color.White.copy(alpha = 0.8f),
-                            shape = CircleShape
-                        )
+                        .background(iconBgColor, CircleShape)
                 ) {
                     Icon(
                         imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                        contentDescription = "Favorite",
-                        tint = if (isFavorite) Cinnabar500 else Color.Gray,
+                        contentDescription = null,
+                        tint = heartTint,
                         modifier = Modifier.size(20.dp)
                     )
                 }
             }
 
-            // ====== THÔNG TIN MÓN ĂN ======
+            // Nội dung bên dưới
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Cinnabar50)
+                    .background(cardBackground)
                     .padding(8.dp)
             ) {
 
                 Text(
                     text = name,
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = textColorPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -138,22 +159,22 @@ fun RecipeCard(
                         Icon(
                             imageVector = Icons.Outlined.AccessTime,
                             contentDescription = null,
-                            tint = Color.Gray,
+                            tint = textColorSecondary,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = "$timeCook phút",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray,
-                            maxLines = 1 // 🔥 SỬA LỖI: Thêm maxLines = 1
+                            color = textColorSecondary,
+                            maxLines = 1
                         )
                     }
 
                     Text(
                         text = difficulty.orEmpty(),
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        color = textColorSecondary
                     )
                 }
             }

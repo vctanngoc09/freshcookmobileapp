@@ -9,6 +9,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -20,11 +21,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.freshcookapp.ui.theme.Cinnabar500
+import com.example.freshcookapp.ui.theme.ThemeViewModel
 import com.example.freshcookapp.ui.theme.WorkSans
 
 // Đổi tên hàm thành Content để dễ hiểu là nội dung bên trong Drawer
 @Composable
 fun SettingsDrawerContent(
+    themeViewModel: ThemeViewModel,
     onCloseClick: () -> Unit = {}, // Nút đóng menu
     onEditProfileClick: () -> Unit = {},
     onRecentlyViewedClick: () -> Unit = {},
@@ -90,6 +93,13 @@ fun SettingsDrawerContent(
                     text = "Món ngon của bạn",
                     onClick = onMyDishesClick
                 )
+
+                SettingsMenuItem(
+                    icon = Icons.Default.DarkMode,
+                    text = "Chế độ tối",
+                    onClick = { themeViewModel.toggleTheme() }
+                )
+
             }
 
             Spacer(modifier = Modifier.weight(1f))
