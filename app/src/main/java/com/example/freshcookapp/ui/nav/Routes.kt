@@ -105,6 +105,17 @@ sealed class Destination(val route: String) {
         val categoryName: String
     ) : Destination("category_recipes")
 
+    // Chat routes
+    @Serializable
+    data object ChatList : Destination("chat_list")
+
+    @Serializable
+    data class ChatDetail(
+        val chatId: String
+    ) : Destination("chat_detail")
+
+    @Serializable
+    data object SearchUsersToChat : Destination("search_users_to_chat")
 }
 
 sealed class BottomNavigation(

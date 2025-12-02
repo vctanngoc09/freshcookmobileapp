@@ -16,8 +16,8 @@ import com.example.freshcookapp.ui.screen.auth.ForgotPassword
 import com.example.freshcookapp.ui.screen.auth.Login
 import com.example.freshcookapp.ui.screen.auth.Register
 import com.example.freshcookapp.ui.screen.auth.Welcome
-import com.example.freshcookapp.ui.screen.auth.PhoneLoginScreen // Màn hình mới
-import com.example.freshcookapp.ui.screen.auth.firebaseAuthWithGitHub // Hàm login Github
+import com.example.freshcookapp.ui.screen.auth.PhoneLoginScreen
+import com.example.freshcookapp.ui.screen.auth.firebaseAuthWithGitHub
 import com.example.freshcookapp.ui.screen.home.Home
 import com.example.freshcookapp.ui.screen.splash.Splash
 import com.example.freshcookapp.ui.screen.account.ProfileScreen
@@ -34,6 +34,11 @@ import com.example.freshcookapp.ui.screen.home.CategoryRecipesScreen
 import com.example.freshcookapp.ui.screen.newcook.NewCook
 import com.example.freshcookapp.ui.screen.search.Search
 import com.example.freshcookapp.ui.screen.search.SearchResultScreen
+// 🔥 CHAT IMPORTS
+import com.example.freshcookapp.ui.screen.chat.ChatListScreen
+import com.example.freshcookapp.ui.screen.chat.ChatDetailScreen
+import com.example.freshcookapp.ui.screen.chat.SearchUsersToChat
+import com.example.freshcookapp.ui.screen.chat.ChatViewModel
 import com.google.firebase.auth.FirebaseAuth
 
 @Composable
@@ -69,8 +74,9 @@ fun MyAppNavgation(
                 onSearchDetail = { keyword ->
                     navController.navigate(Destination.Search(keyword))
                 },
-                onNotificationClick = { navController.navigate(Destination.Notification) }
-
+                onNotificationClick = { navController.navigate(Destination.Notification) },
+                // 🔥 THÊM CALLBACK CHAT
+                onChatClick = { navController.navigate(Destination.ChatList) }
             )
         }
 
@@ -129,6 +135,18 @@ fun MyAppNavgation(
                 onFollowingClick = { id -> navController.navigate(Destination.Follow(userId = id, type = "following")) },
                 onRecipeClick = { recipeId ->
                     navController.navigate(Destination.RecipeDetail(recipeId = recipeId))
+                },
+                // 🔥 THÊM CALLBACK CHO NÚT "NHẮN TIN"
+                onMessageClick = { otherUserId, otherUserName, otherUserPhoto ->
+                    // Tạo hoặc mở chat với user này
+                    val chatViewModel = ChatViewModel()
+                    chatViewModel.createChat(
+                        otherUserId = otherUserId,
+                        otherUserName = otherUserName,
+                        otherUserPhoto = otherUserPhoto
+                    ) { chatId ->
+                        navController.navigate(Destination.ChatDetail(chatId = chatId))
+                    }
                 }
             )
         }
@@ -368,6 +386,27 @@ fun MyAppNavgation(
                 onRecipeClick = { recipeId ->
                     navController.navigate(Destination.RecipeDetail(recipeId = recipeId))
                 }
+            )
+        }
+
+        // 🔥 CHAT NAVIGATION ROUTES - MỚI
+        composable<Destination.ChatList> {
+            ChatListScreen(
+                navController = navController
+            )
+        }
+
+        composable<Destination.ChatDetail> { backStackEntry ->
+            val args = backStackEntry.toRoute<Destination.ChatDetail>()
+            ChatDetailScreen(
+                chatId = args.chatId,
+                navController = navController
+            )
+        }
+
+        composable<Destination.SearchUsersToChat> {
+            SearchUsersToChat(
+                navController = navController
             )
         }
     }
