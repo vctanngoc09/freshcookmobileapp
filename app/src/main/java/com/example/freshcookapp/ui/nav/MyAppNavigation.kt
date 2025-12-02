@@ -39,6 +39,8 @@ import com.example.freshcookapp.ui.screen.chat.ChatListScreen
 import com.example.freshcookapp.ui.screen.chat.ChatDetailScreen
 import com.example.freshcookapp.ui.screen.chat.SearchUsersToChat
 import com.example.freshcookapp.ui.screen.chat.ChatViewModel
+import com.example.freshcookapp.ui.theme.ThemeSettingScreen
+import com.example.freshcookapp.ui.theme.ThemeViewModel
 import com.google.firebase.auth.FirebaseAuth
 
 @Composable
@@ -47,7 +49,10 @@ fun MyAppNavgation(
     modifier: Modifier = Modifier,
     startDestination: Destination,
     onGoogleSignInClick: () -> Unit,
-    onFacebookSignInClick: () -> Unit  // Thêm Facebook callback
+    onFacebookSignInClick: () -> Unit,
+    onOpenDrawer: () -> Unit,
+    onCloseDrawer: () -> Unit,
+    themeViewModel: ThemeViewModel
 ) {
     NavHost(
         navController = navController,
@@ -114,7 +119,7 @@ fun MyAppNavgation(
                 onMyDishesClick = { navController.navigate(Destination.MyDishes) },
                 onRecentlyViewedClick = { navController.navigate(Destination.RecentlyViewed) },
                 onEditProfileClick = { navController.navigate(Destination.EditProfile) },
-                onMenuClick = { },
+                onMenuClick = onOpenDrawer,
                 onFollowerClick = { userId -> navController.navigate(Destination.Follow(userId = userId, type = "followers")) },
                 onFollowingClick = { userId -> navController.navigate(Destination.Follow(userId = userId, type = "following")) },
                 onLogoutClick = {
@@ -122,9 +127,21 @@ fun MyAppNavgation(
                     navController.navigate(Destination.Welcome) {
                         popUpTo(0) { inclusive = true }
                     }
+                },
+                onTheme = {
+                    onCloseDrawer()                // đóng drawer
+                    navController.navigate(Destination.ThemeSetting)   // chuyển trang
                 }
             )
         }
+
+        composable<Destination.ThemeSetting> {
+            ThemeSettingScreen(
+                themeViewModel = themeViewModel,
+                onBackClick = { navController.navigateUp() }
+            )
+        }
+
 
         composable("user_profile/{userId}") { backStackEntry ->
             val userId = backStackEntry.arguments?.getString("userId") ?: ""

@@ -86,10 +86,10 @@ fun ProfileScreen(
     onFollowerClick: (String) -> Unit = {},
     onFollowingClick: (String) -> Unit = {},
     onLogoutClick: () -> Unit = {},
+    onTheme: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val viewModel: ProfileViewModel = viewModel()
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
     val context = LocalContext.current
@@ -119,24 +119,6 @@ fun ProfileScreen(
     var isRefreshing by remember { mutableStateOf(false) }
     val refreshState = rememberPullToRefreshState()
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            SettingsDrawerContent(
-                themeViewModel = themeViewModel,   // ⭐ BẮT BUỘC PHẢI CÓ
-                onCloseClick = { scope.launch { drawerState.close() } },
-                onEditProfileClick = { scope.launch { drawerState.close() }; onEditProfileClick() },
-                onRecentlyViewedClick = { scope.launch { drawerState.close() }; onRecentlyViewedClick() },
-                onMyDishesClick = { scope.launch { drawerState.close() }; onMyDishesClick() },
-                onLogoutClick = {
-                    scope.launch {
-                        drawerState.close()
-                        settingsViewModel.logout { onLogoutClick() }
-                    }
-                }
-            )
-        }
-    ) {
         ScreenContainer {
             Column(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
                 // HEADER
@@ -145,7 +127,7 @@ fun ProfileScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                    IconButton(onClick = onMenuClick) {
                         Icon(Icons.Default.Menu, "Menu", tint = Cinnabar500)
                     }
                     Text("Tài khoản", fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = WorkSans, color = Cinnabar500)
@@ -297,7 +279,7 @@ fun ProfileScreen(
                 }
             }
         }
-    }
+
 }
 
 // Hàm StatItem hỗ trợ modifier từ bên ngoài để mở rộng vùng bấm
