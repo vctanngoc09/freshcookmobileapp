@@ -50,11 +50,12 @@ class ChatRepository {
     }
 
     // Lấy tin nhắn của một chat
-    fun getMessagesFlow(chatId: String): Flow<List<ChatMessage>> = callbackFlow {
+    fun getMessagesFlow(chatId: String, limit: Int = 50): Flow<List<ChatMessage>> = callbackFlow {
         val listener = db.collection("chats")
             .document(chatId)
             .collection("messages")
-            .orderBy("timestamp", Query.Direction.ASCENDING)
+            .orderBy("timestamp", Query.Direction.DESCENDING)  // Đổi sang DESC để lấy mới nhất
+            .limit(limit.toLong())  // 🔥 THÊM LIMIT
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e("ChatRepository", "Error getting messages", error)
@@ -70,7 +71,8 @@ class ChatRepository {
                     }
                 } ?: emptyList()
 
-                trySend(messages)
+                // Reverse lại để hiển thị đúng thứ tự (cũ → mới)
+                trySend(messages.reversed())
             }
 
         awaitClose { listener.remove() }
@@ -225,5 +227,90 @@ class ChatRepository {
             }
 
         awaitClose { listener.remove() }
+    }
+
+    // 🔥 THÊM MỚI: Load thêm tin nhắn cũ hơn (khi scroll lên)
+    suspend fun loadMoreMessages(
+        chatId: String,
+        beforeTimestamp: Long,
+        limit: Int = 50
+    ): Result<List<ChatMessage>> = try {
+        val snapshot = db.collection("chats")
+            .document(chatId)
+            .collection("messages")
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .whereLessThan("timestamp", beforeTimestamp)
+            .limit(limit.toLong())
+            .get()
+            .await()
+
+        val messages = snapshot.documents.mapNotNull { doc ->
+            try {
+                doc.toObject(ChatMessage::class.java)?.copy(id = doc.id)
+            } catch (e: Exception) {
+                Log.e("ChatRepository", "Error parsing message", e)
+                null
+            }
+        }
+
+        Result.success(messages.reversed())
+    } catch (e: Exception) {
+        Log.e("ChatRepository", "Error loading more messages", e)
+        Result.failure(e)
+    }
+
+    // 🔥 THÊM MỚI: Upload ảnh lên Firebase Storage
+    suspend fun uploadImage(imageUri: android.net.Uri): Result<String> = try {
+        val currentUserId = auth.currentUser?.uid ?: throw Exception("User not logged in")
+        val storage = com.google.firebase.storage.FirebaseStorage.getInstance()
+
+        // Tạo unique filename
+        val timestamp = System.currentTimeMillis()
+        val filename = "chat_images/${currentUserId}_${timestamp}.jpg"
+        val storageRef = storage.reference.child(filename)
+
+        // Upload file
+        val uploadTask = storageRef.putFile(imageUri).await()
+
+        // Lấy download URL
+        val downloadUrl = storageRef.downloadUrl.await().toString()
+
+        Result.success(downloadUrl)
+    } catch (e: Exception) {
+        Log.e("ChatRepository", "Error uploading image", e)
+        Result.failure(e)
+    }
+
+    // 🔥 THÊM MỚI: Xóa tin nhắn
+    suspend fun deleteMessage(chatId: String, messageId: String): Result<Unit> = try {
+        val currentUserId = auth.currentUser?.uid ?: throw Exception("User not logged in")
+
+        // Lấy message để check ownership
+        val messageDoc = db.collection("chats")
+            .document(chatId)
+            .collection("messages")
+            .document(messageId)
+            .get()
+            .await()
+
+        val senderId = messageDoc.getString("senderId")
+
+        // Chỉ cho phép xóa tin nhắn của mình
+        if (senderId != currentUserId) {
+            throw Exception("Bạn chỉ có thể xóa tin nhắn của mình")
+        }
+
+        // Xóa message
+        db.collection("chats")
+            .document(chatId)
+            .collection("messages")
+            .document(messageId)
+            .delete()
+            .await()
+
+        Result.success(Unit)
+    } catch (e: Exception) {
+        Log.e("ChatRepository", "Error deleting message", e)
+        Result.failure(e)
     }
 }

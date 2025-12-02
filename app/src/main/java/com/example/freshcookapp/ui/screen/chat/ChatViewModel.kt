@@ -9,6 +9,7 @@ import com.example.freshcookapp.domain.model.User
 import com.example.freshcookapp.data.repository.ChatRepository
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,9 +46,21 @@ class ChatViewModel : ViewModel() {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    // 🔥 THÊM MỚI: State cho pagination
+    private val _canLoadMore = MutableStateFlow(true)
+    val canLoadMore: StateFlow<Boolean> = _canLoadMore.asStateFlow()
+
+    private val _isLoadingMore = MutableStateFlow(false)
+    val isLoadingMore: StateFlow<Boolean> = _isLoadingMore.asStateFlow()
+
+    // 🔥 THÊM MỚI: State cho upload image
+    private val _isUploadingImage = MutableStateFlow(false)
+    val isUploadingImage: StateFlow<Boolean> = _isUploadingImage.asStateFlow()
+
     private var chatsJob: Job? = null
     private var messagesJob: Job? = null
     private var typingJob: Job? = null
+    private var typingDebounceJob: Job? = null // 🔥 THÊM MỚI
 
     init {
         loadChats()
@@ -74,16 +87,22 @@ class ChatViewModel : ViewModel() {
         messagesJob = viewModelScope.launch {
             try {
                 _isLoading.value = true
+                _canLoadMore.value = true  // Reset pagination state
 
                 // Load chat info
                 _chats.value.find { it.id == chatId }?.let {
                     _currentChat.value = it
                 }
 
-                // Load messages
-                repository.getMessagesFlow(chatId).collect { messageList ->
+                // Load messages (với limit = 50)
+                repository.getMessagesFlow(chatId, limit = 50).collect { messageList ->
                     _messages.value = messageList
                     _isLoading.value = false
+
+                    // Nếu load được ít hơn 50 → không còn message cũ hơn
+                    if (messageList.size < 50) {
+                        _canLoadMore.value = false
+                    }
                 }
             } catch (e: Exception) {
                 _error.value = "Lỗi tải tin nhắn: ${e.message}"
@@ -94,6 +113,48 @@ class ChatViewModel : ViewModel() {
 
         // Listen to typing status
         listenToTypingStatus(chatId)
+    }
+
+    // 🔥 THÊM MỚI: Load thêm tin nhắn cũ hơn
+    fun loadMoreMessages(chatId: String) {
+        if (!_canLoadMore.value || _isLoadingMore.value) return
+
+        val oldestMessage = _messages.value.firstOrNull() ?: return
+
+        viewModelScope.launch {
+            try {
+                _isLoadingMore.value = true
+
+                val result = repository.loadMoreMessages(
+                    chatId = chatId,
+                    beforeTimestamp = oldestMessage.timestamp,
+                    limit = 50
+                )
+
+                result.onSuccess { olderMessages ->
+                    if (olderMessages.isEmpty()) {
+                        _canLoadMore.value = false
+                    } else {
+                        // Thêm messages cũ vào đầu list
+                        _messages.value = olderMessages + _messages.value
+
+                        if (olderMessages.size < 50) {
+                            _canLoadMore.value = false
+                        }
+                    }
+                    _isLoadingMore.value = false
+                }
+
+                result.onFailure { e ->
+                    _error.value = "Lỗi tải thêm tin nhắn: ${e.message}"
+                    _isLoadingMore.value = false
+                }
+            } catch (e: Exception) {
+                _error.value = "Lỗi tải thêm tin nhắn: ${e.message}"
+                _isLoadingMore.value = false
+                Log.e("ChatViewModel", "Error loading more messages", e)
+            }
+        }
     }
 
     // Gửi tin nhắn
@@ -126,6 +187,38 @@ class ChatViewModel : ViewModel() {
             } catch (e: Exception) {
                 _error.value = "Lỗi gửi ảnh: ${e.message}"
                 Log.e("ChatViewModel", "Error sending image", e)
+            }
+        }
+    }
+
+    // 🔥 THÊM MỚI: Upload và gửi ảnh
+    fun uploadAndSendImage(chatId: String, imageUri: android.net.Uri) {
+        viewModelScope.launch {
+            try {
+                _isUploadingImage.value = true
+
+                // Upload ảnh lên Firebase Storage
+                val uploadResult = repository.uploadImage(imageUri)
+
+                uploadResult.onSuccess { imageUrl ->
+                    // Gửi tin nhắn với URL ảnh
+                    val sendResult = repository.sendMessage(chatId, "[Hình ảnh]", imageUrl)
+
+                    if (sendResult.isFailure) {
+                        _error.value = "Gửi ảnh thất bại"
+                    }
+
+                    _isUploadingImage.value = false
+                }
+
+                uploadResult.onFailure { e ->
+                    _error.value = "Upload ảnh thất bại: ${e.message}"
+                    _isUploadingImage.value = false
+                }
+            } catch (e: Exception) {
+                _error.value = "Lỗi upload ảnh: ${e.message}"
+                _isUploadingImage.value = false
+                Log.e("ChatViewModel", "Error uploading image", e)
             }
         }
     }
@@ -240,9 +333,24 @@ class ChatViewModel : ViewModel() {
         return _isOtherUserTyping.value
     }
 
-    // Helper: Xử lý khi user gõ text
+    // Helper: Xử lý khi user gõ text - ✅ FIX DEBOUNCE
     fun onTypingTextChanged(chatId: String, text: String) {
-        setTypingStatus(chatId, text.isNotEmpty())
+        // Cancel job cũ
+        typingDebounceJob?.cancel()
+
+        if (text.isNotEmpty()) {
+            // Set typing = true ngay lập tức
+            setTypingStatus(chatId, true)
+
+            // Sau 2 giây không gõ → tự động set false
+            typingDebounceJob = viewModelScope.launch {
+                delay(2000)
+                setTypingStatus(chatId, false)
+            }
+        } else {
+            // Text rỗng → set false ngay
+            setTypingStatus(chatId, false)
+        }
     }
 
     // Clear error
@@ -253,10 +361,33 @@ class ChatViewModel : ViewModel() {
     // Get current user ID
     fun getCurrentUserId(): String? = auth.currentUser?.uid
 
+    // 🔥 THÊM MỚI: Xóa tin nhắn
+    fun deleteMessage(chatId: String, messageId: String) {
+        viewModelScope.launch {
+            try {
+                val result = repository.deleteMessage(chatId, messageId)
+
+                result.onSuccess {
+                    // Message sẽ tự động bị xóa khỏi UI nhờ realtime listener
+                    Log.d("ChatViewModel", "Message deleted successfully")
+                }
+
+                result.onFailure { e ->
+                    _error.value = "Xóa tin nhắn thất bại: ${e.message}"
+                }
+            } catch (e: Exception) {
+                _error.value = "Lỗi xóa tin nhắn: ${e.message}"
+                Log.e("ChatViewModel", "Error deleting message", e)
+            }
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
+        // Cleanup jobs
         chatsJob?.cancel()
         messagesJob?.cancel()
         typingJob?.cancel()
+        typingDebounceJob?.cancel()
     }
 }
