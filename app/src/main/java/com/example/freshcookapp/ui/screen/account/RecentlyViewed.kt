@@ -63,7 +63,7 @@ fun RecentlyViewedScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
@@ -87,7 +87,7 @@ fun RecentlyViewedScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.background
                 )
             )
         }
@@ -99,7 +99,7 @@ fun RecentlyViewedScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
-                    .background(Color.White)
+                    .background(MaterialTheme.colorScheme.background)
             ) {
                 var query by remember { mutableStateOf("") }
 
@@ -151,6 +151,10 @@ fun RecentlyViewedScreen(
 
 @Composable
 fun EmptyHistoryState(modifier: Modifier = Modifier) {
+
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val titleColor = MaterialTheme.colorScheme.onBackground
+
     Column(
         modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -160,19 +164,22 @@ fun EmptyHistoryState(modifier: Modifier = Modifier) {
             imageVector = Icons.Outlined.History,
             contentDescription = "Empty History",
             modifier = Modifier.size(100.dp),
-            tint = Color.LightGray
+            tint = muted
         )
+
         Spacer(modifier = Modifier.height(16.dp))
+
         Text(
             text = "Lịch sử trống",
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.Gray
+            color = titleColor
         )
+
         Text(
             text = "Các món ăn bạn vừa xem sẽ xuất hiện tại đây.",
             fontSize = 14.sp,
-            color = Color.LightGray,
+            color = muted,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 32.dp)
         )
@@ -185,13 +192,23 @@ fun RecentlyViewedItem(
     onRemoveClick: () -> Unit,
     onClick: () -> Unit
 ) {
+    val bg = MaterialTheme.colorScheme.background
+    val avatarBg = MaterialTheme.colorScheme.surfaceVariant
+    val titleColor = Cinnabar500
+    val authorColor = MaterialTheme.colorScheme.onBackground
+    val timeColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val iconColor = MaterialTheme.colorScheme.onSurfaceVariant
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(80.dp)
-            .clickable { onClick() },
+            .clickable { onClick() }
+            .background(bg),
         verticalAlignment = Alignment.CenterVertically
     ) {
+
+        /** IMAGE */
         Image(
             painter = rememberAsyncImagePainter(
                 model = item.imageUrl ?: R.drawable.ic_launcher_background
@@ -200,49 +217,58 @@ fun RecentlyViewedItem(
             modifier = Modifier
                 .size(80.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(Color.LightGray),
+                .background(avatarBg),
             contentScale = ContentScale.Crop
         )
 
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(Modifier.width(12.dp))
 
+        /** TEXT INFO */
         Column(modifier = Modifier.weight(1f)) {
+
+            /** TITLE */
             Text(
                 text = item.title,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = WorkSans,
-                color = Cinnabar500,
+                color = titleColor,
                 maxLines = 1
             )
 
+            /** AUTHOR */
             Text(
                 text = "Bởi: ${item.authorName}",
                 fontSize = 14.sp,
                 fontFamily = WorkSans,
-                color = Color.Black,
+                color = authorColor,
                 maxLines = 1
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(Modifier.height(4.dp))
 
+            /** TIME */
             Row(verticalAlignment = Alignment.CenterVertically) {
+
                 Icon(
                     imageVector = Icons.Default.History,
                     contentDescription = null,
-                    tint = Color.Gray,
+                    tint = iconColor,
                     modifier = Modifier.size(14.dp)
                 )
-                Spacer(modifier = Modifier.width(4.dp))
+
+                Spacer(Modifier.width(4.dp))
+
                 Text(
                     text = item.timeViewed,
                     fontSize = 12.sp,
                     fontFamily = WorkSans,
-                    color = Color.Gray
+                    color = timeColor
                 )
             }
         }
 
+        /** REMOVE BUTTON */
         IconButton(onClick = onRemoveClick) {
             Icon(
                 imageVector = Icons.Default.Close,

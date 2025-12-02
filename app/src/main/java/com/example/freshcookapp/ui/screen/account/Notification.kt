@@ -36,6 +36,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -98,7 +99,7 @@ fun NotificationScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
@@ -121,7 +122,7 @@ fun NotificationScreen(
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         }
     ) { innerPadding ->
@@ -140,6 +141,9 @@ fun NotificationScreen(
 
 @Composable
 fun EmptyNotificationState(modifier: Modifier = Modifier) {
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val iconTint = MaterialTheme.colorScheme.onSurfaceVariant
+
     Column(
         modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -149,11 +153,22 @@ fun EmptyNotificationState(modifier: Modifier = Modifier) {
             imageVector = Icons.Outlined.NotificationsOff,
             contentDescription = "No Notifications",
             modifier = Modifier.size(100.dp),
-            tint = Color.LightGray
+            tint = iconTint
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Text("Chưa có thông báo nào", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
-        Text("Khi có tương tác mới, chúng sẽ hiện ở đây.", fontSize = 14.sp, color = Color.LightGray, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 32.dp))
+        Text(
+            "Chưa có thông báo nào",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Text(
+            "Khi có tương tác mới, chúng sẽ hiện ở đây.",
+            fontSize = 14.sp,
+            color = muted,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 32.dp)
+        )
     }
 }
 
@@ -185,67 +200,89 @@ fun NotificationItem(
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
+    val bgRead = MaterialTheme.colorScheme.surface
+    val bgUnread = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+    val avatarBg = MaterialTheme.colorScheme.surfaceVariant
+    val nameColor = MaterialTheme.colorScheme.onBackground
+    val messageColor = MaterialTheme.colorScheme.onSurface
+    val timeColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(if (notification.isRead) Color.White else Color(0xFFFFF9F9))
+            .background(if (notification.isRead) bgRead else bgUnread)
             .clickable {
-                // --- BẮT ĐẦU LOGIC ĐIỀU HƯỚNG AN TOÀN ---
-
-                // 1. Log dữ liệu gốc để debug
-                Log.d("NotificationClick", "RAW DATA -> Type: '${notification.type}', TargetId: '${notification.targetId}'")
-
-                // 2. Chuẩn hóa dữ liệu (chuyển thường, bỏ khoảng trắng)
+                // Điều hướng giữ nguyên
                 val type = notification.type.lowercase().trim()
                 val targetId = notification.targetId
 
-                // 3. Kiểm tra điều kiện và điều hướng
                 if (!targetId.isNullOrEmpty()) {
                     when (type) {
-                        "comment", "like" -> {
-                            Log.d("NotificationClick", "Action: Navigating to RecipeDetail with ID: $targetId")
-                            navController.navigate(Destination.RecipeDetail(targetId))
-                        }
-                        "follow" -> {
-                            Log.d("NotificationClick", "Action: Navigating to UserProfile with ID: $targetId")
-                            navController.navigate("user_profile/$targetId")
-                        }
-                        else -> {
-                            Log.e("NotificationClick", "ERROR: Unknown type '$type'. Check your Firebase/Database data.")
-                        }
+                        "comment", "like" -> navController.navigate(Destination.RecipeDetail(targetId))
+                        "follow" -> navController.navigate("user_profile/$targetId")
                     }
-                } else {
-                    Log.e("NotificationClick", "ERROR: TargetId is NULL or Empty. Cannot navigate.")
                 }
-                // --- KẾT THÚC LOGIC ĐIỀU HƯỚNG ---
             }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.Center
     ) {
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
+
+            /** AVATAR */
             Image(
-                painter = rememberAsyncImagePainter(model = notification.userAvatar ?: R.drawable.ic_launcher_background),
+                painter = rememberAsyncImagePainter(
+                    model = notification.userAvatar ?: R.drawable.ic_launcher_background
+                ),
                 contentDescription = null,
-                modifier = Modifier.size(48.dp).clip(CircleShape).background(Color.LightGray),
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(avatarBg),
                 contentScale = ContentScale.Crop
             )
 
             Spacer(modifier = Modifier.width(12.dp))
 
+            /** TEXT */
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = notification.userName, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = WorkSans, color = Color.Black)
+
+                Text(
+                    text = notification.userName,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = WorkSans,
+                    color = nameColor
+                )
+
                 Spacer(modifier = Modifier.height(2.dp))
-                Text(text = notification.message, fontSize = 14.sp, fontFamily = WorkSans, color = Color.DarkGray, maxLines = 2)
+
+                Text(
+                    text = notification.message,
+                    fontSize = 14.sp,
+                    fontFamily = WorkSans,
+                    color = messageColor,
+                    maxLines = 2
+                )
+
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(text = notification.time, fontSize = 11.sp, fontFamily = WorkSans, color = Color.Gray)
+
+                Text(
+                    text = notification.time,
+                    fontSize = 11.sp,
+                    fontFamily = WorkSans,
+                    color = timeColor
+                )
             }
 
+            /** MENU */
             Box {
                 IconButton(onClick = { showMenu = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                    Icon(Icons.Default.MoreVert, contentDescription = "More options", tint = nameColor)
                 }
                 DropdownMenu(
                     expanded = showMenu,
@@ -261,6 +298,11 @@ fun NotificationItem(
                 }
             }
         }
-        HorizontalDivider(modifier = Modifier.padding(top = 12.dp), color = Color(0xFFEEEEEE), thickness = 1.dp)
+
+        HorizontalDivider(
+            modifier = Modifier.padding(top = 12.dp),
+            color = dividerColor,
+            thickness = 1.dp
+        )
     }
 }

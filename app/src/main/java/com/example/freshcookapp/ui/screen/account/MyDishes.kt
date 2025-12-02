@@ -3,6 +3,7 @@ package com.example.freshcookapp.ui.screen.account
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -24,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import com.example.freshcookapp.domain.model.Author
 import com.example.freshcookapp.domain.model.Recipe
 import com.example.freshcookapp.ui.component.RecipeCard
+import com.example.freshcookapp.ui.component.RecipeCardNoFavorite
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.example.freshcookapp.ui.theme.WorkSans
 import com.google.firebase.auth.FirebaseAuth
@@ -97,7 +99,7 @@ fun MyDishes(
 
     // --- GIAO DIỆN (UI) ---
     Scaffold(
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = {
@@ -114,14 +116,18 @@ fun MyDishes(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Cinnabar500)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    navigationIconContentColor = Cinnabar500
+                )
             )
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = onAddNewClick,
                 containerColor = Cinnabar500,
-                contentColor = Color.White,
+                contentColor = MaterialTheme.colorScheme.background,
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
                 text = { Text("Thêm món mới", fontFamily = WorkSans, fontWeight = FontWeight.Bold) }
             )
@@ -131,7 +137,7 @@ fun MyDishes(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(Color(0xFFF9F9F9))
+                .background(MaterialTheme.colorScheme.background)
         ) {
             if (isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = Cinnabar500)
@@ -140,8 +146,18 @@ fun MyDishes(
                     modifier = Modifier.align(Alignment.Center),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Bạn chưa đăng công thức nào.", color = Color.Gray, fontFamily = WorkSans)
-                    Text("Hãy chia sẻ món ngon đầu tiên nhé!", color = Color.LightGray, fontFamily = WorkSans, fontSize = 14.sp)
+                    Text(
+                        "Bạn chưa đăng công thức nào.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontFamily = WorkSans
+                    )
+
+                    Text(
+                        "Hãy chia sẻ món ngon đầu tiên nhé!",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontFamily = WorkSans,
+                        fontSize = 14.sp
+                    )
                 }
             } else {
                 LazyColumn(
@@ -203,30 +219,32 @@ fun RecipeItemWithMenu(
 
     Box(modifier = Modifier.fillMaxWidth()) {
         // 1. Recipe Card (Full width)
-        RecipeCard(
+        RecipeCardNoFavorite(
             imageUrl = recipe.imageUrl,
             name = recipe.name,
             timeCook = recipe.timeCook,
             difficulty = recipe.difficulty ?: "Dễ",
-            isFavorite = false,
-            onFavoriteClick = {},
             modifier = Modifier
-                .fillMaxWidth() // 🔥 Fix lỗi: Hiển thị full hàng
+                .fillMaxWidth()
                 .clickable { onClick() }
         )
 
         // 2. Nút 3 chấm (Góc trên phải)
         Box(modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)) {
+            val isDark = isSystemInDarkTheme()
+            val menuBg = if (isDark) Color.Black.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.8f)
+            val menuIcon = if (isDark) Color.White else Color.Black
+
             IconButton(
                 onClick = { expanded = true },
                 modifier = Modifier
-                    .background(Color.White.copy(alpha = 0.8f), CircleShape) // Nền trắng mờ để dễ nhìn trên ảnh
+                    .background(menuBg, CircleShape)
                     .size(32.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.MoreVert,
                     contentDescription = "Menu",
-                    tint = Color.Black,
+                    tint = menuIcon,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -235,16 +253,16 @@ fun RecipeItemWithMenu(
             DropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
-                modifier = Modifier.background(Color.White)
+                modifier = Modifier.background(MaterialTheme.colorScheme.surface)
             ) {
                 DropdownMenuItem(
-                    text = { Text("Xóa món này", color = Color.Red) },
+                    text = { Text("Xóa món này", color = MaterialTheme.colorScheme.error) },
                     onClick = {
                         expanded = false
                         onDeleteClick()
                     },
                     leadingIcon = {
-                        Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
+                        Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                     }
                 )
             }

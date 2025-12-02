@@ -80,7 +80,7 @@ fun FollowScreen(
 
 
     Scaffold(
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
@@ -103,7 +103,7 @@ fun FollowScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.background
                 )
             )
         }
@@ -119,7 +119,7 @@ fun FollowScreen(
                 Text(
                     text = "Chưa có ai trong danh sách này",
                     modifier = Modifier.align(Alignment.Center),
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
                 LazyColumn(
@@ -160,13 +160,14 @@ fun UserItem(user: UserInfo, onUserClick: (String) -> Unit) { // <-- SỬA TÊN 
                 text = user.fullName,
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
-                fontFamily = WorkSans
+                fontFamily = WorkSans,
+                color = MaterialTheme.colorScheme.onBackground
             )
             if (user.username.isNotBlank()) {
                 Text(
                     text = "@${user.username}",
                     fontSize = 14.sp,
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = WorkSans
                 )
             }

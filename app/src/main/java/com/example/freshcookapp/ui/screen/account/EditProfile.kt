@@ -81,6 +81,7 @@ fun EditProfileScreen(
         onResult = { uri -> selectedImageUri = uri }
     )
 
+
     LaunchedEffect(auth.currentUser) {
         val currentUser = auth.currentUser
         if (currentUser != null) {
@@ -105,7 +106,7 @@ fun EditProfileScreen(
         }
     }
 
-    Column(modifier = modifier.fillMaxSize().background(Color.White)) {
+    Column(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
             horizontalArrangement = Arrangement.Start,
@@ -125,37 +126,151 @@ fun EditProfileScreen(
             ) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Box(modifier = Modifier.size(120.dp), contentAlignment = Alignment.Center) {
-                    Box(modifier = Modifier.size(120.dp).clip(CircleShape).background(Color.LightGray).clickable { imagePickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) {
+                    Box(modifier = Modifier.size(120.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant).clickable { imagePickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) {
                         Image(painter = rememberAsyncImagePainter(model = selectedImageUri ?: photoUrl ?: com.example.freshcookapp.R.drawable.avatar1), contentDescription = "Profile", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                     }
                     Text(text = "Chỉnh sửa ảnh", fontSize = 12.sp, fontFamily = WorkSans, color = Cinnabar500, modifier = Modifier.align(Alignment.BottomCenter).offset(y = 20.dp).clickable { imagePickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
                 }
                 Spacer(modifier = Modifier.height(40.dp))
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Text("Họ tên *", fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 8.dp))
-                    OutlinedTextField(value = fullName, onValueChange = { fullName = it }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = MaterialTheme.shapes.medium, singleLine = true, isError = fullName.isBlank(), colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = GrayLight, unfocusedContainerColor = GrayLight, focusedBorderColor = Cinnabar500, unfocusedBorderColor = Color.Transparent, focusedTextColor = Color.Black, unfocusedTextColor = Color.Black, cursorColor = Color.Black))
+                    Text(
+                        "Họ tên *",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(bottom = 8.dp),
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    OutlinedTextField(
+                        value = fullName,
+                        onValueChange = { fullName = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = MaterialTheme.shapes.medium,
+                        singleLine = true,
+                        isError = fullName.isBlank(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                            focusedBorderColor = Cinnabar500,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            cursorColor = Cinnabar500
+                        )
+                    )
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Text("Tên người dùng *", fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 8.dp))
-                    OutlinedTextField(value = username, onValueChange = { username = it.filter { char -> !char.isWhitespace() } }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = MaterialTheme.shapes.medium, singleLine = true, isError = username.isBlank() || username.contains(" "), colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = GrayLight, unfocusedContainerColor = GrayLight, focusedBorderColor = Cinnabar500, unfocusedBorderColor = Color.Transparent, focusedTextColor = Color.Black, unfocusedTextColor = Color.Black, cursorColor = Color.Black))
-                    if (username.contains(" ")) { Text("Tên người dùng không được chứa dấu cách.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                    Text(
+                        "Tên người dùng *",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(bottom = 8.dp),
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    OutlinedTextField(
+                        value = username,
+                        onValueChange = { username = it.filter { char -> !char.isWhitespace() } },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = MaterialTheme.shapes.medium,
+                        singleLine = true,
+                        isError = username.isBlank() || username.contains(" "),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                            focusedBorderColor = Cinnabar500,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            cursorColor = Cinnabar500
+                        )
+                    )
+
+                    if (username.contains(" ")) {
+                        Text(
+                            "Tên người dùng không được chứa dấu cách.",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Ngày sinh", fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 8.dp))
-                        Box(modifier = Modifier.fillMaxWidth().height(56.dp).clip(MaterialTheme.shapes.medium).clickable { showDatePicker = true }) {
-                            OutlinedTextField(value = dateOfBirth, onValueChange = { }, modifier = Modifier.fillMaxSize(), shape = MaterialTheme.shapes.medium, enabled = false, colors = OutlinedTextFieldDefaults.colors(disabledContainerColor = GrayLight, disabledBorderColor = Color.Transparent, disabledTextColor = Color.Black, disabledPlaceholderColor = Color.Gray))
+                        Text(
+                            "Ngày sinh",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(bottom = 8.dp),
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp)
+                                .clip(MaterialTheme.shapes.medium)
+                                .clickable { showDatePicker = true }
+                        ) {
+                            OutlinedTextField(
+                                value = dateOfBirth,
+                                onValueChange = { },
+                                modifier = Modifier.fillMaxSize(),
+                                shape = MaterialTheme.shapes.medium,
+                                enabled = false,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    disabledBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                                    disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            )
                         }
                     }
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Giới tính", fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 8.dp))
+                        Text(
+                            "Giới tính",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(bottom = 8.dp),
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
                         Box {
-                            Box(modifier = Modifier.fillMaxWidth().height(56.dp).clip(MaterialTheme.shapes.medium).clickable { expanded = true }) {
-                                OutlinedTextField(value = gender, onValueChange = {}, modifier = Modifier.fillMaxSize(), enabled = false, shape = MaterialTheme.shapes.medium, trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, tint = Color.Black) }, colors = OutlinedTextFieldDefaults.colors(disabledContainerColor = GrayLight, disabledTextColor = Color.Black, disabledBorderColor = Color.Transparent, disabledTrailingIconColor = Color.Black))
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp)
+                                    .clip(MaterialTheme.shapes.medium)
+                                    .clickable { expanded = true }
+                            ) {
+                                OutlinedTextField(
+                                    value = gender,
+                                    onValueChange = {},
+                                    modifier = Modifier.fillMaxSize(),
+                                    enabled = false,
+                                    shape = MaterialTheme.shapes.medium,
+                                    trailingIcon = {
+                                        Icon(
+                                            Icons.Default.ArrowDropDown,
+                                            null,
+                                            tint = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    },
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                                        disabledBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                                        disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                )
                             }
-                            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                            DropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false },
+                                containerColor = MaterialTheme.colorScheme.surface
+                            ) {
                                 DropdownMenuItem(text = { Text("Nam") }, onClick = { gender = "Nam"; expanded = false })
                                 DropdownMenuItem(text = { Text("Nữ") }, onClick = { gender = "Nữ"; expanded = false })
                                 DropdownMenuItem(text = { Text("Khác") }, onClick = { gender = "Khác"; expanded = false })

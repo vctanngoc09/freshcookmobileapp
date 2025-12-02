@@ -5,6 +5,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -65,7 +66,8 @@ fun AuthorProfileScreen(
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        fontFamily = WorkSans
+                        fontFamily = WorkSans,
+                        color = Cinnabar500
                     )
                 },
                 navigationIcon = {
@@ -73,10 +75,10 @@ fun AuthorProfileScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Cinnabar500)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         },
-        containerColor = Color.White
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         if (uiState.fullName == "Đang tải...") {
             Box(modifier = Modifier.padding(paddingValues)) {
@@ -105,9 +107,15 @@ fun AuthorProfileScreen(
                             .border(1.5.dp, Cinnabar500, CircleShape)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text(uiState.fullName, fontWeight = FontWeight.Bold, fontSize = 22.sp, fontFamily = WorkSans, color = Color.Black)
+                    Text(
+                        uiState.fullName,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 22.sp,
+                        fontFamily = WorkSans,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
                     if (uiState.username.isNotBlank()) {
-                        Text("@${uiState.username}", fontSize = 16.sp, color = Color.Gray, fontFamily = WorkSans)
+                        Text("@${uiState.username}", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontFamily = WorkSans)
                     }
                     Spacer(modifier = Modifier.height(24.dp))
                 }
@@ -150,26 +158,32 @@ fun AuthorProfileScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 32.dp),
+                                .padding(horizontal = 16.dp),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             // Nút Follow
+                            val isDark = isSystemInDarkTheme()
+
+                            val followBg = if (uiState.isFollowing) {
+                                if (isDark) MaterialTheme.colorScheme.surfaceVariant else Color(0xFFF1F1F1)
+                            } else Cinnabar500
+
+                            val followText = if (uiState.isFollowing) {
+                                if (isDark) MaterialTheme.colorScheme.onSurface else Color.Black
+                            } else Color.White
+
                             Button(
                                 onClick = { viewModel.toggleFollow() },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(48.dp),
+                                modifier = Modifier.weight(1f).height(48.dp),
                                 shape = RoundedCornerShape(24.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (uiState.isFollowing) Color(0xFFEEEEEE) else Color.Black,
-                                    contentColor = if (uiState.isFollowing) Color.Black else Color.White
-                                ),
+                                    containerColor = followBg,
+                                    contentColor = followText
+                                )
                             ) {
                                 Text(
                                     text = if (uiState.isFollowing) "Đang theo dõi" else "Theo dõi",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = WorkSans
+                                    fontSize = 15.sp, fontFamily = WorkSans, fontWeight = FontWeight.SemiBold
                                 )
                             }
 
@@ -187,17 +201,9 @@ fun AuthorProfileScreen(
                                 ),
                                 border = BorderStroke(1.5.dp, Cinnabar500)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.ChatBubble,
-                                    contentDescription = "Nhắn tin",
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = "Nhắn tin",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = WorkSans
+                                    fontSize = 15.sp, fontFamily = WorkSans, fontWeight = FontWeight.SemiBold
                                 )
                             }
                         }
@@ -207,14 +213,12 @@ fun AuthorProfileScreen(
 
                 // 4. LIST MÓN ĂN (GRID 2 CỘT)
                 item {
-                    Divider(thickness = 8.dp, color = Color(0xFFF9F9F9))
-                    Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = "Món ăn của ${uiState.fullName.substringBefore(" ")}",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = WorkSans,
-                        color = Color.Black,
+                        color = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
                 }
@@ -223,9 +227,17 @@ fun AuthorProfileScreen(
                     item {
                         Box(modifier = Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(painter = painterResource(R.drawable.ic_launcher_foreground), contentDescription = null, tint = Color.LightGray, modifier = Modifier.size(60.dp))
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text("Chưa có món ăn nào.", color = Color.Gray, fontFamily = WorkSans)
+                                Icon(
+                                    painterResource(R.drawable.ic_launcher_foreground),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+
+                                Text(
+                                    "Chưa có món ăn nào.",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontFamily = WorkSans
+                                )
                             }
                         }
                     }
