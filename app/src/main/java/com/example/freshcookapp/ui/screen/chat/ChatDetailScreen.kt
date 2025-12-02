@@ -1,7 +1,11 @@
 package com.example.freshcookapp.ui.screen.chat
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
+import android.util.Log
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,18 +27,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import coil.compose.AsyncImage
-import com.example.freshcookapp.data.model.ChatMessage
-import kotlinx.coroutines.launch
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.ui.platform.LocalContext
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.widget.Toast
+import coil.compose.AsyncImage
+import com.example.freshcookapp.data.model.ChatMessage
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,33 +56,97 @@ fun ChatDetailScreen(
     val isOtherUserTyping by viewModel.isOtherUserTyping.collectAsState()
     val canLoadMore by viewModel.canLoadMore.collectAsState()
     val isLoadingMore by viewModel.isLoadingMore.collectAsState()
-    val isUploadingImage by viewModel.isUploadingImage.collectAsState()  // 🔥 THÊM
+    val isUploadingImage by viewModel.isUploadingImage.collectAsState()
 
     var messageText by remember { mutableStateOf("") }
-    var showImageOptions by remember { mutableStateOf(false) }  // 🔥 THÊM
+    var showImageOptions by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+
+    // 🔥 SỬA: Load chat info trước rồi mới lấy thông tin user
+    LaunchedEffect(chatId) {
+        viewModel.loadChatMessages(chatId)
+    }
+
+    // 🔥 SỬA: Lấy thông tin user từ currentChat (được cập nhật bởi loadChatMessages)
+    val otherUser = currentChat?.let { viewModel.getOtherUser(it) }
+    val otherUserName = otherUser?.get("username") as? String
+        ?: otherUser?.get("name") as? String
+        ?: otherUser?.get("displayName") as? String
+        ?: "Loading..."
+    val otherUserPhoto = otherUser?.get("photoUrl") as? String
+        ?: otherUser?.get("profileImage") as? String
+        ?: otherUser?.get("avatar") as? String
+
+    // 🔥 THÊM: Fallback - Load thông tin chi tiết từ Firebase nếu cần
+    var firebaseUserName by remember { mutableStateOf<String?>(null) }
+    var firebaseUserPhoto by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(currentChat) {
+        currentChat?.let { chat ->
+            val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+            val otherUserId = chat.participantIds.firstOrNull { it != currentUserId }
+
+            Log.d("ChatDetailScreen", "Current user ID: $currentUserId")
+            Log.d("ChatDetailScreen", "Participant IDs: ${chat.participantIds}")
+            Log.d("ChatDetailScreen", "Other user ID: $otherUserId")
+            Log.d("ChatDetailScreen", "Participants map: ${chat.participants}")
+
+            if (otherUserId != null) {
+                try {
+                    Log.d("ChatDetailScreen", "Loading user info from Firestore for: $otherUserId")
+                    val userDoc = FirebaseFirestore.getInstance()
+                        .collection("users")
+                        .document(otherUserId)
+                        .get()
+                        .await()
+
+                    if (userDoc.exists()) {
+                        Log.d("ChatDetailScreen", "User doc exists: ${userDoc.data}")
+
+                        // Thử nhiều key khác nhau cho tên
+                        val userName = userDoc.getString("username")
+                            ?: userDoc.getString("name")
+                            ?: userDoc.getString("displayName")
+                            ?: userDoc.getString("fullName")
+
+                        // Thử nhiều key khác nhau cho ảnh
+                        val userPhoto = userDoc.getString("profileImage")
+                            ?: userDoc.getString("photoUrl")
+                            ?: userDoc.getString("avatar")
+                            ?: userDoc.getString("profilePicture")
+
+                        // Cập nhật nếu tìm thấy giá trị hợp lệ
+                        if (!userName.isNullOrBlank()) {
+                            firebaseUserName = userName
+                            Log.d("ChatDetailScreen", "✅ Updated name from Firestore: $userName")
+                        }
+
+                        if (!userPhoto.isNullOrBlank()) {
+                            firebaseUserPhoto = userPhoto
+                            Log.d("ChatDetailScreen", "✅ Updated photo from Firestore: $userPhoto")
+                        }
+                    } else {
+                        Log.w("ChatDetailScreen", "❌ User document does not exist for ID: $otherUserId")
+                    }
+                } catch (e: Exception) {
+                    Log.e("ChatDetailScreen", "❌ Error loading user info: ${e.message}", e)
+                }
+            } else {
+                Log.w("ChatDetailScreen", "❌ Could not find other user ID in participantIds: ${chat.participantIds}")
+            }
+        }
+    }
+
+    // 🔥 SỬA: Sử dụng giá trị từ Firebase nếu có, nếu không dùng từ Chat object
+    val displayName = firebaseUserName ?: otherUserName
+    val displayPhoto = firebaseUserPhoto ?: otherUserPhoto
 
     // 🔥 THÊM: Image picker launcher
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         uri?.let { viewModel.uploadAndSendImage(chatId, it) }
-    }
-
-    // 🔥 THÊM: Camera launcher
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture()
-    ) { success ->
-        if (success) {
-            // URI sẽ được set trước khi launch
-            // Xử lý trong callback
-        }
-    }
-
-    // Load messages khi vào màn hình
-    LaunchedEffect(chatId) {
-        viewModel.loadChatMessages(chatId)
     }
 
     // Auto scroll xuống khi có tin nhắn mới
@@ -103,17 +173,13 @@ fun ChatDetailScreen(
             }
     }
 
-    val otherUser = currentChat?.let { viewModel.getOtherUser(it) }
-    val otherUserName = otherUser?.get("username") as? String ?: "Unknown"
-    val otherUserPhoto = currentChat?.let { viewModel.getOtherUserPhoto(it) }
-
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         AsyncImage(
-                            model = otherUserPhoto?.ifEmpty { null },
+                            model = displayPhoto?.ifEmpty { null },
                             contentDescription = "Avatar",
                             modifier = Modifier
                                 .size(36.dp)
@@ -124,7 +190,7 @@ fun ChatDetailScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
                             Text(
-                                text = otherUserName,
+                                text = displayName ?: "Unknown",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -188,6 +254,7 @@ fun ChatDetailScreen(
 
                         Spacer(modifier = Modifier.width(8.dp))
 
+                        // 🔥 ICON GỬI - CẢI THIỆN
                         IconButton(
                             onClick = {
                                 if (messageText.isNotBlank()) {
@@ -195,14 +262,21 @@ fun ChatDetailScreen(
                                     messageText = ""
                                 }
                             },
-                            enabled = messageText.isNotBlank() && !isUploadingImage
+                            enabled = messageText.isNotBlank() && !isUploadingImage,
+                            modifier = Modifier
+                                .size(48.dp)
+                                .background(
+                                    color = if (messageText.isNotBlank() && !isUploadingImage)
+                                        MaterialTheme.colorScheme.primary
+                                    else Color.LightGray,
+                                    shape = CircleShape
+                                )
                         ) {
                             Icon(
                                 Icons.Default.Send,
                                 contentDescription = "Gửi",
-                                tint = if (messageText.isNotBlank() && !isUploadingImage)
-                                    MaterialTheme.colorScheme.primary
-                                else Color.Gray
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
                             )
                         }
                     }
@@ -392,7 +466,7 @@ fun MessageBubble(
 
                 // Timestamp
                 Text(
-                    text = formatTimestamp(message.timestamp),
+                    text = formatFullTimestamp(message.timestamp),
                     style = MaterialTheme.typography.bodySmall,
                     color = if (isCurrentUser)
                         Color.White.copy(alpha = 0.7f)

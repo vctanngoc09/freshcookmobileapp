@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
@@ -24,8 +23,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.freshcookapp.ui.nav.Destination
-import java.text.SimpleDateFormat
-import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -126,7 +123,7 @@ fun ChatListScreen(
                                 getOtherUser = { viewModel.getOtherUser(it) },
                                 getOtherUserPhoto = { viewModel.getOtherUserPhoto(it) }
                             )
-                            Divider()
+                            HorizontalDivider()
                         }
                     }
                 }
@@ -144,7 +141,7 @@ fun ChatListItem(
     getOtherUserPhoto: (com.example.freshcookapp.data.model.Chat) -> String?
 ) {
     val otherUser = getOtherUser(chat)
-    val otherUserName = otherUser?.get("username") as? String ?: "Unknown"
+    val otherUserName = otherUser?.get("username") as? String ?: "Người dùng"
     val otherUserPhoto = getOtherUserPhoto(chat)
 
     Row(
@@ -186,7 +183,7 @@ fun ChatListItem(
                 )
 
                 Text(
-                    text = formatTimestamp(chat.lastMessageTime),
+                    text = formatRelativeTimestamp(chat.lastMessageTime),
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )
@@ -201,22 +198,6 @@ fun ChatListItem(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-        }
-    }
-}
-
-fun formatTimestamp(timestamp: Long): String {
-    val now = System.currentTimeMillis()
-    val diff = now - timestamp
-
-    return when {
-        diff < 60_000 -> "Vừa xong"
-        diff < 3_600_000 -> "${diff / 60_000}p"
-        diff < 86_400_000 -> "${diff / 3_600_000}h"
-        diff < 604_800_000 -> "${diff / 86_400_000}d"
-        else -> {
-            val sdf = SimpleDateFormat("dd/MM/yy", Locale.getDefault())
-            sdf.format(Date(timestamp))
         }
     }
 }

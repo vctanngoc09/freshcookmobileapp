@@ -19,6 +19,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreSettings
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.messaging.FirebaseMessaging
 
@@ -37,6 +38,18 @@ class MainActivity : ComponentActivity() {
 
         auth = Firebase.auth
 
+        // 🔥 BẬT FIREBASE OFFLINE PERSISTENCE - LƯU TIN NHẮN VĨNH VIỄN
+        try {
+            val firestore = FirebaseFirestore.getInstance()
+            val settings = FirebaseFirestoreSettings.Builder()
+                .setPersistenceEnabled(true) // Bật lưu offline
+                .setCacheSizeBytes(FirebaseFirestoreSettings.CACHE_SIZE_UNLIMITED) // Không giới hạn cache
+                .build()
+            firestore.firestoreSettings = settings
+            Log.d("Firestore", "✅ Đã bật Offline Persistence - Tin nhắn sẽ được lưu vĩnh viễn")
+        } catch (e: Exception) {
+            Log.e("Firestore", "❌ Lỗi bật Offline Persistence", e)
+        }
 
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken("1084160906105-mc8fh3ppnv6qf26lbgo7rb0nr30itl9a.apps.googleusercontent.com")

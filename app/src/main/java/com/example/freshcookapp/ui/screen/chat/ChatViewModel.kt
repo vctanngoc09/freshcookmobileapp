@@ -89,9 +89,18 @@ class ChatViewModel : ViewModel() {
                 _isLoading.value = true
                 _canLoadMore.value = true  // Reset pagination state
 
-                // Load chat info
-                _chats.value.find { it.id == chatId }?.let {
-                    _currentChat.value = it
+                // 🔥 SỬA: Load chat info trực tiếp từ Firebase
+                val chatResult = repository.getChatById(chatId)
+                chatResult.onSuccess { chat ->
+                    if (chat != null) {
+                        _currentChat.value = chat
+                        Log.d("ChatViewModel", "✅ Loaded chat info: ${chat.participants}")
+                    } else {
+                        Log.w("ChatViewModel", "⚠️ Chat not found: $chatId")
+                    }
+                }
+                chatResult.onFailure { e ->
+                    Log.e("ChatViewModel", "❌ Error loading chat info: ${e.message}", e)
                 }
 
                 // Load messages (với limit = 50)

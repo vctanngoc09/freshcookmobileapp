@@ -49,6 +49,24 @@ class ChatRepository {
         awaitClose { listener.remove() }
     }
 
+    // 🔥 THÊM MỚI: Lấy thông tin một chat cụ thể
+    suspend fun getChatById(chatId: String): Result<Chat?> = try {
+        val doc = db.collection("chats")
+            .document(chatId)
+            .get()
+            .await()
+
+        if (doc.exists()) {
+            val chat = doc.toObject(Chat::class.java)?.copy(id = doc.id)
+            Result.success(chat)
+        } else {
+            Result.success(null)
+        }
+    } catch (e: Exception) {
+        Log.e("ChatRepository", "Error getting chat by ID", e)
+        Result.failure(e)
+    }
+
     // Lấy tin nhắn của một chat
     fun getMessagesFlow(chatId: String, limit: Int = 50): Flow<List<ChatMessage>> = callbackFlow {
         val listener = db.collection("chats")
