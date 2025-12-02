@@ -53,9 +53,9 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val themeViewModel: ThemeViewModel = viewModel()
-            val isDark by themeViewModel.isDarkMode.collectAsState()
+            val mode by themeViewModel.themeMode.collectAsState()
 
-            FreshCookAppTheme(darkTheme = isDark) {
+            FreshCookAppTheme(themeMode = mode) {
                 FreshCookApp(
                     auth = auth,
                     googleSignInClient = googleSignInClient,
@@ -89,9 +89,9 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val themeViewModel: ThemeViewModel = viewModel()
-            val isDark by themeViewModel.isDarkMode.collectAsState()
+            val mode by themeViewModel.themeMode.collectAsState()
 
-            FreshCookAppTheme(darkTheme = isDark) {
+            FreshCookAppTheme(themeMode = mode) {
                 FreshCookApp(
                     auth = auth,
                     googleSignInClient = googleSignInClient,

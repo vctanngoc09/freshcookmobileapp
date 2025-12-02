@@ -69,6 +69,10 @@ sealed class Destination(val route: String) {
     data object PhoneLogin : Destination("phone_login")
 
     @Serializable
+    object ThemeSetting : Destination("theme_setting")
+
+
+    @Serializable
     data class SearchResult(
         val keyword: String
     ) : Destination("search_result")

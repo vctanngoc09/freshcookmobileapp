@@ -1,17 +1,28 @@
 package com.example.freshcookapp.ui.theme
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-class ThemeViewModel : ViewModel() {
+class ThemeViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val _isDarkMode = MutableStateFlow(false)   // mặc định sáng
-    val isDarkMode = _isDarkMode.asStateFlow()
+    private val _themeMode = MutableStateFlow(ThemeMode.SYSTEM)
+    val themeMode: StateFlow<ThemeMode> = _themeMode
 
-    fun toggleTheme() {
-        _isDarkMode.value = !_isDarkMode.value
+    init {
+        viewModelScope.launch {
+            ThemePreferences.getTheme(application).collect {
+                _themeMode.value = it
+            }
+        }
+    }
+
+    fun setTheme(mode: ThemeMode) {
+        viewModelScope.launch {
+            ThemePreferences.setTheme(getApplication(), mode)
+        }
     }
 }

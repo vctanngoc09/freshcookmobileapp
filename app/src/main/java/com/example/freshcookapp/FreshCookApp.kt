@@ -8,25 +8,32 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.freshcookapp.ui.component.MyBottomBar
 import com.example.freshcookapp.ui.nav.Destination
 import com.example.freshcookapp.ui.nav.MyAppNavgation
+import com.example.freshcookapp.ui.screen.account.SettingsDrawerContent
 import com.example.freshcookapp.ui.screen.auth.firebaseAuthWithFacebook
 import com.example.freshcookapp.ui.screen.auth.firebaseAuthWithGoogle
+import com.example.freshcookapp.ui.theme.ThemeViewModel
 import com.example.freshcookapp.ui.theme.White
 import com.facebook.CallbackManager
 import com.facebook.FacebookCallback
@@ -37,6 +44,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,6 +67,11 @@ fun FreshCookApp(
             Destination.Splash
         }
     }
+
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    val themeViewModel: ThemeViewModel = viewModel()
+
 
     LaunchedEffect(deepLinkRecipeId, deepLinkUserId) {
         if (auth.currentUser != null) {
@@ -152,55 +165,90 @@ fun FreshCookApp(
         pattern != null && currentDestination?.route?.startsWith(pattern.substringBefore("/{")) == true
     }
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        contentWindowInsets = WindowInsets(0.dp),
-
-        bottomBar = {
-            if (!hideBottomBar) {
-                MyBottomBar(navController, currentDestination)
-            }
-        }
-    ) { innerPadding ->
-
-        val modifier = if (hideBottomBar) {
-            Modifier.fillMaxSize()
-        } else {
-            Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .statusBarsPadding()
-        }
-
-        Surface(
-            modifier = modifier,
-            color = MaterialTheme.colorScheme.background
-        ) {
-            MyAppNavgation(
-                navController = navController,
-                startDestination = startDestination,
-                onGoogleSignInClick = {
-                    googleSignInClient.signOut().addOnCompleteListener {
-                        val signInIntent = googleSignInClient.signInIntent
-                        googleSignInLauncher.launch(signInIntent)
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            SettingsDrawerContent(
+                themeViewModel = themeViewModel,
+                onCloseClick = { scope.launch { drawerState.close() } },
+                onEditProfileClick = {
+                    scope.launch { drawerState.close() }
+                    navController.navigate(Destination.EditProfile)
+                },
+                onRecentlyViewedClick = {
+                    scope.launch { drawerState.close() }
+                    navController.navigate(Destination.RecentlyViewed)
+                },
+                onMyDishesClick = {
+                    scope.launch { drawerState.close() }
+                    navController.navigate(Destination.MyDishes)
+                },
+                onLogoutClick = {
+                    scope.launch { drawerState.close() }
+                    FirebaseAuth.getInstance().signOut()
+                    navController.navigate(Destination.Welcome) {
+                        popUpTo(0) { inclusive = true }
                     }
                 },
-                onFacebookSignInClick = {
-                    Log.d("FacebookLogin", "🚀 Starting Facebook login...")
-                    val activity = context as? androidx.activity.ComponentActivity
-                    if (activity != null) {
-                        // ✅ Sử dụng logInWithReadPermissions - method public của Facebook SDK
-                        LoginManager.getInstance().logInWithReadPermissions(
-                            activity,
-                            callbackManager,
-                            listOf("email", "public_profile")
-                        )
-                    } else {
-                        Log.e("FacebookLogin", "❌ Activity is null!")
-                        Toast.makeText(context, "Lỗi: Không thể khởi tạo Facebook Login", Toast.LENGTH_SHORT).show()
-                    }
-                }
+                onTheme = { scope.launch { drawerState.close() }
+                    navController.navigate(Destination.ThemeSetting) }
             )
+        }
+    ) {
+        Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
+            bottomBar = {
+                if (!hideBottomBar) {
+                    MyBottomBar(navController, currentDestination)
+                }
+            }
+        ) { innerPadding ->
+
+            val modifier = if (hideBottomBar) {
+                Modifier.fillMaxSize()
+            } else {
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            }
+
+            Surface(
+                modifier = modifier,
+                color = MaterialTheme.colorScheme.background
+            ) {
+                MyAppNavgation(
+                    navController = navController,
+                    startDestination = startDestination,
+                    onGoogleSignInClick = {
+                        googleSignInClient.signOut().addOnCompleteListener {
+                            val signInIntent = googleSignInClient.signInIntent
+                            googleSignInLauncher.launch(signInIntent)
+                        }
+                    },
+                    onFacebookSignInClick = {
+                        Log.d("FacebookLogin", "🚀 Starting Facebook login...")
+                        val activity = context as? androidx.activity.ComponentActivity
+                        if (activity != null) {
+                            // ✅ Sử dụng logInWithReadPermissions - method public của Facebook SDK
+                            LoginManager.getInstance().logInWithReadPermissions(
+                                activity,
+                                callbackManager,
+                                listOf("email", "public_profile")
+                            )
+                        } else {
+                            Log.e("FacebookLogin", "❌ Activity is null!")
+                            Toast.makeText(
+                                context,
+                                "Lỗi: Không thể khởi tạo Facebook Login",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    },
+                    onOpenDrawer = { scope.launch { drawerState.open() } },
+                    onCloseDrawer = { scope.launch { drawerState.close() } },
+                    themeViewModel = themeViewModel
+                )
+            }
         }
     }
 }
