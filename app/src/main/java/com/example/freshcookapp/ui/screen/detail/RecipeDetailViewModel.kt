@@ -67,7 +67,7 @@ class RecipeDetailViewModel(
     fun loadRecipe(recipeId: String) {
         viewModelScope.launch {
             try {
-                // Lấy data từ Room (Local)
+                // 1. Load Local (Hiển thị ngay lập tức)
                 val localEntity = repository.getRecipeById(recipeId)
 
                 if (localEntity != null) {
@@ -90,18 +90,31 @@ class RecipeDetailViewModel(
                         localEntity.likeCount
                     )
 
-                    // Lắng nghe thay đổi từ Room
+                    // 2. Lắng nghe thay đổi từ Room (Local)
+                    // 🔥 QUAN TRỌNG: Đã sửa logic ghi đè dữ liệu tại đây
                     viewModelScope.launch {
                         repository.getRecipeFlow(recipeId).collect { updatedEntity ->
                             if (updatedEntity != null) {
                                 val currentAuthor = _recipe.value?.author ?: Author(updatedEntity.userId, "Đang tải...", null)
-                                // Lưu ý: giữ videoUrl hiện tại vì Room chưa chắc có
+
+                                // 🔥 GIỮ LẠI DỮ LIỆU ĐÃ TẢI TỪ FIREBASE
                                 val currentVideoUrl = _recipe.value?.videoUrl
-                                _recipe.value = updatedEntity.toUiModel(
+                                val currentIngredients = _recipe.value?.ingredients ?: emptyList()
+                                val currentInstructions = _recipe.value?.instructions ?: emptyList()
+
+                                // Chỉ cập nhật những thứ Local quản lý (Tim, Tên, Ảnh chính...), giữ nguyên chi tiết
+                                val tempRecipe = updatedEntity.toUiModel(
                                     currentAuthor,
                                     relatedList,
                                     updatedEntity.likeCount
-                                ).copy(videoUrl = currentVideoUrl)
+                                )
+
+                                // Nếu đã có dữ liệu chi tiết từ Firebase, hãy giữ lại nó!
+                                _recipe.value = tempRecipe.copy(
+                                    videoUrl = currentVideoUrl,
+                                    ingredients = if (currentIngredients.isNotEmpty()) currentIngredients else tempRecipe.ingredients,
+                                    instructions = if (currentInstructions.isNotEmpty()) currentInstructions else tempRecipe.instructions
+                                )
                             }
                         }
                     }
@@ -113,17 +126,17 @@ class RecipeDetailViewModel(
                         }
                     }
 
-                    // --- 🔥 QUAN TRỌNG: LẮNG NGHE REALTIME FIRESTORE ĐỂ LẤY VIDEO URL ---
+                    // 3. Load Video & Likes Realtime
                     firestore.collection("recipes").document(recipeId)
                         .addSnapshotListener { snapshot, _ ->
                             if (snapshot != null && snapshot.exists()) {
                                 val liveLikeCount = snapshot.getLong("likeCount")?.toInt() ?: 0
                                 val firestoreUserId = snapshot.getString("userId")
-                                val liveVideoUrl = snapshot.getString("videoUrl") // Lấy Video URL
+                                val liveVideoUrl = snapshot.getString("videoUrl")
 
                                 _recipe.value = _recipe.value?.copy(
                                     likeCount = liveLikeCount,
-                                    videoUrl = liveVideoUrl // Cập nhật video
+                                    videoUrl = liveVideoUrl
                                 )
 
                                 if (!firestoreUserId.isNullOrBlank() && (_recipe.value?.author?.id.isNullOrBlank() || _recipe.value?.author?.id != firestoreUserId)) {
@@ -135,31 +148,58 @@ class RecipeDetailViewModel(
                             }
                         }
 
-                    // --- 🔥 LOAD INSTRUCTION KÈM DANH SÁCH ẢNH ---
+                    // 4. Load Instructions (List ảnh) - CÓ GẮN LOG DEBUG
                     firestore.collection("recipes").document(recipeId)
                         .collection("instruction")
                         .orderBy("step", Query.Direction.ASCENDING)
                         .get()
                         .addOnSuccessListener { snapshot ->
+                            Log.d("RecipeDebug", "================= BẮT ĐẦU LOAD BƯỚC LÀM =================")
+                            Log.d("RecipeDebug", "Recipe ID: $recipeId")
+
                             if (!snapshot.isEmpty) {
-                                val fullSteps = snapshot.documents.map { doc ->
-                                    // Lấy danh sách ảnh nếu có (tùy theo cách NewCook lưu)
-                                    // Nếu lưu là Array: doc.get("imageUrls")
-                                    // Ở đây mình check cả 2 trường hợp cho chắc
-                                    val imgUrls = (doc.get("imageUrls") as? List<String>) ?: emptyList()
-                                    // 🔥 THÊM LOG ĐỂ KIỂM TRA:
-                                    Log.d("RecipeDebug", "Bước ${doc.getLong("step")}: Tìm thấy ${imgUrls.size} ảnh phụ. URL: $imgUrls")
+                                Log.d("RecipeDebug", "Tìm thấy ${snapshot.size()} bước làm.")
+
+                                val fullSteps = snapshot.documents.mapIndexed { index, doc ->
+                                    val stepNum = doc.getLong("step")?.toInt() ?: (index + 1)
+                                    Log.d("RecipeDebug", "--- Đang xử lý Bước $stepNum (Doc ID: ${doc.id}) ---")
+
+                                    // 1. Kiểm tra ảnh đơn (imageUrl)
+                                    val singleImage = doc.getString("imageUrl")
+                                    Log.d("RecipeDebug", "   + Ảnh đơn (imageUrl): $singleImage")
+
+                                    // 2. Kiểm tra danh sách ảnh (imageUrls) lấy trực tiếp từ Firestore
+                                    val rawImageUrls = doc.get("imageUrls")
+                                    Log.d("RecipeDebug", "   + Dữ liệu thô 'imageUrls' từ Firestore: Kiểu=${rawImageUrls?.javaClass?.simpleName}, Giá trị=$rawImageUrls")
+
+                                    // 3. Ép kiểu an toàn sang List<String>
+                                    val imgUrlsList = if (rawImageUrls is List<*>) {
+                                        // Lọc chỉ lấy những phần tử là String và không rỗng
+                                        rawImageUrls.filterIsInstance<String>().filter { it.isNotBlank() }
+                                    } else {
+                                        Log.w("RecipeDebug", "   ! CẢNH BÁO: 'imageUrls' không phải là List hoặc bị null.")
+                                        emptyList()
+                                    }
+
+                                    Log.d("RecipeDebug", "   -> Danh sách ảnh sau khi xử lý (List<String>): $imgUrlsList (Số lượng: ${imgUrlsList.size})")
+
                                     InstructionStep(
-                                        stepNumber = doc.getLong("step")?.toInt() ?: 0,
+                                        stepNumber = stepNum,
                                         description = doc.getString("description") ?: "",
-                                        imageUrl = doc.getString("imageUrl"), // Ảnh đại diện bước
-                                        imageUrls = imgUrls // List ảnh
+                                        imageUrl = singleImage, // Ảnh đại diện bước
+                                        imageUrls = imgUrlsList // List ảnh phụ
                                     )
                                 }
                                 _recipe.value = _recipe.value?.copy(instructions = fullSteps)
+                                Log.d("RecipeDebug", "Đã cập nhật ${fullSteps.size} bước vào ViewModel.")
+                            } else {
+                                Log.w("RecipeDebug", "Không tìm thấy bước làm nào (Collection 'instruction' rỗng).")
                             }
+                            Log.d("RecipeDebug", "================= KẾT THÚC LOAD BƯỚC LÀM =================")
                         }
-
+                        .addOnFailureListener { e ->
+                            Log.e("RecipeDebug", "LỖI khi tải các bước làm: ${e.message}", e)
+                        }
                     // Load Ingredients
                     firestore.collection("recipes").document(recipeId)
                         .collection("recipeIngredients")
@@ -167,21 +207,24 @@ class RecipeDetailViewModel(
                         .addOnSuccessListener { snapshot ->
                             if (!snapshot.isEmpty) {
                                 val ingredientsList = snapshot.documents.mapNotNull { doc ->
-                                    doc.getString("name")
+                                    val name = doc.getString("name") ?: ""
+                                    val quantity = doc.getString("quantity") ?: ""
+                                    val unit = doc.getString("unit") ?: ""
+                                    val note = doc.getString("note") ?: ""
+
+                                    // Logic ghép chuỗi: "200 g Thịt bò (thái lát)"
+                                    var fullString = name
+                                    if (quantity.isNotBlank()) {
+                                        fullString = "$quantity $unit $fullString"
+                                    }
+                                    if (note.isNotBlank()) {
+                                        fullString = "$fullString ($note)"
+                                    }
+                                    fullString.trim()
                                 }
                                 _recipe.value = _recipe.value?.copy(ingredients = ingredientsList)
                             }
                         }
-
-                    checkIfUserLiked(recipeId) { isLiked ->
-                        _recipe.value = _recipe.value?.copy(isFavorite = isLiked)
-                    }
-
-                    viewModelScope.launch {
-                        commentRepository.getCommentsForRecipe(recipeId).collectLatest { comments ->
-                            _comments.value = comments
-                        }
-                    }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -200,9 +243,7 @@ class RecipeDetailViewModel(
                     onResult(Author(authorId, "Người dùng không tồn tại", null))
                 }
             }
-            .addOnFailureListener {
-                Log.e("RecipeDetailVM", "Failed to fetch author info")
-            }
+            .addOnFailureListener { Log.e("RecipeDetailVM", "Failed to fetch author info") }
     }
 
     private fun checkIfUserLiked(recipeId: String, onResult: (Boolean) -> Unit) {
@@ -218,30 +259,22 @@ class RecipeDetailViewModel(
         val currentUser = auth.currentUser ?: return
         val authorId = currentRecipe.userId ?: currentRecipe.author.id
         if (authorId.isBlank()) return
-
         val desiredState = !currentRecipe.isFavorite
-
         viewModelScope.launch {
             repository.toggleFavoriteWithRemote(currentUser.uid, currentRecipe.id, desiredState)
-
-            if (desiredState) {
-                sendNotification(authorId, "đã yêu thích món ăn: ${currentRecipe.name}", currentRecipe.id)
-            }
+            if (desiredState) sendNotification(authorId, "đã yêu thích món ăn: ${currentRecipe.name}", currentRecipe.id)
         }
     }
 
     fun toggleRelatedFavorite(targetId: String) {
         val currentRecipe = _recipe.value ?: return
         val currentUser = auth.currentUser ?: return
-
         val targetItem = currentRecipe.relatedRecipes.find { it.id == targetId } ?: return
         val newStatus = !targetItem.isFavorite
-
         val updatedRelatedList = currentRecipe.relatedRecipes.map { item ->
             if (item.id == targetId) item.copy(isFavorite = newStatus) else item
         }
         _recipe.value = currentRecipe.copy(relatedRecipes = updatedRelatedList)
-
         viewModelScope.launch {
             repository.toggleFavoriteWithRemote(currentUser.uid, targetId, newStatus)
         }
@@ -261,36 +294,27 @@ class RecipeDetailViewModel(
         val currentUserId = auth.currentUser?.uid ?: return
         val currentRecipe = _recipe.value ?: return
         val authorId = currentRecipe.userId ?: currentRecipe.author.id
-
         if (currentUserId == authorId || authorId.isBlank()) return
-
         val currentUserRef = firestore.collection("users").document(currentUserId)
         val authorRef = firestore.collection("users").document(authorId)
         val followingRef = currentUserRef.collection("following").document(authorId)
         val followerRef = authorRef.collection("followers").document(currentUserId)
-
         firestore.runTransaction { transaction ->
             val followingDoc = transaction.get(followingRef)
             if (followingDoc.exists()) {
-                transaction.delete(followingRef)
-                transaction.delete(followerRef)
+                transaction.delete(followingRef); transaction.delete(followerRef)
             } else {
                 transaction.set(followingRef, mapOf("timestamp" to FieldValue.serverTimestamp()))
                 transaction.set(followerRef, mapOf("timestamp" to FieldValue.serverTimestamp()))
             }
         }.addOnSuccessListener {
-            if (!(_isFollowingAuthor.value)) {
-                sendNotification(authorId, "đã bắt đầu theo dõi bạn", null)
-            }
-        }.addOnFailureListener { e ->
-            Log.e("RecipeDetailVM", "Follow/unfollow transaction FAILED", e)
-        }
+            if (!(_isFollowingAuthor.value)) sendNotification(authorId, "đã bắt đầu theo dõi bạn", null)
+        }.addOnFailureListener { e -> Log.e("RecipeDetailVM", "Follow/unfollow transaction FAILED", e) }
     }
 
     private fun sendNotification(receiverId: String, message: String, recipeId: String?) {
         val currentUserId = auth.currentUser?.uid ?: return
         if (currentUserId == receiverId || receiverId.isBlank()) return
-
         firestore.collection("users").document(currentUserId).get().addOnSuccessListener { doc ->
             val noti = hashMapOf(
                 "senderId" to currentUserId,
@@ -307,39 +331,24 @@ class RecipeDetailViewModel(
     }
 
     fun updateCommentText(text: String) { _commentText.value = text }
-
     fun onReplyToComment(username: String) { _replyingToUser.value = username }
-
     fun onCancelReply() { _replyingToUser.value = null }
 
     fun addComment() {
         val rawText = _commentText.value.trim()
         if (rawText.isEmpty()) return
-
         val user = auth.currentUser ?: return
         val recipe = _recipe.value ?: return
         val authorId = recipe.userId ?: recipe.author.id
         if (authorId.isBlank()) return
-
         val replyPrefix = _replyingToUser.value?.let { "@$it " } ?: ""
         val finalContent = replyPrefix + rawText
-
         firestore.collection("users").document(user.uid).get().addOnSuccessListener { doc ->
             val avatarUrl = doc.getString("photoUrl") ?: user.photoUrl?.toString()
-
-            val comment = Comment(
-                userId = user.uid,
-                recipeId = recipe.id,
-                userName = doc.getString("fullName") ?: "User",
-                userAvatar = avatarUrl,
-                text = finalContent,
-                timestamp = Date()
-            )
-
+            val comment = Comment(userId = user.uid, recipeId = recipe.id, userName = doc.getString("fullName") ?: "User", userAvatar = avatarUrl, text = finalContent, timestamp = Date())
             viewModelScope.launch {
                 if (commentRepository.addComment(comment)) {
-                    _commentText.value = ""
-                    _replyingToUser.value = null
+                    _commentText.value = ""; _replyingToUser.value = null
                     sendNotification(authorId, "đã bình luận: ${recipe.name}", recipe.id)
                 }
             }
@@ -353,20 +362,11 @@ class RecipeDetailViewModel(
 
     private fun RecipeEntity.toUiModel(author: Author, related: List<RecipePreview>, likes: Int): Recipe {
         return Recipe(
-            id = this.id,
-            name = this.name,
-            timeCook = this.timeCook,
-            difficulty = this.difficulty ?: "Trung bình",
-            imageUrl = this.imageUrl,
-            description = this.description ?: "",
-            author = author,
-            isFavorite = this.isFavorite,
-            likeCount = likes,
-            createdAt = this.createdAt,
-            ingredients = this.ingredients ?: emptyList(),
+            id = this.id, name = this.name, timeCook = this.timeCook, difficulty = this.difficulty ?: "Trung bình",
+            imageUrl = this.imageUrl, description = this.description ?: "", author = author, isFavorite = this.isFavorite,
+            likeCount = likes, createdAt = this.createdAt, ingredients = this.ingredients ?: emptyList(),
             instructions = this.steps?.mapIndexed { index, s -> InstructionStep(index + 1, s, null) } ?: emptyList(),
-            relatedRecipes = related,
-            userId = this.userId
+            relatedRecipes = related, userId = this.userId
         )
     }
 }

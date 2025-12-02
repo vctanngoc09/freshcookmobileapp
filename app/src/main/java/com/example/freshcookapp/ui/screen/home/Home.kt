@@ -255,7 +255,7 @@ fun Home(
                         userScrollEnabled = false
                     ) {
                         if (categories.isEmpty() || isRefreshing) {
-                            items(4) {
+                            items(6) { // 🔥 ĐÃ SỬA: THAY ĐỔI SỐ LƯỢNG SKELETON TỪ 4 LÊN 6
                                 CategoryItemSkeleton()
                             }
                         } else {
