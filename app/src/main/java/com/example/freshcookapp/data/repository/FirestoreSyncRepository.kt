@@ -7,6 +7,7 @@ import com.example.freshcookapp.data.local.entity.CategoryEntity
 import com.example.freshcookapp.data.local.entity.RecipeEntity
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
+import com.google.firebase.firestore.FirebaseFirestoreException
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -146,8 +147,62 @@ class FirestoreSyncRepository(
                 }
             }
 
+        } catch (e: FirebaseFirestoreException) {
+            // Xử lý lỗi Firestore cụ thể
+            when (e.code) {
+                FirebaseFirestoreException.Code.PERMISSION_DENIED -> {
+                    Log.e("FirestoreSync", """
+                        ❌❌❌ PERMISSION_DENIED ❌❌❌
+                        
+                        Không có quyền đọc dữ liệu từ Firestore!
+                        
+                        🔧 CÁCH SỬA (5 PHÚT):
+                        
+                        1. Mở Firebase Console:
+                           👉 https://console.firebase.google.com/
+                        
+                        2. Chọn project: freshcookapp-b376c
+                        
+                        3. Vào: Firestore Database → Rules (tab trên cùng)
+                        
+                        4. Thay toàn bộ rules bằng đoạn này:
+                        
+                        rules_version = '2';
+                        service cloud.firestore {
+                          match /databases/{database}/documents {
+                            match /{document=**} {
+                              allow read, write: if request.auth != null;
+                            }
+                          }
+                        }
+                        
+                        5. Click nút PUBLISH (màu xanh)
+                        
+                        6. Chờ 5 giây
+                        
+                        7. XÓA APP khỏi emulator và chạy lại
+                        
+                        📖 Xem chi tiết: FIRESTORE_RULES_FIX.md
+                        
+                    """.trimIndent(), e)
+                }
+                FirebaseFirestoreException.Code.UNAVAILABLE -> {
+                    Log.e("FirestoreSync", "❌ UNAVAILABLE: Không thể kết nối Firestore. Kiểm tra internet!", e)
+                }
+                FirebaseFirestoreException.Code.UNAUTHENTICATED -> {
+                    Log.e("FirestoreSync", "❌ UNAUTHENTICATED: Chưa đăng nhập. Vui lòng đăng nhập lại!", e)
+                }
+                FirebaseFirestoreException.Code.NOT_FOUND -> {
+                    Log.e("FirestoreSync", "❌ NOT_FOUND: Collection không tồn tại trên Firestore!", e)
+                }
+                else -> {
+                    Log.e("FirestoreSync", "❌ Lỗi Firestore: ${e.code} - ${e.message}", e)
+                }
+            }
+            throw e
         } catch (e: Exception) {
             Log.e("FirestoreSync", "Lỗi đồng bộ tổng", e)
+            throw e
         }
     }
 

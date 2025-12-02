@@ -1,6 +1,7 @@
 package com.example.freshcookapp.ui.screen.account
 
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -11,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,7 +43,8 @@ fun AuthorProfileScreen(
     onBackClick: () -> Unit,
     onRecipeClick: (String) -> Unit,
     onFollowerClick: (String) -> Unit,
-    onFollowingClick: (String) -> Unit
+    onFollowingClick: (String) -> Unit,
+    onMessageClick: (String, String, String?) -> Unit = { _, _, _ -> } // chatId, userName, photoUrl
 ) {
     val viewModel: AuthorProfileViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
@@ -141,27 +144,62 @@ fun AuthorProfileScreen(
                     Spacer(modifier = Modifier.height(24.dp))
                 }
 
-                // 3. BUTTON FOLLOW (Chỉ hiện nếu xem người khác)
+                // 3. BUTTON FOLLOW & MESSAGE (Chỉ hiện nếu xem người khác)
                 if (currentUserId != null && currentUserId != userId) {
                     item {
-                        Button(
-                            onClick = { viewModel.toggleFollow() },
+                        Row(
                             modifier = Modifier
-                                .fillMaxWidth(0.6f)
-                                .height(48.dp),
-                            shape = RoundedCornerShape(24.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (uiState.isFollowing) Color(0xFFEEEEEE) else Color.Black,
-                                contentColor = if (uiState.isFollowing) Color.Black else Color.White
-                            ),
-                            border = if(uiState.isFollowing) null else null
+                                .fillMaxWidth()
+                                .padding(horizontal = 32.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Text(
-                                text = if (uiState.isFollowing) "Đang theo dõi" else "Theo dõi",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = WorkSans
-                            )
+                            // Nút Follow
+                            Button(
+                                onClick = { viewModel.toggleFollow() },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp),
+                                shape = RoundedCornerShape(24.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (uiState.isFollowing) Color(0xFFEEEEEE) else Color.Black,
+                                    contentColor = if (uiState.isFollowing) Color.Black else Color.White
+                                ),
+                            ) {
+                                Text(
+                                    text = if (uiState.isFollowing) "Đang theo dõi" else "Theo dõi",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = WorkSans
+                                )
+                            }
+
+                            // 🔥 NÚT NHẮN TIN MỚI
+                            OutlinedButton(
+                                onClick = {
+                                    onMessageClick(userId, uiState.username, uiState.photoUrl)
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp),
+                                shape = RoundedCornerShape(24.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = Cinnabar500
+                                ),
+                                border = BorderStroke(1.5.dp, Cinnabar500)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ChatBubble,
+                                    contentDescription = "Nhắn tin",
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Nhắn tin",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = WorkSans
+                                )
+                            }
                         }
                         Spacer(modifier = Modifier.height(24.dp))
                     }

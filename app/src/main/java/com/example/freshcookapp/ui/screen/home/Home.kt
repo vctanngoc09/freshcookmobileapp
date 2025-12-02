@@ -82,6 +82,7 @@ fun Home(
     onRecipeDetail: (String) -> Unit,
     onSearchDetail: (String) -> Unit,
     onNotificationClick: () -> Unit = {},
+    onChatClick: () -> Unit = {}, // 🔥 THÊM CALLBACK CHO CHAT
 ) {
     ScreenContainer {
         val context = LocalContext.current
@@ -181,19 +182,20 @@ fun Home(
                                 fontWeight = FontWeight.Bold
                             )
                         }
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = ripple(bounded = false),
-                                    onClick = onNotificationClick
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            BadgedBox(
-                                badge = { if (hasUnreadNotifications) { Badge(containerColor = Color.Red) } }
+                        Row {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = ripple(bounded = false),
+                                        onClick = onNotificationClick
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                BadgedBox(
+                                    badge = { if (hasUnreadNotifications) { Badge(containerColor = Color.Red) } }
                             ) {
                                 Icon(
                                     painter = painterResource(R.drawable.ic_notifications),
@@ -202,6 +204,30 @@ fun Home(
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
+                            }
+
+                            Spacer(Modifier.width(12.dp))
+
+                            // ======== ICON CHAT ========
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = ripple(bounded = false),
+                                        onClick = onChatClick
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_chat),
+                                    contentDescription = "Chat",
+                                    tint = Cinnabar500,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            // =============================
                         }
                     }
                     Spacer(Modifier.height(8.dp))

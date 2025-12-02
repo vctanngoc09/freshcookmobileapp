@@ -4,6 +4,7 @@ import android.util.Log
 import com.example.freshcookapp.data.local.dao.RecipeDao
 import com.example.freshcookapp.data.local.entity.RecipeEntity
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -30,6 +31,34 @@ class FirestoreHomeSync(
                 .await() // Sử dụng .get().await() để lấy dữ liệu một lần
 
             processSnapshot(snapshot) // Tách logic xử lý ra hàm riêng
+        } catch (e: FirebaseFirestoreException) {
+            // Xử lý lỗi Firestore cụ thể
+            when (e.code) {
+                FirebaseFirestoreException.Code.PERMISSION_DENIED -> {
+                    Log.e("HomeSync", """
+                        ❌ PERMISSION_DENIED: Không có quyền đọc dữ liệu recipes
+                        
+                        🔧 Cách sửa:
+                        1. Vào Firebase Console: https://console.firebase.google.com/
+                        2. Chọn project: freshcookapp-b376c
+                        3. Vào Firestore Database → Rules
+                        4. Thay rules bằng: allow read, write: if request.auth != null;
+                        5. Click Publish và chờ 5 giây
+                        
+                        📖 Chi tiết: Xem file FIRESTORE_RULES_FIX.md
+                    """.trimIndent(), e)
+                }
+                FirebaseFirestoreException.Code.UNAVAILABLE -> {
+                    Log.e("HomeSync", "❌ UNAVAILABLE: Không thể kết nối Firestore. Kiểm tra internet!", e)
+                }
+                FirebaseFirestoreException.Code.UNAUTHENTICATED -> {
+                    Log.e("HomeSync", "❌ UNAUTHENTICATED: Chưa đăng nhập. Vui lòng đăng nhập lại!", e)
+                }
+                else -> {
+                    Log.e("HomeSync", "❌ Lỗi Firestore: ${e.code} - ${e.message}", e)
+                }
+            }
+            throw e
         } catch (e: Exception) {
             Log.e("HomeSync", "Lỗi khi forceRefresh", e)
             // Ném lại lỗi để coroutine ở Home.kt có thể bắt được
