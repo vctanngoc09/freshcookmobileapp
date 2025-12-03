@@ -25,22 +25,41 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun FavoriteItemSkeleton() {
-    Card(
-        modifier = Modifier.fillMaxWidth().height(280.dp).shadow(4.dp, RoundedCornerShape(16.dp)),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
     ) {
-        Column {
-            Box(modifier = Modifier.fillMaxWidth().height(180.dp).background(Color.LightGray.copy(alpha = 0.4f)).shimmerEffect())
-            Column(modifier = Modifier.padding(16.dp)) {
-                Box(modifier = Modifier.fillMaxWidth(0.6f).height(24.dp).clip(RoundedCornerShape(4.dp)).shimmerEffect())
-                Spacer(modifier = Modifier.height(12.dp))
-                Row {
-                    Box(modifier = Modifier.width(80.dp).height(16.dp).clip(RoundedCornerShape(4.dp)).shimmerEffect())
-                    Spacer(modifier = Modifier.weight(1f))
-                    Box(modifier = Modifier.width(60.dp).height(16.dp).clip(RoundedCornerShape(4.dp)).shimmerEffect())
-                }
-            }
-        }
+        // Ảnh skeleton
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(180.dp)
+                .shimmerEffect()
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        // Tên món skeleton
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.8f)
+                .height(20.dp)
+                .padding(horizontal = 12.dp)
+                .shimmerEffect()
+        )
+
+        Spacer(Modifier.height(6.dp))
+
+        // Time & difficulty skeleton
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.4f)
+                .height(16.dp)
+                .padding(horizontal = 12.dp)
+                .shimmerEffect()
+        )
+
+        Spacer(Modifier.height(16.dp))
     }
 }

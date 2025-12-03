@@ -32,6 +32,7 @@ import com.example.freshcookapp.data.local.AppDatabase
 import com.example.freshcookapp.data.repository.RecipeRepository
 import com.example.freshcookapp.domain.model.Recipe
 import com.example.freshcookapp.ui.component.FavoriteItemSkeleton
+import com.example.freshcookapp.ui.component.RecipeCard
 import com.example.freshcookapp.ui.component.ScreenContainer
 import com.example.freshcookapp.ui.theme.Cinnabar500
 
@@ -65,7 +66,7 @@ fun Favorite(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .padding(vertical = 12.dp)
         ) {
             // HEADER
             Row(
@@ -100,7 +101,7 @@ fun Favorite(
                 } else {
                     FavoriteList(
                         recipes = recipes,
-                        onRecipeClick = { recipe -> onRecipeClick(recipe.id) },
+                        onRecipeClick = onRecipeClick,
                         onRemoveFavorite = { recipeId ->
                             viewModel.removeFromFavorites(recipeId)
                         }
@@ -114,7 +115,7 @@ fun Favorite(
 @Composable
 private fun FavoriteList(
     recipes: List<Recipe>,
-    onRecipeClick: (Recipe) -> Unit,
+    onRecipeClick: (String) -> Unit,
     onRemoveFavorite: (String) -> Unit
 ) {
     LazyColumn(
@@ -123,122 +124,17 @@ private fun FavoriteList(
         contentPadding = PaddingValues(bottom = 20.dp)
     ) {
         items(recipes, key = { it.id }) { recipe -> // Thêm key để tối ưu list
-            FavoriteItemCard(
-                recipe = recipe,
-                onClick = { onRecipeClick(recipe) },
-                onFavoriteClick = { onRemoveFavorite(recipe.id) }
+            RecipeCard(
+                imageUrl = recipe.imageUrl,
+                name = recipe.name,
+                timeCook = recipe.timeCook ?: 0,
+                difficulty = recipe.difficulty,
+                isFavorite = true,
+                onFavoriteClick = { onRemoveFavorite(recipe.id) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onRecipeClick(recipe.id) }
             )
-        }
-    }
-}
-
-@Composable
-private fun FavoriteItemCard(
-    recipe: Recipe,
-    onClick: () -> Unit,
-    onFavoriteClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .shadow(
-                elevation = 6.dp,
-                shape = RoundedCornerShape(16.dp),
-                spotColor = Color.LightGray.copy(alpha = 0.5f)
-            ),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Column {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp)
-            ) {
-                // --- SỬA Ở ĐÂY: Dùng AsyncImage và bỏ Size.ORIGINAL ---
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(recipe.imageUrl ?: R.drawable.ic_launcher_background)
-                        .crossfade(true) // Hiệu ứng hiện mượt
-                        .placeholder(R.drawable.ic_launcher_background) // Hiện ảnh tạm khi đang load
-                        .error(R.drawable.ic_launcher_background)
-                        .build(),
-                    contentDescription = recipe.name,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-                // -----------------------------------------------------
-
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(12.dp)
-                        .size(36.dp)
-                        .shadow(4.dp, CircleShape)
-                        .background(Color.White, CircleShape)
-                        .clickable(onClick = onFavoriteClick),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Favorite,
-                        contentDescription = "Remove Favorite",
-                        tint = Cinnabar500,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = recipe.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black,
-                    maxLines = 1
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Schedule,
-                            contentDescription = "Time",
-                            tint = Cinnabar500,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "${recipe.timeCook} phút",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray
-                        )
-                    }
-
-                    Surface(
-                        color = Cinnabar500.copy(alpha = 0.1f),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(
-                            text = recipe.difficulty ?: "Dễ",
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Cinnabar500,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-            }
         }
     }
 }
