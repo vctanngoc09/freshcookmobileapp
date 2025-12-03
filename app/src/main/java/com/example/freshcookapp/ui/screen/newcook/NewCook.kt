@@ -631,18 +631,17 @@ fun UnitChip(
 @Composable
 fun ImagePreviewDialog(imageUri: Uri, onDismiss: () -> Unit) {
 
-    val isDark = isSystemInDarkTheme()
+    val colors = MaterialTheme.colorScheme
 
-    // NÚT CLOSE theo theme
-    val closeBg = if (isDark) Color.Black.copy(0.5f) else Color.White.copy(0.7f)
-    val closeIcon = if (isDark) Color.White else Color.Black
+    val closeBg = colors.surface.copy(alpha = 0.7f)
+    val closeIcon = colors.onSurface
 
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
 
-        // FULLSCREEN black background (giữ để ảnh nhìn đẹp nhất)
+        // Nền đen để ảnh nổi bật nhất (không theo theme)
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -678,7 +677,7 @@ fun ImagePreviewDialog(imageUri: Uri, onDismiss: () -> Unit) {
                     )
             )
 
-            // CLOSE BUTTON
+            // CLOSE BUTTON theo theme app
             IconButton(
                 onClick = onDismiss,
                 modifier = Modifier
@@ -699,12 +698,13 @@ fun ImagePreviewDialog(imageUri: Uri, onDismiss: () -> Unit) {
 @Composable
 fun VideoPreviewDialog(videoUri: Uri, onDismiss: () -> Unit) {
 
-    val isDark = isSystemInDarkTheme()
+    val colors = MaterialTheme.colorScheme
 
-    val closeBg = if (isDark) Color.Black.copy(0.5f) else Color.White.copy(0.7f)
-    val closeIcon = if (isDark) Color.White else Color.Black
+    val closeBg = colors.surface.copy(alpha = 0.7f)
+    val closeIcon = colors.onSurface
 
     Dialog(onDismissRequest = onDismiss) {
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -732,7 +732,11 @@ fun VideoPreviewDialog(videoUri: Uri, onDismiss: () -> Unit) {
                     .padding(8.dp)
                     .background(closeBg, CircleShape)
             ) {
-                Icon(Icons.Default.Close, contentDescription = "Close", tint = closeIcon)
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = "Close",
+                    tint = closeIcon
+                )
             }
         }
     }
@@ -880,14 +884,11 @@ fun RecipeImagePicker(
     var showDialog by remember { mutableStateOf(false) }
     var tempUri by remember { mutableStateOf<Uri?>(null) }
 
-    val isDark = isSystemInDarkTheme()
+    val colors = MaterialTheme.colorScheme
 
-    // ⭐ Background theo Light/Dark
-    val pickerBg = if (isDark) MaterialTheme.colorScheme.surfaceVariant else Cinnabar50
-
-    // ⭐ Nút chỉnh sửa camera theo theme
-    val editBg = if (isDark) Color.Black.copy(0.5f) else Color.White.copy(0.8f)
-    val editIconColor = if (isDark) Color.White else Color.Black
+    val pickerBg = colors.surfaceVariant.copy(alpha = 0.6f)
+    val editBg = colors.surface.copy(alpha = 0.7f)
+    val editIconColor = colors.onSurface
 
     val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
@@ -917,7 +918,7 @@ fun RecipeImagePicker(
             .fillMaxWidth()
             .height(boxHeight)
             .clip(RoundedCornerShape(12.dp))
-            .background(pickerBg)   // ⭐ FIX DARK MODE
+            .background(pickerBg)   // ⭐ CHẠY THEO THEME APP
             .clickable { if (imageUri == null) showDialog = true else onImageClick() },
         contentAlignment = Alignment.Center
     ) {
@@ -928,18 +929,18 @@ fun RecipeImagePicker(
                 Icon(
                     painterResource(R.drawable.ic_camera),
                     null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = colors.onSurfaceVariant,
                     modifier = Modifier.size(36.dp)
                 )
                 Text(
                     "Đăng tải hình đại diện",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = colors.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall
                 )
             }
         }
 
-        /** KHI ĐÃ CÓ ẢNH */
+        /** ĐÃ CÓ ẢNH */
         else {
             val painter = rememberAsyncImagePainter(
                 model = ImageRequest.Builder(LocalContext.current)
@@ -958,7 +959,7 @@ fun RecipeImagePicker(
                 modifier = Modifier.fillMaxSize()
             )
 
-            // ⭐ NÚT EDIT ẢNH THEO LIGHT/DARK MODE
+            // ⭐ EDIT BUTTON THEO THEME
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
@@ -977,7 +978,7 @@ fun RecipeImagePicker(
         }
     }
 
-    /** Dialog chọn ảnh */
+    /** DIALOG CHỌN ẢNH */
     if (showDialog)
         ShowImageSourceDialog(
             onPickGallery = {

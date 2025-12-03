@@ -5,18 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -39,9 +28,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.example.freshcookapp.ui.theme.Cinnabar50
 import com.example.freshcookapp.ui.theme.Cinnabar500
-import coil.compose.AsyncImage
 
 @Composable
 fun RecipeCard(
@@ -55,22 +44,13 @@ fun RecipeCard(
     enabled: Boolean = true
 ) {
 
-    val isDark = isSystemInDarkTheme()
+    // ❌ XÓA isSystemInDarkTheme()
+    // ❌ Không tự quyết định light/dark trong component
 
-    val cardBackground = if (isDark)
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
-    else
-        Cinnabar50
-
-    val borderColor = if (isDark)
-        MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-    else
-        Color(0x22000000)
-
-    val iconBgColor = if (isDark)
-        MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
-    else
-        Color.White.copy(alpha = 0.8f)
+    // ✅ Dùng MaterialTheme để TỰ ĐỘNG lấy đúng theme do người dùng chọn
+    val cardBackground = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+    val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
+    val iconBgColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.65f)
 
     val textColorPrimary = MaterialTheme.colorScheme.onSurface
     val textColorSecondary = MaterialTheme.colorScheme.onSurfaceVariant
@@ -88,13 +68,13 @@ fun RecipeCard(
         modifier = modifier
             .width(160.dp)
             .clip(RoundedCornerShape(16.dp))
-            .border(0.5.dp, borderColor, RoundedCornerShape(16.dp))
+            .border(0.7.dp, borderColor, RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surface)
     ) {
 
         Column {
 
-            // Hình món ăn
+            // Ảnh món ăn
             Box(
                 modifier = Modifier
                     .height(115.dp)
@@ -131,7 +111,7 @@ fun RecipeCard(
                 }
             }
 
-            // Nội dung bên dưới
+            // Nội dung
             Column(
                 modifier = Modifier
                     .fillMaxWidth()

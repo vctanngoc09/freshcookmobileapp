@@ -231,9 +231,12 @@ fun RecipeItemWithMenu(
 
         // 2. Nút 3 chấm (Góc trên phải)
         Box(modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)) {
-            val isDark = isSystemInDarkTheme()
-            val menuBg = if (isDark) Color.Black.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.8f)
-            val menuIcon = if (isDark) Color.White else Color.Black
+
+            // ⭐ Không dùng isSystemInDarkTheme()
+            val colors = MaterialTheme.colorScheme
+
+            val menuBg = colors.surface.copy(alpha = 0.8f)
+            val menuIcon = colors.onSurface
 
             IconButton(
                 onClick = { expanded = true },
@@ -249,20 +252,23 @@ fun RecipeItemWithMenu(
                 )
             }
 
-            // Menu Dropdown
             DropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
-                modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                modifier = Modifier.background(colors.surface)
             ) {
                 DropdownMenuItem(
-                    text = { Text("Xóa món này", color = MaterialTheme.colorScheme.error) },
+                    text = { Text("Xóa món này", color = colors.error) },
                     onClick = {
                         expanded = false
                         onDeleteClick()
                     },
                     leadingIcon = {
-                        Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = null,
+                            tint = colors.error
+                        )
                     }
                 )
             }
