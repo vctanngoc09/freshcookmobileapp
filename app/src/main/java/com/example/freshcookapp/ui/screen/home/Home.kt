@@ -13,6 +13,8 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -271,32 +273,71 @@ fun Home(
                     }
                     Spacer(Modifier.height(12.dp))
 
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 330.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        userScrollEnabled = false
-                    ) {
-                        if (categories.isEmpty() || isRefreshing) {
-                            items(6) { // 🔥 ĐÃ SỬA: THAY ĐỔI SỐ LƯỢNG SKELETON TỪ 4 LÊN 6
-                                CategoryItemSkeleton()
+                    val pageSize = 6
+                    val pages = categories.chunked(pageSize)
+                    val pagerState = rememberPagerState(pageCount = { pages.size })
+
+                    Column {
+
+                        HorizontalPager(
+                            state = pagerState,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(330.dp) // chiều cao giữ nguyên như grid
+                        ) { page ->
+
+                            // MỖI PAGE = GRID 2 CỘT × 3 HÀNG
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(2),
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                userScrollEnabled = false // scroll ngang, không scroll dọc
+                            ) {
+                                items(pages[page]) { category ->
+                                    TrendingCategoryItem(
+                                        category = category,
+                                        onClick = { onCategoryRecipes(category.id, category.name) }
+                                    )
+                                }
+
+                                // Nếu chưa đủ 6 item thì fill slot trống
+                                val remaining = pageSize - pages[page].size
+                                if (remaining > 0) {
+                                    items(remaining) {
+                                        Box(modifier = Modifier.height(100.dp))
+                                    }
+                                }
                             }
-                        } else {
-                            items(categories, key = { it.id }) { category ->
-                                TrendingCategoryItem(
-                                    category = category,
-                                    onClick = { onCategoryRecipes(category.id, category.name) }
+                        }
+
+                        Spacer(modifier = Modifier.height(9.dp))
+
+                        // DOT INDICATOR
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            repeat(pages.size) { index ->
+                                val selected = pagerState.currentPage == index
+                                Box(
+                                    modifier = Modifier
+                                        .padding(4.dp)
+                                        .size(if (selected) 10.dp else 8.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            if (selected) Cinnabar500
+                                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                                        )
                                 )
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(20.dp))
                     }
-                    Spacer(Modifier.height(20.dp))
                 }
 
-                // ======== XU HƯỚNG ========
+                    // ======== XU HƯỚNG ========
                 item {
                     SectionHeader(title = "Xu hướng", onViewAll = { onCategoryRecipes("TRENDING", "Xu hướng") })
                     Spacer(modifier = Modifier.height(8.dp))

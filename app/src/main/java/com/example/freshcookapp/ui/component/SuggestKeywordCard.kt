@@ -37,20 +37,14 @@ fun SuggestKeywordCard(
     imageUrl: String?,
     onClick: () -> Unit
 ) {
-    val isDark = isSystemInDarkTheme()
-
-    val backgroundColor = if (isDark)
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-    else
-        Color(0xFFF8F4F2)
+    // ❌ Không dùng isSystemInDarkTheme()
+    // ✅ Dùng MaterialTheme để đồng bộ với theme người dùng đã chọn
+    val backgroundColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
 
     val textPrimary = MaterialTheme.colorScheme.onSurface
     val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
 
-    val borderColor = if (isDark)
-        MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-    else
-        Color(0x22000000)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -58,10 +52,10 @@ fun SuggestKeywordCard(
             .clip(RoundedCornerShape(12.dp))
             .background(backgroundColor)
             .border(0.5.dp, borderColor, RoundedCornerShape(12.dp)),
-
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Ảnh sát trái, không để padding dư
+
+        // Ảnh item
         Image(
             painter = rememberAsyncImagePainter(imageUrl ?: R.drawable.ic_launcher_background),
             contentDescription = null,
@@ -73,25 +67,22 @@ fun SuggestKeywordCard(
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
+        Column(modifier = Modifier.weight(1f)) {
+
             // Keyword
             Text(
                 text = keyword,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    color = textPrimary,
-                ),
+                style = MaterialTheme.typography.bodyMedium.copy(color = textPrimary),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Time text
+            // Time
             Text(
                 text = convertTimestampToText(time),
-                style = MaterialTheme.typography.bodySmall,
-                color = textSecondary,
+                style = MaterialTheme.typography.bodySmall.copy(color = textSecondary),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
