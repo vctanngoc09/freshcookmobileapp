@@ -1,9 +1,11 @@
 package com.example.freshcookapp
 
 import android.content.Intent
+import android.graphics.Color // 🔥 Import màu để dùng cho SystemBarStyle
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle // 🔥 Import để chỉnh style thanh trạng thái
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.collectAsState
@@ -30,7 +32,20 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+
+        // 🔥 SỬA LỖI TRÙNG MÀU STATUS BAR TẠI ĐÂY
+        // Dòng này báo cho hệ thống biết: App tôi nền sáng (light), hãy vẽ icon màu tối (dark)
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.light(
+                Color.TRANSPARENT, // Màu nền của thanh trạng thái (trong suốt)
+                Color.TRANSPARENT  // Màu nền khi ở chế độ tối (trong suốt)
+            ),
+            navigationBarStyle = SystemBarStyle.light(
+                Color.TRANSPARENT,
+                Color.TRANSPARENT
+            )
+        )
+        // -----------------------------------------------------------
 
         // 🔥 Khởi tạo Facebook SDK
         FacebookSdk.sdkInitialize(applicationContext)
@@ -38,15 +53,15 @@ class MainActivity : ComponentActivity() {
 
         auth = Firebase.auth
 
-        // 🔥 BẬT FIREBASE OFFLINE PERSISTENCE - LƯU TIN NHẮN VĨNH VIỄN
+        // 🔥 BẬT FIREBASE OFFLINE PERSISTENCE
         try {
             val firestore = FirebaseFirestore.getInstance()
             val settings = FirebaseFirestoreSettings.Builder()
-                .setPersistenceEnabled(true) // Bật lưu offline
-                .setCacheSizeBytes(FirebaseFirestoreSettings.CACHE_SIZE_UNLIMITED) // Không giới hạn cache
+                .setPersistenceEnabled(true)
+                .setCacheSizeBytes(FirebaseFirestoreSettings.CACHE_SIZE_UNLIMITED)
                 .build()
             firestore.firestoreSettings = settings
-            Log.d("Firestore", "✅ Đã bật Offline Persistence - Tin nhắn sẽ được lưu vĩnh viễn")
+            Log.d("Firestore", "✅ Đã bật Offline Persistence")
         } catch (e: Exception) {
             Log.e("Firestore", "❌ Lỗi bật Offline Persistence", e)
         }
@@ -59,13 +74,12 @@ class MainActivity : ComponentActivity() {
 
         updateFcmToken()
 
-        // --- LẤY DỮ LIỆU TỪ THÔNG BÁO ---
         val deepLinkRecipeId = intent.getStringExtra("recipeId")
         val deepLinkUserId = intent.getStringExtra("userId")
-        // --------------------------------
 
         setContent {
             val themeViewModel: ThemeViewModel = viewModel()
+            // Lưu ý: Biến mode này nên được xử lý trong Theme để đổi màu Status Bar động
             val mode by themeViewModel.themeMode.collectAsState()
 
             FreshCookAppTheme(themeMode = mode) {
@@ -78,7 +92,6 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-
 
     private fun updateFcmToken() {
         val currentUser = auth.currentUser ?: return
@@ -95,7 +108,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // Xử lý khi app đang chạy mà bấm thông báo (cập nhật lại UI)
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
