@@ -158,7 +158,12 @@ fun FreshCookApp(
         Destination.RecentlyViewed::class.qualifiedName,
         Destination.MyDishes::class.qualifiedName,
         Destination.RecipeDetail::class.qualifiedName,
-        "user_profile/{userId}"
+        "user_profile/{userId}",
+        // 🔥 CHAT SCREENS - MỚI
+        Destination.ChatList::class.qualifiedName,
+        Destination.ChatDetail::class.qualifiedName,
+        Destination.SearchUsersToChat::class.qualifiedName,
+
     )
 
     val hideBottomBar = noBottomBarDestinations.any { pattern ->

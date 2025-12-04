@@ -23,6 +23,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.freshcookapp.ui.nav.Destination
+import com.example.freshcookapp.ui.theme.Cinnabar300
+import com.example.freshcookapp.ui.theme.Cinnabar400
+import com.example.freshcookapp.ui.theme.Cinnabar500
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,7 +47,7 @@ fun ChatListScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
+                    containerColor = Cinnabar500,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
                 )
