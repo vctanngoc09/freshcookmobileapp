@@ -75,6 +75,9 @@ import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -397,7 +400,7 @@ private fun RecipeDetailContent(
         }
         item {
             AuthorInfoSection(
-                author = recipe.author,
+                recipe = recipe, // 🔥 SỬA: TRUYỀN CẢ OBJECT RECIPE
                 isFollowing = isFollowingAuthor,
                 onAuthorClick = onAuthorClick,
                 onFollowClick = onFollowClick
@@ -818,13 +821,21 @@ fun FullScreenImageViewer(imageUrls: List<String>, initialIndex: Int, onDismiss:
     }
 }
 
+// 🔥 HÀM TIỆN ÍCH ĐỂ ĐỊNH DẠNG NGÀY
+private fun formatDate(timestamp: Long): String {
+    val date = Date(timestamp)
+    val format = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    return format.format(date)
+}
+
 @Composable
 fun AuthorInfoSection(
-    author: Author,
+    recipe: Recipe, // 🔥 SỬA: NHẬN CẢ OBJECT RECIPE
     isFollowing: Boolean,
     onAuthorClick: (String) -> Unit,
     onFollowClick: () -> Unit
 ) {
+    val author = recipe.author // Lấy author từ recipe
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
     val isMe = currentUserId == author.id
     val textColor = MaterialTheme.colorScheme.onBackground
@@ -832,6 +843,7 @@ fun AuthorInfoSection(
     val unfollowBg = MaterialTheme.colorScheme.surfaceVariant
     val followText = MaterialTheme.colorScheme.onPrimary
     val unfollowText = MaterialTheme.colorScheme.onSurface
+    val dateColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     Column(
         modifier = Modifier
@@ -854,10 +866,11 @@ fun AuthorInfoSection(
             placeholder = painterResource(defaultAvatar)
         )
         Spacer(Modifier.height(8.dp))
+        // 🔥 THÊM HIỂN THỊ NGÀY
         Text(
-            text = "Lên sóng bởi",
+            text = "Ngày đăng: ${formatDate(recipe.createdAt)}",
             style = MaterialTheme.typography.bodySmall,
-            color = Cinnabar500.copy(alpha = 0.8f)
+            color = dateColor
         )
         Text(
             text = author.name,
@@ -889,6 +902,7 @@ fun AuthorInfoSection(
         }
     }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
