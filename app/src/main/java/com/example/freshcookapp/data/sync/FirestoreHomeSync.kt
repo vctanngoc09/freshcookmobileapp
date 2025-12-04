@@ -129,6 +129,13 @@ class FirestoreHomeSync(
                 // Giữ lại số like local nếu nó lớn hơn, phòng trường hợp optimistic update chưa kịp đồng bộ
                 val finalLikeCount = maxOf(local?.likeCount ?: 0, like)
 
+                val finalTokens = try {
+                    // nếu sau này bạn thêm searchTokens vào HomeSync thì sẽ lấy từ doc
+                    (doc.get("searchTokens") as? List<String>) ?: (local?.searchTokens ?: emptyList())
+                } catch (e: Exception) {
+                    local?.searchTokens ?: emptyList()
+                }
+
                 // ---------- ENTITY NHẸ DÀNH RIÊNG CHO HOME -----------
                 val entity = RecipeEntity(
                     id = id,
@@ -146,7 +153,8 @@ class FirestoreHomeSync(
                     authorName = local?.authorName ?: "",
                     authorAvatar = local?.authorAvatar ?: "",
                     isFavorite = finalIsFavorite,
-                    likeCount = finalLikeCount
+                    likeCount = finalLikeCount,
+                    searchTokens = finalTokens
                 )
 
                 list.add(entity)

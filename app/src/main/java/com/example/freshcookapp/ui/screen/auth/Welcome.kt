@@ -83,10 +83,9 @@ fun Welcome(
 
                 // Facebook
                 IconButton(onClick = onFacebookSignInClick, modifier = Modifier.size(50.dp)) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_launcher_foreground),
+                    Image(
+                        painter = painterResource(R.drawable.ic_face),
                         contentDescription = "Facebook",
-                        tint = Color(0xFF1877F2), // Màu xanh Facebook
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -97,10 +96,9 @@ fun Welcome(
                 IconButton(onClick = onGithubSignInClick, modifier = Modifier.size(50.dp)) {
                     // Bạn hãy thay R.drawable.ic_github bằng icon thực tế
                     // Nếu chưa có, dùng tạm ic_launcher_foreground để test
-                    Icon(
-                        painter = painterResource(R.drawable.ic_launcher_foreground),
+                    Image(
+                        painter = painterResource(R.drawable.ic_github),
                         contentDescription = "Github",
-                        tint = Color.Black,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
