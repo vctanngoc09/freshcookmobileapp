@@ -1,10 +1,8 @@
 package com.example.freshcookapp.ui.screen.auth
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -27,13 +25,14 @@ fun Welcome(
     onLoginClick: () -> Unit,
     onGoogleSignInClick: () -> Unit,
     onGithubSignInClick: () -> Unit,
-    onPhoneSignInClick: () -> Unit,
-    onFacebookSignInClick: () -> Unit   // Thêm Facebook
+    onPhoneSignInClick: () -> Unit, // Giữ tham số này để không lỗi gọi hàm bên ngoài
+    onFacebookSignInClick: () -> Unit
 ) {
     ScreenContainer {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(Color.White) // 🔥 QUAN TRỌNG: Đặt nền màu trắng ở đây
                 .padding(16.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
@@ -71,17 +70,21 @@ fun Welcome(
             // --- CỤM NÚT SOCIAL ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
+                horizontalArrangement = Arrangement.Center, // Căn giữa các nút
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Google
+                // 1. Google
                 IconButton(onClick = onGoogleSignInClick, modifier = Modifier.size(50.dp)) {
-                    Image(painterResource(R.drawable.ic_google_logo), contentDescription = "Google", modifier = Modifier.fillMaxSize())
+                    Image(
+                        painter = painterResource(R.drawable.ic_google_logo),
+                        contentDescription = "Google",
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
 
-                Spacer(modifier = Modifier.width(24.dp))
+                Spacer(modifier = Modifier.width(20.dp))
 
-                // Facebook
+                // 2. Facebook
                 IconButton(onClick = onFacebookSignInClick, modifier = Modifier.size(50.dp)) {
                     Image(
                         painter = painterResource(R.drawable.ic_face),
@@ -90,28 +93,15 @@ fun Welcome(
                     )
                 }
 
-                Spacer(modifier = Modifier.width(24.dp))
+                Spacer(modifier = Modifier.width(20.dp))
 
-                // GitHub (Cần thêm ảnh ic_github vào drawable, nếu chưa có thì dùng tạm icon khác)
+                // 3. GitHub
                 IconButton(onClick = onGithubSignInClick, modifier = Modifier.size(50.dp)) {
-                    // Bạn hãy thay R.drawable.ic_github bằng icon thực tế
-                    // Nếu chưa có, dùng tạm ic_launcher_foreground để test
+                    // Dùng ic_github nếu có, hoặc dùng tạm ic_launcher_foreground để test
                     Image(
                         painter = painterResource(R.drawable.ic_github),
                         contentDescription = "Github",
                         modifier = Modifier.fillMaxSize()
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(24.dp))
-
-                // Phone (Dùng Icon có sẵn của Android)
-                IconButton(onClick = onPhoneSignInClick, modifier = Modifier.size(50.dp)) {
-                    Icon(
-                        imageVector = Icons.Default.Phone,
-                        contentDescription = "Phone",
-                        tint = Cinnabar500, // Màu đỏ chủ đạo
-                        modifier = Modifier.fillMaxSize().padding(4.dp)
                     )
                 }
             }

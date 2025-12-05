@@ -6,7 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
@@ -39,8 +38,8 @@ fun Register(
     onLoginClick: () -> Unit,
     onGoogleSignInClick: () -> Unit,
     onGithubSignInClick: () -> Unit,
-    onPhoneSignInClick: () -> Unit,
-    onFacebookSignInClick: () -> Unit   // Thêm Facebook
+    onPhoneSignInClick: () -> Unit, // Giữ lại để không lỗi signature
+    onFacebookSignInClick: () -> Unit
 ) {
     var fullName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -108,33 +107,35 @@ fun Register(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // --- CỤM NÚT SOCIAL ---
+                    // --- CỤM NÚT SOCIAL (ĐÃ SỬA) ---
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // Google
-                        IconButton(onClick = onGoogleSignInClick, modifier = Modifier.size(44.dp)) {
-                            Image(painterResource(R.drawable.ic_google_logo), contentDescription = "Google", modifier = Modifier.fillMaxSize())
+                        IconButton(onClick = onGoogleSignInClick, modifier = Modifier.size(50.dp)) {
+                            Image(painter = painterResource(R.drawable.ic_google_logo), contentDescription = "Google", modifier = Modifier.fillMaxSize())
                         }
                         Spacer(modifier = Modifier.width(20.dp))
 
                         // Facebook
-                        IconButton(onClick = onFacebookSignInClick, modifier = Modifier.size(44.dp)) {
-                            Icon(painter = painterResource(R.drawable.ic_launcher_foreground), contentDescription = "Facebook", tint = Color(0xFF1877F2), modifier = Modifier.fillMaxSize())
+                        IconButton(onClick = onFacebookSignInClick, modifier = Modifier.size(50.dp)) {
+                            Image(
+                                painter = painterResource(R.drawable.ic_face),
+                                contentDescription = "Facebook",
+                                modifier = Modifier.fillMaxSize()
+                            )
                         }
                         Spacer(modifier = Modifier.width(20.dp))
 
                         // GitHub
-                        IconButton(onClick = onGithubSignInClick, modifier = Modifier.size(44.dp)) {
-                            Icon(painter = painterResource(R.drawable.ic_launcher_foreground), contentDescription = "Github", tint = Color.Black, modifier = Modifier.fillMaxSize())
-                        }
-                        Spacer(modifier = Modifier.width(20.dp))
-
-                        // Phone
-                        IconButton(onClick = onPhoneSignInClick, modifier = Modifier.size(44.dp)) {
-                            Icon(imageVector = Icons.Default.Phone, contentDescription = "Phone", tint = Cinnabar500, modifier = Modifier.fillMaxSize().padding(6.dp))
+                        IconButton(onClick = onGithubSignInClick, modifier = Modifier.size(50.dp)) {
+                            Image(
+                                painter = painterResource(R.drawable.ic_github),
+                                contentDescription = "Github",
+                                modifier = Modifier.fillMaxSize()
+                            )
                         }
                     }
 
