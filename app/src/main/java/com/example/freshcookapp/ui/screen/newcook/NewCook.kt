@@ -4,9 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
-import android.widget.MediaController
 import android.widget.Toast
-import android.widget.VideoView
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -15,7 +13,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -30,9 +27,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.LocalDining
-import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.VideoCall
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -50,16 +45,15 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
-import coil.request.ImageRequest
-import coil.size.Size
-import coil.size.Precision
 import coil.request.CachePolicy
+import coil.request.ImageRequest
+import coil.size.Precision
+import coil.size.Size
 import com.example.freshcookapp.FreshCookAppRoom
 import com.example.freshcookapp.R
 import com.example.freshcookapp.data.local.AppDatabase
@@ -70,7 +64,6 @@ import com.example.freshcookapp.ui.component.UnderlineTextField
 import com.example.freshcookapp.ui.screen.filter.DifficultyChip
 import com.example.freshcookapp.ui.screen.filter.FilterChip
 import com.example.freshcookapp.ui.theme.Cinnabar400
-import com.example.freshcookapp.ui.theme.Cinnabar50
 import com.example.freshcookapp.ui.theme.Cinnabar500
 import com.example.freshcookapp.ui.theme.White
 import com.google.firebase.firestore.FirebaseFirestore
@@ -100,8 +93,6 @@ fun NewCook(onBackClick: () -> Unit) {
     val instructionsUi = remember { mutableStateListOf(InstructionUiState()) }
 
     var recipeImageUri by remember { mutableStateOf<Uri?>(null) }
-    var recipeVideoUri by remember { mutableStateOf<Uri?>(null) }
-    var videoName by remember { mutableStateOf("") }
 
     var hashtagInput by remember { mutableStateOf("") }
     val hashtagList = remember { mutableStateListOf<String>() }
@@ -121,35 +112,13 @@ fun NewCook(onBackClick: () -> Unit) {
 
     // --- STATE PREVIEW ---
     var previewImageUri by remember { mutableStateOf<Uri?>(null) }
-    var previewVideoUri by remember { mutableStateOf<Uri?>(null) }
 
-    // --- IMAGE & VIDEO VARIABLES ---
+    // --- IMAGE VARIABLES ---
     var tempStepUri by remember { mutableStateOf<Uri?>(null) }
     var currentPickingStepIndex by remember { mutableStateOf<Int?>(null) }
     var showStepDialog by remember { mutableStateOf(false) }
-    var showVideoSourceDialog by remember { mutableStateOf(false) }
-    var tempVideoUri by remember { mutableStateOf<Uri?>(null) }
 
     // --- LAUNCHERS ---
-    val pickVideoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        uri?.let {
-            if (checkFileSize(context, it, 50)) {
-                recipeVideoUri = it
-                videoName = getFileName(context, it)
-            } else scope.launch { snackbarHostState.showSnackbar("Video quá lớn > 50MB") }
-        }
-    }
-    val recordVideoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CaptureVideo()) { success ->
-        if (success && tempVideoUri != null) {
-            if (checkFileSize(context, tempVideoUri!!, 50)) {
-                recipeVideoUri = tempVideoUri
-                videoName = "Video vừa quay"
-            } else {
-                scope.launch { snackbarHostState.showSnackbar("Video quá lớn") }
-                recipeVideoUri = null
-            }
-        }
-    }
     val galleryStepLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let { u ->
             currentPickingStepIndex?.let { idx ->
@@ -177,13 +146,6 @@ fun NewCook(onBackClick: () -> Unit) {
             cameraStepLauncher.launch(uri)
         } else scope.launch { snackbarHostState.showSnackbar("Cần quyền camera") }
     }
-    val videoCameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) {
-            val uri = createVideoUri(context)
-            tempVideoUri = uri
-            recordVideoLauncher.launch(uri)
-        } else scope.launch { snackbarHostState.showSnackbar("Cần quyền camera") }
-    }
 
     fun parsePeople(peopleStr: String): Int? = Regex("(\\d+)").find(peopleStr)?.groups?.get(1)?.value?.toIntOrNull()
 
@@ -196,7 +158,7 @@ fun NewCook(onBackClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)  // ⭐ Dark Mode
+            .background(MaterialTheme.colorScheme.background)
             .clickable { focusManager.clearFocus() }
     ) {
         Column(
@@ -204,7 +166,7 @@ fun NewCook(onBackClick: () -> Unit) {
                 .fillMaxSize()
                 .padding(vertical = 12.dp)
         ) {
-        // HEADER BUTTON
+            // HEADER BUTTON
             if (!isSaved) {
                 Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.End) {
                     Button(
@@ -215,7 +177,7 @@ fun NewCook(onBackClick: () -> Unit) {
                                 scope.launch {
                                     viewModel.saveRecipe(
                                         name = recipeName, description = description, timeCook = totalCookMinutes,
-                                        people = parsePeople(people) ?: 1, imageUri = recipeImageUri, videoUri = recipeVideoUri,
+                                        people = parsePeople(people) ?: 1, imageUri = recipeImageUri, videoUri = null,
                                         hashtags = hashtagList.toList(), difficultyUi = difficulty, categoryId = selectedCategoryId,
                                         ingredients = ingredients.filter { it.name.isNotBlank() }, instructionsUi = instructionsUi,
                                         onSuccess = { isSaved = true; scope.launch { snackbarHostState.showSnackbar("Thành công!"); delay(1000); onBackClick() } },
@@ -237,46 +199,13 @@ fun NewCook(onBackClick: () -> Unit) {
             Spacer(modifier = Modifier.height(10.dp))
 
             LazyColumn(modifier = Modifier.fillMaxSize()) {
-                // 1. ẢNH ĐẠI DIỆN (Đã tích hợp Coil Nét Căng)
+                // 1. ẢNH ĐẠI DIỆN
                 item {
                     RecipeImagePicker(
                         imageUri = recipeImageUri,
                         onImageChanged = { recipeImageUri = it },
                         onImageClick = { if (recipeImageUri != null) previewImageUri = recipeImageUri }
                     )
-                }
-
-                // 1.1 VIDEO PICKER
-                item {
-                    ScreenContainer {
-                        Spacer(Modifier.height(16.dp))
-                        Box(
-                            modifier = Modifier.fillMaxWidth().border(
-                                1.dp,
-                                if (recipeVideoUri != null) Cinnabar500 else MaterialTheme.colorScheme.outlineVariant,
-                                RoundedCornerShape(8.dp)
-                            )
-                                .background(
-                                    if (recipeVideoUri != null) Cinnabar50 else MaterialTheme.colorScheme.surface,
-                                    RoundedCornerShape(8.dp)
-                                )
-                                .clickable {
-                                    focusManager.clearFocus()
-                                    if(recipeVideoUri != null) previewVideoUri = recipeVideoUri else showVideoSourceDialog = true
-                                }
-                                .padding(12.dp)
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth(), horizontalArrangement = if(recipeVideoUri == null) Arrangement.Center else Arrangement.Start) {
-                                if (recipeVideoUri == null) {
-                                    Icon(Icons.Default.VideoCall, null, tint = MaterialTheme.colorScheme.onSurfaceVariant); Spacer(Modifier.width(8.dp)); Text("Thêm Video hướng dẫn", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                } else {
-                                    Icon(Icons.Default.PlayCircle, null, tint = Cinnabar500, modifier = Modifier.size(28.dp)); Spacer(Modifier.width(12.dp))
-                                    Column(modifier = Modifier.weight(1f)) { Text("Video đã chọn (Nhấn xem)", color = Cinnabar500, fontWeight = FontWeight.Bold); Text(videoName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1) }
-                                    IconButton(onClick = { recipeVideoUri = null; videoName = "" }) { Icon(Icons.Default.Close, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
-                                }
-                            }
-                        }
-                    }
                 }
 
                 // 2. THÔNG TIN CƠ BẢN
@@ -337,7 +266,7 @@ fun NewCook(onBackClick: () -> Unit) {
                         onRemove = { ingredients.removeAt(index) }
                     )
                 }
-                item { ScreenContainer { TextButton(onClick = { ingredients.add(Ingredient()) }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Icon(Icons.Default.Add, null, tint = Cinnabar400); Text("Thêm dòng", color = Cinnabar400) } } }
+                item { ScreenContainer { TextButton(onClick = { ingredients.add(Ingredient()) }) { Icon(Icons.Default.Add, null, tint = Cinnabar400); Text("Thêm dòng", color = Cinnabar400) } } }
 
                 // 5. CÁCH LÀM
                 item { ScreenContainer { Spacer(Modifier.height(16.dp)); Text("Cách Làm", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Spacer(Modifier.height(8.dp)) } }
@@ -368,9 +297,7 @@ fun NewCook(onBackClick: () -> Unit) {
 
     // DIALOGS
     if (previewImageUri != null) ImagePreviewDialog(imageUri = previewImageUri!!, onDismiss = { previewImageUri = null })
-    if (previewVideoUri != null) VideoPreviewDialog(videoUri = previewVideoUri!!, onDismiss = { previewVideoUri = null })
     if (showStepDialog) ShowImageSourceDialog(onPickGallery = { galleryStepLauncher.launch("image/*"); showStepDialog = false }, onTakePhoto = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA); showStepDialog = false })
-    if (showVideoSourceDialog) ShowVideoSourceDialog(onPickGallery = { pickVideoLauncher.launch("video/*"); showVideoSourceDialog = false }, onRecord = { videoCameraPermissionLauncher.launch(Manifest.permission.CAMERA); showVideoSourceDialog = false }, onDismiss = { showVideoSourceDialog = false })
     if (showTimeDialog) DurationPickerDialog(initialMinutes = totalCookMinutes, onDismiss = { showTimeDialog = false }, onConfirm = { minutes -> totalCookMinutes = minutes; showTimeDialog = false })
 }
 
@@ -384,11 +311,11 @@ fun IngredientCardItem(index: Int, ingredient: Ingredient, onUpdate: (Ingredient
                 .fillMaxWidth()
                 .padding(vertical = 6.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface  // ⭐ tự đổi theo Dark/Light
+                containerColor = MaterialTheme.colorScheme.surface
             ),
             border = BorderStroke(
                 1.dp,
-                MaterialTheme.colorScheme.outlineVariant           // ⭐ viền đúng Material
+                MaterialTheme.colorScheme.outlineVariant
             ),
             shape = RoundedCornerShape(12.dp)
         ) {
@@ -567,10 +494,10 @@ fun InstructionCardItem(
                         modifier = Modifier
                             .size(100.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(MaterialTheme.colorScheme.surface)   // ⭐ Dark mode ok
+                            .background(MaterialTheme.colorScheme.surface)
                             .border(
                                 1.dp,
-                                MaterialTheme.colorScheme.outlineVariant,    // ⭐ Dark mode viền dịu
+                                MaterialTheme.colorScheme.outlineVariant,
                                 RoundedCornerShape(8.dp)
                             )
                             .clickable { onAddImage() },
@@ -595,7 +522,7 @@ fun InstructionCardItem(
             /** DIVIDER */
             HorizontalDivider(
                 modifier = Modifier.padding(top = 16.dp),
-                color = MaterialTheme.colorScheme.outlineVariant   // ⭐ Dark mode viền đẹp
+                color = MaterialTheme.colorScheme.outlineVariant
             )
         }
     }
@@ -615,7 +542,7 @@ fun UnitChip(
             1.dp,
             if (isSelected) Cinnabar500 else MaterialTheme.colorScheme.outlineVariant
         ),
-        color = if (isSelected) Cinnabar50 else MaterialTheme.colorScheme.surface // ⭐ auto Light/Dark
+        color = if (isSelected) com.example.freshcookapp.ui.theme.Cinnabar50 else MaterialTheme.colorScheme.surface
     ) {
         Text(
             text = text,
@@ -641,7 +568,6 @@ fun ImagePreviewDialog(imageUri: Uri, onDismiss: () -> Unit) {
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
 
-        // Nền đen để ảnh nổi bật nhất (không theo theme)
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -677,59 +603,11 @@ fun ImagePreviewDialog(imageUri: Uri, onDismiss: () -> Unit) {
                     )
             )
 
-            // CLOSE BUTTON theo theme app
             IconButton(
                 onClick = onDismiss,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(16.dp)
-                    .background(closeBg, CircleShape)
-            ) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = "Close",
-                    tint = closeIcon
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun VideoPreviewDialog(videoUri: Uri, onDismiss: () -> Unit) {
-
-    val colors = MaterialTheme.colorScheme
-
-    val closeBg = colors.surface.copy(alpha = 0.7f)
-    val closeIcon = colors.onSurface
-
-    Dialog(onDismissRequest = onDismiss) {
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-                .background(Color.Black)
-        ) {
-
-            AndroidView(
-                factory = { ctx ->
-                    VideoView(ctx).apply {
-                        setVideoURI(videoUri)
-                        setMediaController(MediaController(ctx))
-                        start()
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(300.dp)
-            )
-
-            IconButton(
-                onClick = onDismiss,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(8.dp)
                     .background(closeBg, CircleShape)
             ) {
                 Icon(
@@ -765,14 +643,12 @@ fun DurationPickerDialog(
         text = {
             Column {
 
-                // INPUT ROW
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
                     modifier = Modifier.fillMaxWidth()
                 ) {
 
-                    // HOURS
                     OutlinedTextField(
                         value = hours,
                         onValueChange = { if (it.all { c -> c.isDigit() }) hours = it },
@@ -784,20 +660,16 @@ fun DurationPickerDialog(
                             focusedContainerColor = MaterialTheme.colorScheme.surface,
                             unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                             disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-
                             focusedBorderColor = Cinnabar500,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-
                             focusedTextColor = MaterialTheme.colorScheme.onSurface,
                             unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-
                             cursorColor = Cinnabar500,
                             focusedLabelColor = Cinnabar500,
                             unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     )
 
-                    // SEPARATOR
                     Text(
                         " : ",
                         fontWeight = FontWeight.Bold,
@@ -805,7 +677,6 @@ fun DurationPickerDialog(
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
-                    // MINUTES
                     OutlinedTextField(
                         value = minutes,
                         onValueChange = { if (it.all { c -> c.isDigit() }) minutes = it },
@@ -817,13 +688,10 @@ fun DurationPickerDialog(
                             focusedContainerColor = MaterialTheme.colorScheme.surface,
                             unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                             disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-
                             focusedBorderColor = Cinnabar500,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-
                             focusedTextColor = MaterialTheme.colorScheme.onSurface,
                             unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-
                             cursorColor = Cinnabar500,
                             focusedLabelColor = Cinnabar500,
                             unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -833,7 +701,6 @@ fun DurationPickerDialog(
 
                 Spacer(Modifier.height(8.dp))
 
-                // TOTAL TIME
                 val totalMinutes = (hours.toIntOrNull() ?: 0) * 60 + (minutes.toIntOrNull() ?: 0)
 
                 Text(
@@ -864,16 +731,10 @@ fun DurationPickerDialog(
 }
 
 @Composable
-fun ShowVideoSourceDialog(onPickGallery: () -> Unit, onRecord: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Thêm Video") }, text = { Text("Chọn video từ thư viện hoặc quay mới?") }, confirmButton = { TextButton(onClick = onRecord) { Text("Quay video") } }, dismissButton = { TextButton(onClick = onPickGallery) { Text("Chọn thư viện") } })
-}
-
-@Composable
 fun ShowImageSourceDialog(onPickGallery: () -> Unit, onTakePhoto: () -> Unit) {
     AlertDialog(onDismissRequest = {}, title = { Text("Chọn ảnh") }, text = { Text("Chụp mới hay chọn từ thư viện?") }, confirmButton = { TextButton(onClick = onTakePhoto) { Text("Chụp ảnh") } }, dismissButton = { TextButton(onClick = onPickGallery) { Text("Chọn ảnh") } })
 }
 
-// 🔥 CẬP NHẬT: COMPONENT IMAGE PICKER VỚI COIL SETTINGS "NÉT CĂNG" TỪ BẢN PULL
 @Composable
 fun RecipeImagePicker(
     imageUri: Uri?,
@@ -918,12 +779,11 @@ fun RecipeImagePicker(
             .fillMaxWidth()
             .height(boxHeight)
             .clip(RoundedCornerShape(12.dp))
-            .background(pickerBg)   // ⭐ CHẠY THEO THEME APP
+            .background(pickerBg)
             .clickable { if (imageUri == null) showDialog = true else onImageClick() },
         contentAlignment = Alignment.Center
     ) {
 
-        /** KHI CHƯA CÓ ẢNH */
         if (imageUri == null) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(
@@ -938,10 +798,7 @@ fun RecipeImagePicker(
                     style = MaterialTheme.typography.bodySmall
                 )
             }
-        }
-
-        /** ĐÃ CÓ ẢNH */
-        else {
+        } else {
             val painter = rememberAsyncImagePainter(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(imageUri)
@@ -959,7 +816,6 @@ fun RecipeImagePicker(
                 modifier = Modifier.fillMaxSize()
             )
 
-            // ⭐ EDIT BUTTON THEO THEME
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
@@ -978,7 +834,6 @@ fun RecipeImagePicker(
         }
     }
 
-    /** DIALOG CHỌN ẢNH */
     if (showDialog)
         ShowImageSourceDialog(
             onPickGallery = {
@@ -993,7 +848,5 @@ fun RecipeImagePicker(
 }
 
 fun createImageUri(context: Context): Uri { val file = File.createTempFile("recipe_img_${System.currentTimeMillis()}", ".jpg", context.cacheDir); return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file) }
-fun createVideoUri(context: Context): Uri { val file = File.createTempFile("recipe_video_${System.currentTimeMillis()}", ".mp4", context.cacheDir); return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file) }
-fun checkFileSize(context: Context, uri: Uri, limitMB: Int): Boolean { val cursor = context.contentResolver.query(uri, null, null, null, null); cursor?.use { if (it.moveToFirst()) { val sizeIndex = it.getColumnIndex(OpenableColumns.SIZE); if (sizeIndex != -1) return it.getLong(sizeIndex) <= limitMB * 1024 * 1024 } }; return true }
 fun getFileName(context: Context, uri: Uri): String { var result: String? = null; if (uri.scheme == "content") { val cursor = context.contentResolver.query(uri, null, null, null, null); cursor?.use { if (it.moveToFirst()) { val index = it.getColumnIndex(OpenableColumns.DISPLAY_NAME); if(index >= 0) result = it.getString(index) } } }; return result ?: "Video" }
 fun formatMinutesToHours(totalMinutes: Int): String { val hours = totalMinutes / 60; val minutes = totalMinutes % 60; return when { hours > 0 && minutes > 0 -> "$hours giờ $minutes phút"; hours > 0 -> "$hours giờ"; else -> "$minutes phút" } }

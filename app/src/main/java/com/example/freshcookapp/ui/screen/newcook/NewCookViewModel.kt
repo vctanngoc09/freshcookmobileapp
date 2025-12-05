@@ -38,12 +38,11 @@ class NewCookViewModel(
         timeCook: Int?,
         people: Int?,
         imageUri: Uri?,
-        videoUri: Uri?,
+        videoUri: Uri?, // This parameter is no longer used but kept for compatibility
         hashtags: List<String>,
         difficultyUi: String,
         categoryId: String?,
         ingredients: List<Ingredient>,
-        // Giữ UI State này để xử lý đa ảnh
         instructionsUi: List<InstructionUiState>,
         onSuccess: () -> Unit,
         onError: (Throwable) -> Unit
@@ -62,26 +61,16 @@ class NewCookViewModel(
                     else -> "medium"
                 }
 
-                // 🔥 TỐI ƯU HÓA: CHẠY SONG SONG
-                // 1. Task Up Ảnh Đại Diện
                 val imageTask = async { uploadRecipeImageIfNeeded(recipeId, imageUri) }
-
-                // 2. Task Up Video (Tính năng của bản mới)
-                val videoTask = async { uploadVideoIfNeeded(recipeId, videoUri) }
-
-                // 3. Task Up Ảnh các bước (Đã tối ưu song song bên trong)
                 val stepsTask = async { convertAndUploadInstructions(recipeId, instructionsUi) }
 
-                // Đợi tất cả xong
                 val imageUrl = imageTask.await()
-                val videoUrl = videoTask.await()
                 val processedInstructions = stepsTask.await()
 
-                // 4. Lưu Firestore (Kèm Search Token xịn của bản cũ)
                 saveRecipeToFirestore(
                     recipeId = recipeId,
                     name = name, description = description, timeCook = timeCook,
-                    people = people, imageUrl = imageUrl, videoUrl = videoUrl,
+                    people = people, imageUrl = imageUrl, videoUrl = "", // Pass empty string for videoUrl
                     userId = currentUserId, categoryId = finalCategoryId,
                     hashtags = hashtags, difficulty = difficulty,
                     ingredients = ingredients, instructions = processedInstructions
@@ -106,16 +95,6 @@ class NewCookViewModel(
         } catch (e: Exception) { "" }
     }
 
-    private suspend fun uploadVideoIfNeeded(recipeId: String, videoUri: Uri?): String {
-        if (videoUri == null) return ""
-        return try {
-            val ref = FirebaseStorage.getInstance().reference.child("recipes_video/$recipeId/video.mp4")
-            ref.putFile(videoUri).await()
-            ref.downloadUrl.await().toString()
-        } catch (e: Exception) { "" }
-    }
-
-    // Hàm chuyển đổi từ UI State (List Uri) sang Domain Model (Instruction)
     private suspend fun convertAndUploadInstructions(
         recipeId: String,
         uiStates: List<InstructionUiState>
@@ -124,7 +103,6 @@ class NewCookViewModel(
             viewModelScope.async {
                 val imageUrls = mutableListOf<String>()
 
-                // Chạy song song upload từng ảnh nhỏ trong bước này
                 val uploadJobs = uiState.imageUris.mapIndexed { imgIndex, uri ->
                     async {
                         try {
@@ -145,7 +123,7 @@ class NewCookViewModel(
                     stepNumber = index + 1,
                     description = uiState.description,
                     imageUrl = mainImage,
-                    imageUrls = imageUrls // Sửa ở đây
+                    imageUrls = imageUrls
                 )
             }
         }.awaitAll()
@@ -171,7 +149,6 @@ class NewCookViewModel(
 
         val createdAt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).format(java.util.Date())
 
-        // 🔥 MERGE: LOGIC SEARCH TOKEN XỊN TỪ BẢN PULL
         val normName = normalizeText(name)
         val nameParts = normName.split(" ").filter { it.isNotBlank() }
         val singleTokens = nameParts
@@ -194,12 +171,12 @@ class NewCookViewModel(
             "difficulty" to difficulty,
             "hashtagId" to hashtags,
             "imageUrl" to imageUrl,
-            "videoUrl" to videoUrl, // Có video URL
+            "videoUrl" to videoUrl,
             "likeCount" to 0,
             "people" to (people ?: 1),
             "timeCook" to (timeCook ?: 0),
             "userId" to userId,
-            "searchTokens" to searchTokens // Có search tokens
+            "searchTokens" to searchTokens
         )
 
         recipeDoc.set(recipeData).await()
@@ -212,7 +189,7 @@ class NewCookViewModel(
                     "step" to step.stepNumber,
                     "description" to step.description,
                     "imageUrl" to step.imageUrl,
-                    "imageUrls" to step.imageUrls // Sửa ở đây
+                    "imageUrls" to step.imageUrls
                 )
                 recipeDoc.collection("instruction").add(stepData).await()
             })
