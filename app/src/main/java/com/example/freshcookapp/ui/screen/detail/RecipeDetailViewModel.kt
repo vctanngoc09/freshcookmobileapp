@@ -15,9 +15,9 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
 import com.example.freshcookapp.data.repository.CommentRepository
 import com.example.freshcookapp.domain.model.Comment
 import java.util.Date
@@ -48,6 +48,10 @@ class RecipeDetailViewModel(
     private val _replyingToUser = MutableStateFlow<String?>(null)
     val replyingToUser: StateFlow<String?> = _replyingToUser
 
+    // Keep track of which recipeId we're listening comments for and cancel previous listener when switching
+    private var commentsListenerRecipeId: String? = null
+    private var commentsJob: Job? = null
+
     init {
         listenToUnreadNotifications()
     }
@@ -67,6 +71,19 @@ class RecipeDetailViewModel(
     fun loadRecipe(recipeId: String) {
         viewModelScope.launch {
             try {
+                // Always start listening to comments for this recipe to support cases
+                // where the recipe may not exist locally in Room yet (e.g., opened from a deep link).
+                // If we're already listening to this recipe's comments, don't start another collector
+                if (commentsListenerRecipeId != recipeId) {
+                    // cancel any previous listener
+                    commentsJob?.cancel()
+                    commentsListenerRecipeId = recipeId
+                    commentsJob = viewModelScope.launch {
+                        commentRepository.getCommentsForRecipe(recipeId).collect { list ->
+                            _comments.value = list
+                        }
+                    }
+                }
                 // 1. Load Local (Hiển thị ngay lập tức)
                 val localEntity = repository.getRecipeById(recipeId)
 
@@ -338,18 +355,34 @@ class RecipeDetailViewModel(
         val rawText = _commentText.value.trim()
         if (rawText.isEmpty()) return
         val user = auth.currentUser ?: return
-        val recipe = _recipe.value ?: return
-        val authorId = recipe.userId ?: recipe.author.id
-        if (authorId.isBlank()) return
-        val replyPrefix = _replyingToUser.value?.let { "@$it " } ?: ""
+        // Use currently loaded recipe id if available, otherwise fallback to the recipeId we are listening to
+        val targetRecipeId = _recipe.value?.id ?: commentsListenerRecipeId ?: return
+        val replyPrefix = _replyingToUser.value?.let { "@${it} " } ?: ""
         val finalContent = replyPrefix + rawText
+        Log.d("RecipeDetailVM", "Adding comment: recipe=$targetRecipeId user=${user.uid} text=$finalContent")
+
+        // Get user profile info for display name/avatar
         firestore.collection("users").document(user.uid).get().addOnSuccessListener { doc ->
             val avatarUrl = doc.getString("photoUrl") ?: user.photoUrl?.toString()
-            val comment = Comment(userId = user.uid, recipeId = recipe.id, userName = doc.getString("fullName") ?: "User", userAvatar = avatarUrl, text = finalContent, timestamp = Date())
+            val userName = doc.getString("fullName") ?: "User"
+            val comment = Comment(userId = user.uid, recipeId = targetRecipeId, userName = userName, userAvatar = avatarUrl, text = finalContent, timestamp = Date())
+
             viewModelScope.launch {
-                if (commentRepository.addComment(comment)) {
-                    _commentText.value = ""; _replyingToUser.value = null
-                    sendNotification(authorId, "đã bình luận: ${recipe.name}", recipe.id)
+                val ok = commentRepository.addComment(comment)
+                Log.d("RecipeDetailVM", "addComment result=$ok")
+                if (ok) {
+                    // clear input immediately so UI feels responsive
+                    _commentText.value = ""
+                    _replyingToUser.value = null
+
+                    // Try to fetch recipe authorId to send notification (best-effort)
+                    firestore.collection("recipes").document(targetRecipeId).get().addOnSuccessListener { recipeDoc ->
+                        val fetchedAuthorId = recipeDoc.getString("userId")
+                        if (!fetchedAuthorId.isNullOrBlank()) {
+                            // avoid notifying self
+                            if (fetchedAuthorId != user.uid) sendNotification(fetchedAuthorId, "đã bình luận: ${recipeDoc.getString("name") ?: "món ăn"}", targetRecipeId)
+                        }
+                    }
                 }
             }
         }
