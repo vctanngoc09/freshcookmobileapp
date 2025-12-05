@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import com.example.freshcookapp.R
 import com.example.freshcookapp.ui.component.CustomTextField
 import com.example.freshcookapp.ui.component.ScreenContainer
+import com.example.freshcookapp.ui.screen.newcook.DurationPickerDialog
 import com.example.freshcookapp.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -190,6 +192,8 @@ fun Filter(
 
                 /** ==== THỜI GIAN ==== */
                 item {
+                    var showTimeDialog by remember { mutableStateOf(false) }
+
                     Text(
                         "Thời gian nấu",
                         style = MaterialTheme.typography.bodyLarge,
@@ -198,22 +202,32 @@ fun Filter(
                     Spacer(Modifier.height(8.dp))
 
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .border(1.dp, Cinnabar400, RoundedCornerShape(10.dp))
+                            .clickable { showTimeDialog = true }
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("${timeCook.toInt()} phút", color = Cinnabar500)
-                        Text("5–60 phút", color = Cinnabar400)
+                        Text(
+                            if (timeCook.toInt() > 0) "${timeCook.toInt()} phút" else "Chọn thời gian",
+                            color = if (timeCook > 0) Cinnabar500 else Color.Gray
+                        )
+                        Icon(Icons.Default.Schedule, contentDescription = null, tint = Cinnabar500)
                     }
 
-                    Slider(
-                        value = timeCook,
-                        onValueChange = { timeCook = it },
-                        valueRange = 5f..60f,
-                        colors = SliderDefaults.colors(
-                            thumbColor = Cinnabar500,
-                            activeTrackColor = Cinnabar500
+                    if (showTimeDialog) {
+                        DurationPickerDialog(
+                            initialMinutes = timeCook.toInt(),
+                            onDismiss = { showTimeDialog = false },
+                            onConfirm = { minutes ->
+                                timeCook = minutes.toFloat()
+                                showTimeDialog = false
+                            }
                         )
-                    )
+                    }
                 }
 
                 /** ==== NÚT HÀNH ĐỘNG ==== */

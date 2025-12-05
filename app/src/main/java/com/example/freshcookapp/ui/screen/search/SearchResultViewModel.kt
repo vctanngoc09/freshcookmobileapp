@@ -28,6 +28,7 @@ class SearchResultViewModel(
         loadResults()
     }
 
+    /** Chuẩn hóa text → bỏ dấu, viết thường */
     private fun normalizeText(input: String): String {
         return Normalizer.normalize(input, Normalizer.Form.NFD)
             .replace("\\p{M}+".toRegex(), "")
@@ -38,29 +39,54 @@ class SearchResultViewModel(
     private fun loadResults() {
         viewModelScope.launch {
             _isLoading.value = true
-            recipeRepository.searchLocal(keyword ?: "")
-                .map { entityList ->
-                    // 1. Chuyển đổi List<RecipeEntity> sang List<Recipe>
-                    entityList.map { it.toRecipe() }
-                }
+
+            val sourceFlow =
+                if (keyword.isNullOrBlank()) recipeRepository.getAllRecipes()
+                else recipeRepository.searchLocal(keyword)
+
+            sourceFlow
+                .map { entityList -> entityList.map { it.toRecipe() } }
                 .map { recipeList ->
-                    // 2. Lọc trên List<Recipe> đã được chuyển đổi
+
                     recipeList.filter { recipe ->
-                        val normIngredients = recipe.ingredients.map { normalizeText(it) }
-                        val hasIncluded = includedIngredients.isEmpty() || includedIngredients.all { normIngredients.contains(normalizeText(it)) }
-                        val hasExcluded = excludedIngredients.isEmpty() || excludedIngredients.none { normIngredients.contains(normalizeText(it)) }
-                        val difficultyMatches = difficulty.isEmpty() || normalizeText(recipe.difficulty ?: "").contains(normalizeText(difficulty))
-                        val timeCookMatches = timeCook == 0f || recipe.timeCook <= timeCook
-                        hasIncluded && hasExcluded && difficultyMatches && timeCookMatches
+
+                        val normIngList = recipe.ingredients.map { normalizeText(it) }
+
+                        // ====== LỌC NGUYÊN LIỆU BAO GỒM ======
+                        val includeOk =
+                            includedIngredients.isEmpty() ||
+                                    includedIngredients.all { include ->
+                                        val inc = normalizeText(include)
+                                        normIngList.any { ing -> ing.contains(inc) }
+                                    }
+
+                        // ====== LỌC NGUYÊN LIỆU LOẠI TRỪ ======
+                        val excludeOk =
+                            excludedIngredients.isEmpty() ||
+                                    excludedIngredients.none { exclude ->
+                                        val exc = normalizeText(exclude)
+                                        normIngList.any { ing -> ing.contains(exc) }
+                                    }
+
+                        // ====== ĐỘ KHÓ ======
+                        val difficultyOk =
+                            difficulty.isEmpty() ||
+                                    normalizeText(recipe.difficulty ?: "")
+                                        .contains(normalizeText(difficulty))
+
+                        // ====== THỜI GIAN ======
+                        val timeOk =
+                            timeCook == 0f || recipe.timeCook <= timeCook
+
+                        includeOk && excludeOk && difficultyOk && timeOk
                     }
                 }
-                .catch { e ->
-                    // Xử lý lỗi nếu có
-                    _isLoading.value = false
+                .catch {
                     _results.value = emptyList()
+                    _isLoading.value = false
                 }
-                .collect { filteredList ->
-                    _results.value = filteredList
+                .collect { filtered ->
+                    _results.value = filtered
                     _isLoading.value = false
                 }
         }

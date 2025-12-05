@@ -249,6 +249,11 @@ class RecipeRepository(private val db: AppDatabase) {
         }
     }
 
+    fun getAllRecipes(): Flow<List<RecipeEntity>> {
+        return db.recipeDao().getAllRecipes()
+    }
+
+
 
 
     // --- HÀM TẠO MÓN ---
