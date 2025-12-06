@@ -13,7 +13,7 @@ Quét mã QR bên dưới hoặc nhấn vào link để tải file APK và cài 
 <p align="center">
   <img src="./qrcode.png" width="150" alt="QR Code Download" />
   <br>
-  <a href="https://drive.google.com/file/d/1sZJwUkls08N6a7nI2kau0B21UCtVv2Kk/view?usp=drive_link">
+  <a href="https://drive.google.com/file/d/1voVtjvLeMYlKE_Z8ADPqqjBo0MpP2dS7/view?usp=drive_link">
     <b>👉 Tải xuống bản cài đặt (.apk) 👈</b>
   </a>
 </p>
